@@ -1,0 +1,6 @@
+.idea
+assets_*
+statik/
+/build/
+/dist/
+/gui/

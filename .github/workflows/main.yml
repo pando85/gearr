@@ -1,0 +1,83 @@
+name: CI
+on:    
+  push:  
+    branches: master
+    tags: 
+    - v*.*    
+  pull_request:
+jobs:
+  docker:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          lfs: true
+      - run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/} | tr '/' '-')"
+        id: branch
+      - name: build server docker
+        uses: docker/build-push-action@v1
+        with:
+          dockerfile: server/Dockerfile
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          repository: segator/transcoderd
+          tags: ${{ steps.branch.outputs.branch }}
+          push: true
+      - run: |
+          sudo swapoff -a
+          sudo rm -f /swapfile
+          sudo apt clean
+          docker system prune --volumes -f
+      - name: build worker docker
+        uses: docker/build-push-action@v1
+        with:
+          dockerfile: worker/Dockerfile.encode
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          repository: segator/encoder-agent
+          tags: ${{ steps.branch.outputs.branch }}
+          push: true
+      - name: build worker docker PGS
+        uses: docker/build-push-action@v1
+        with:
+          dockerfile: worker/Dockerfile.pgs
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          repository: segator/pgs-agent
+          tags: ${{ steps.branch.outputs.branch }}
+          push: true
+  binary:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu", "windows", "macos"]
+    runs-on: ${{ matrix.os}}-latest      
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.14.3
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          lfs: true
+      - run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/} | tr '/' '-')"
+        shell: bash
+        id: branch
+      - name: Build Server
+        run: |
+          go run build.go build server -p ${{matrix.os}}-amd64
+      - name: Build Workers
+        run: |
+          go run build.go build worker -p ${{matrix.os}}-amd64 -m console
+      - name: Upload Release Asset
+        if: github.event_name == 'push'
+        id: upload-release-asset
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: wip-${{ steps.branch.outputs.branch }}
+          file: dist/*
+          overwrite: true
+          file_glob: true
