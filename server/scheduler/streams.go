@@ -65,7 +65,8 @@ func (D *DownloadJobStream) Name() string {
 }
 
 func(U *UploadJobStream) Close(pushChecksum bool) error{
-	U.Close(pushChecksum)
+	U.file.Sync()
+	U.file.Close()
 	return os.Rename(U.temporalPath, U.path)
 }
 
