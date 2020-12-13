@@ -13,11 +13,12 @@ type PathChecksum struct{
 	checksum string
 }
 type JobStream struct {
-	hasher hash.Hash
-	video *model.Video
-	path string
-	file *os.File
+	hasher            hash.Hash
+	video             *model.Video
+	path              string
+	file              *os.File
 	checksumPublisher chan PathChecksum
+	temporalPath      string
 }
 
 type UploadJobStream struct {
@@ -61,6 +62,11 @@ func (D *DownloadJobStream) Size() int64 {
 
 func (D *DownloadJobStream) Name() string {
 	return D.FileName
+}
+
+func(U *UploadJobStream) Close(pushChecksum bool) error{
+	U.Close(pushChecksum)
+	return os.Rename(U.temporalPath, U.path)
 }
 
 func(U *JobStream) Close(pushChecksum bool) error{

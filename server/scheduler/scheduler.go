@@ -370,12 +370,14 @@ func (R *RuntimeScheduler) GetUploadJobWriter(ctx context.Context, uuid string) 
 	if err!=nil{
 		return nil,err
 	}
-	uploadFile, err := os.OpenFile(filePath,os.O_TRUNC|os.O_CREATE|os.O_RDWR,os.ModePerm)
+	temporalPath:=filePath+".upload"
+	uploadFile, err := os.OpenFile(temporalPath,os.O_TRUNC|os.O_CREATE|os.O_RDWR,os.ModePerm)
 	return &UploadJobStream{
 		&JobStream{
 			video: video,
 			file:  uploadFile,
 			path: filePath,
+			temporalPath: temporalPath,
 		},
 	},nil
 }

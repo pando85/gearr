@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS video_events(
     notification_type varchar(50) not null,
     status  varchar(20) not null,
     message text,
-    primary key (video_id,video_event_id)
+    primary key (video_id,video_event_id),
+    foreign KEY (video_id) REFERENCES videos(id)
 );
 
 CREATE TABLE IF NOT EXISTS workers
