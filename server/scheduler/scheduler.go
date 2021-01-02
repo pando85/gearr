@@ -342,9 +342,20 @@ func (R *RuntimeScheduler) GetDownloadJobWriter(ctx context.Context, uuid string
 	}
 	filePath := filepath.Join(R.config.DownloadPath,video.SourcePath)
 	downloadFile, err := os.Open(filePath)
+	if err!=nil {
+		if os.IsNotExist(err) {
+			return nil,ErrorJobNotFound
+		}else{
+			return nil,err
+		}
+	}
 	dfStat, err := downloadFile.Stat()
 	if err!=nil {
-		return nil,err
+		if os.IsNotExist(err) {
+			return nil,ErrorJobNotFound
+		}else{
+			return nil,err
+		}
 	}
 	return &DownloadJobStream{
 		JobStream: &JobStream{

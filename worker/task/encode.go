@@ -34,6 +34,7 @@ import (
 const RESET_LINE = "\r\033[K"
 
 var ffmpegSpeedRegex= regexp.MustCompile(`speed=(\d*\.?\d+)x`)
+var ErrorJobNotFound =errors.New("job Not found")
 type FFMPEGProgress struct {
 	duration int
 	speed float64
@@ -158,6 +159,9 @@ func (j *EncodeWorker) dowloadFile() (inputFile string, err error) {
 		if err != nil {
 			return err
 		}
+		if resp.StatusCode == http.StatusNotFound {
+			return ErrorJobNotFound
+		}
 		if resp.StatusCode != http.StatusOK {
 			return fmt.Errorf(fmt.Sprintf("not 200 respose in dowload code %d", resp.StatusCode))
 		}
@@ -214,7 +218,7 @@ func (j *EncodeWorker) dowloadFile() (inputFile string, err error) {
 		log.Errorf("Error on downloading job %s", err.Error())
 	}),
 	retry.RetryIf(func(err error) bool {
-		return !errors.Is(err,context.Canceled)
+		return !errors.Is(err,context.Canceled) ||  !errors.Is(err,ErrorJobNotFound)
 	}))
 	if err != nil {
 		return "", err

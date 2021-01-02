@@ -41,7 +41,7 @@ func init() {
 	//Scheduler
 	pflag.String("scheduler.domain","http://localhost:8080" ,"Base domain where workers will try to download upload videos")
 	pflag.Duration("scheduler.scheduleTime",time.Minute*5 ,"Execute the scheduling loop every X seconds")
-	pflag.Duration("scheduler.jobTimeout",time.Hour*24*7,"Requeue jobs that are running for more than X minutes")
+	pflag.Duration("scheduler.jobTimeout",time.Hour*24,"Requeue jobs that are running for more than X minutes")
 	pflag.String("scheduler.downloadPath","/data/current" ,"Download path")
 
 	pflag.String("scheduler.uploadPath","/data/processed" ,"Upload path")
