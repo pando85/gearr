@@ -218,7 +218,7 @@ func (j *EncodeWorker) dowloadFile() (inputFile string, err error) {
 		log.Errorf("Error on downloading job %s", err.Error())
 	}),
 	retry.RetryIf(func(err error) bool {
-		return !errors.Is(err,context.Canceled) ||  !errors.Is(err,ErrorJobNotFound)
+		return !(errors.Is(err,context.Canceled) ||  errors.Is(err,ErrorJobNotFound))
 	}))
 	if err != nil {
 		return "", err
