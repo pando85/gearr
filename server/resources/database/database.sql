@@ -56,7 +56,7 @@ begin
     on conflict on constraint video_status_pkey
         do update set video_event_id=p_video_event_id, video_path=p_video_path,worker_name=p_worker_name,
                       event_time=p_event_time, event_type=p_event_type,
-                      notification_type=p_event_time, status=p_status, message=p_message;
+                      notification_type=p_notification_type, status=p_status, message=p_message;
 end;
 $$;
 
