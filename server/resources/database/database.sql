@@ -73,6 +73,7 @@ begin
 end;
 $$;
 --trigger video_events
+drop trigger if exists event_insert_video_status_update on video_events;
 create trigger event_insert_video_status_update after insert on video_events
     for each row
 execute procedure fn_trigger_video_status_update();
