@@ -17,7 +17,6 @@ import (
 	"transcoder/cmd"
 	"transcoder/helper"
 	"transcoder/model"
-	"transcoder/worker/queue"
 	"transcoder/worker/task"
 	"transcoder/worker/update"
 )
@@ -28,7 +27,7 @@ type CmdLineOpts struct {
 }
 
 var (
-	opts CmdLineOpts
+	opts                CmdLineOpts
 	ApplicationFileName string
 )
 
@@ -51,8 +50,8 @@ func init() {
 	pflag.String("worker.dotnetPath", "dotnet", "dotnet path")
 	pflag.String("worker.pgsToSrtDLLPath", "./PgsToSrt.dll", "PGSToSrt.dll path")
 	pflag.String("worker.tesseractDataPath", "./tessdata", "tesseract data path")
-	pflag.Var(&opts.Worker.StartAfter,"worker.startAfter",  "Accept jobs only After HH:mm")
-	pflag.Var(&opts.Worker.StopAfter,"worker.stopAfter",  "Stop Accepting new Jobs after HH:mm")
+	pflag.Var(&opts.Worker.StartAfter, "worker.startAfter", "Accept jobs only After HH:mm")
+	pflag.Var(&opts.Worker.StopAfter, "worker.stopAfter", "Stop Accepting new Jobs after HH:mm")
 	pflag.Usage = usage
 
 	viper.SetConfigType("yaml")
@@ -61,8 +60,8 @@ func init() {
 	viper.AutomaticEnv()
 	viper.SetEnvPrefix("TR")
 	err = viper.ReadInConfig()
-	if err!=nil {
-		switch err.(type){
+	if err != nil {
+		switch err.(type) {
 		case viper.ConfigFileNotFoundError:
 		default:
 			log.Panic(err)
@@ -71,7 +70,7 @@ func init() {
 	pflag.Parse()
 
 	viper.BindPFlags(pflag.CommandLine)
-	viperDecoder := viper.DecodeHook(func(source reflect.Type,target  reflect.Type, data interface{}) (interface{}, error){
+	viperDecoder := viper.DecodeHook(func(source reflect.Type, target reflect.Type, data interface{}) (interface{}, error) {
 		if source.Kind() != reflect.String {
 			return data, nil
 		}
@@ -80,9 +79,9 @@ func init() {
 			timeHourMinute.Set(data.(string))
 			return timeHourMinute, nil
 		}
-		return data,nil
+		return data, nil
 	})
-	err = viper.Unmarshal(&opts,viperDecoder)
+	err = viper.Unmarshal(&opts, viperDecoder)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -93,7 +92,6 @@ func usage() {
 	pflag.PrintDefaults()
 	os.Exit(0)
 }
-
 
 func main() {
 	log.SetLevel(log.DebugLevel)
@@ -106,24 +104,25 @@ func main() {
 		shutdownHandler(ctx, sigs, cancel)
 		wg.Done()
 	}()
-	helper.ApplicationFileName= ApplicationFileName
+	helper.ApplicationFileName = ApplicationFileName
 	if !opts.Worker.NoUpdateMode {
 		updater := update.NewUpdater()
-		updater.Run(wg,ctx)
-	}else{
+		updater.Run(wg, ctx)
+	} else {
 		//Prepare work environment
-		prepareWorkerEnvironment(ctx,assets,&opts.Worker.Jobs)
+		prepareWorkerEnvironment(ctx, assets, &opts.Worker.Jobs)
+
+		printer := task.NewConsoleWorkerPrinter()
 
 		//BrokerClient System
-		broker := queue.NewBrokerClientRabbit(opts.Broker, opts.Worker)
+		broker := task.NewBrokerClientRabbit(opts.Broker, opts.Worker, printer)
 		broker.Run(wg, ctx)
 
-		worker := task.NewWorkerClient(opts.Worker, broker)
+		worker := task.NewWorkerClient(opts.Worker, broker, printer)
 		worker.Run(wg, ctx)
 	}
 	wg.Wait()
 }
-
 
 func shutdownHandler(ctx context.Context, sigs chan os.Signal, cancel context.CancelFunc) {
 	select {
@@ -135,20 +134,19 @@ func shutdownHandler(ctx context.Context, sigs chan os.Signal, cancel context.Ca
 	signal.Stop(sigs)
 }
 
-func prepareWorkerEnvironment(ctx context.Context,assets http.FileSystem,acceptedJobs *task.AcceptedJobs) {
+func prepareWorkerEnvironment(ctx context.Context, assets http.FileSystem, acceptedJobs *task.AcceptedJobs) {
 	log.Infof("Initializing Environment...")
 	if acceptedJobs.IsAccepted(model.EncodeJobType) {
-		if err:=helper.DesembedFSFFProbe(assets);err!=nil {
+		if err := helper.DesembedFSFFProbe(assets); err != nil {
 			panic(err)
 		}
 
-		if err:=helper.DesembedFFmpeg(assets);err!=nil {
+		if err := helper.DesembedFFmpeg(assets); err != nil {
 			panic(err)
 		}
 
-		if err:=helper.DesembedMKVExtract(assets);err!=nil {
+		if err := helper.DesembedMKVExtract(assets); err != nil {
 			panic(err)
 		}
 	}
 }
-

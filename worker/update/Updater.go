@@ -13,15 +13,15 @@ import (
 type Updater struct {
 	binaryPath string
 }
-func NewUpdater() *Updater{
-	updater := &Updater{
-	}
+
+func NewUpdater() *Updater {
+	updater := &Updater{}
 	return updater
 }
 
 func (U *Updater) Run(wg *sync.WaitGroup, ctx context.Context) {
 	wg.Add(1)
-	go func(){
+	go func() {
 		log.Info("Checking for Updates...")
 		for {
 			sha1Hash := helper.HashSha1Myself()
@@ -36,17 +36,17 @@ func (U *Updater) Run(wg *sync.WaitGroup, ctx context.Context) {
 			}
 			arguments := os.Args[1:]
 			arguments = append(arguments, "--worker.noUpdateMode")
-			ecode,err := command.NewCommand(U.binaryPath, arguments...).
+			ecode, err := command.NewCommand(U.binaryPath, arguments...).
 				SetStderrFunc(func(buffer []byte, exit bool) {
 					os.Stderr.Write(buffer)
 				}).
 				SetStdoutFunc(func(buffer []byte, exit bool) {
 					os.Stdout.Write(buffer)
-				}).RunWithContext(ctx,command.NewAllowedCodesOption(1))
-			if err!=nil {
+				}).RunWithContext(ctx, command.NewAllowedCodesOption(1))
+			if err != nil {
 				panic(err)
 			}
-			if ecode!=1{
+			if ecode != 1 {
 				break
 			}
 		}
@@ -58,17 +58,15 @@ func (U *Updater) Run(wg *sync.WaitGroup, ctx context.Context) {
 	}()
 }
 
-
-
 func (U *Updater) stop() {
-	if U.binaryPath!=""{
+	if U.binaryPath != "" {
 		for {
 			log.Info("Cleaning before close...")
 			err := os.Remove(U.binaryPath)
-			if err==nil{
+			if err == nil {
 				break
 			}
-			<-time.After(time.Millisecond*100)
+			<-time.After(time.Millisecond * 100)
 		}
 	}
 }

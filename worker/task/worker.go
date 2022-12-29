@@ -4,21 +4,25 @@ import (
 	"context"
 	"fmt"
 	log "github.com/sirupsen/logrus"
+	"runtime"
 	"sync"
 	"transcoder/model"
 )
 
-func NewWorkerClient(config Config, queue model.WorkerQueue) *WorkerRuntime {
+func NewWorkerClient(config Config, rabbit *RabbitMQClient, printer *ConsoleWorkerPrinter) *WorkerRuntime {
 	return &WorkerRuntime{
-		config: config,
-		queue:  queue,
+		config:  config,
+		rabbit:  rabbit,
+		printer: printer,
 	}
 }
 
 type WorkerRuntime struct {
-	config  Config
-	queue   model.WorkerQueue
-	workers []model.QueueWorker
+	config       Config
+	EncodeWorker *EncodeWorker
+	PGSWorker    []*PGSWorker
+	rabbit       *RabbitMQClient
+	printer      *ConsoleWorkerPrinter
 }
 
 func (W *WorkerRuntime) Run(wg *sync.WaitGroup, ctx context.Context) {
@@ -35,26 +39,30 @@ func (W *WorkerRuntime) Run(wg *sync.WaitGroup, ctx context.Context) {
 }
 func (W *WorkerRuntime) start(ctx context.Context) {
 	if W.config.Jobs.IsAccepted(model.EncodeJobType) {
-		for i := 0; i < W.config.EncodeJobs; i++ {
-			encodeWorker := NewEncodeWorker(ctx, W.config, fmt.Sprintf("%s-%d", model.EncodeJobType, i))
-			W.workers = append(W.workers, encodeWorker)
-			W.queue.RegisterWorker(encodeWorker)
-			log.Infof("Initializing new %s worker name:%s", model.EncodeJobType, encodeWorker.GetID())
-		}
+		W.EncodeWorker = NewEncodeWorker(ctx, W.config, fmt.Sprintf("%s-%d", model.EncodeJobType, 1), W.printer)
+		W.rabbit.RegisterEncodeWorker(W.EncodeWorker)
+		W.EncodeWorker.Initialize()
+		log.Info("Initializing encode Worker")
+
 	}
 	if W.config.Jobs.IsAccepted(model.PGSToSrtJobType) {
-		for i := 0; i < W.config.PgsJobs; i++ {
+		for i := 0; i < runtime.NumCPU(); i++ {
 			pgsWorker := NewPGSWorker(ctx, W.config, fmt.Sprintf("%s-%d", model.PGSToSrtJobType, i))
-			W.workers = append(W.workers, pgsWorker)
-			W.queue.RegisterWorker(pgsWorker)
-			log.Infof("Initializing new %s worker name:%s", model.PGSToSrtJobType, pgsWorker.GetID())
+			log.Infof("Initializing PGS Worker %d", i)
+			W.PGSWorker = append(W.PGSWorker, pgsWorker)
+			W.rabbit.RegisterPGSWorker(pgsWorker)
 		}
 	}
 }
 
 func (W *WorkerRuntime) stop() {
 	log.Warnf("Stopping all Workers")
-	for _, worker := range W.workers {
-		worker.Cancel()
+	if W.EncodeWorker != nil {
+		W.EncodeWorker.Cancel()
+	}
+	if W.PGSWorker != nil {
+		for _, worker := range W.PGSWorker {
+			worker.Cancel()
+		}
 	}
 }

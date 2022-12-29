@@ -4,20 +4,15 @@ go 1.14
 
 require (
 	github.com/JackMordaunt/icns v1.0.0
-	github.com/akavel/rsrc v0.9.0 // indirect
-	github.com/asticode/go-astikit v0.8.0
-	github.com/asticode/go-astilectron v0.16.0
-	github.com/asticode/go-astilectron-bootstrap v0.4.1
 	github.com/avast/retry-go v2.6.0+incompatible
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
 	github.com/hako/durafmt v0.0.0-20191009132224-3f39dc1ed9f4
 	github.com/inhies/go-bytesize v0.0.0-20151001220322-5990f52c6ad6
 	github.com/isayme/go-amqp-reconnect v0.0.0-20180930040740-e71660afb5ca
-	github.com/jteeuwen/go-bindata v3.0.7+incompatible // indirect
+	github.com/jedib0t/go-pretty/v6 v6.4.3
 	github.com/lib/pq v1.5.2
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
-	github.com/pierrec/lz4 v2.6.0+incompatible
 	github.com/pkg/errors v0.8.1
 	github.com/rakyll/statik v0.1.7
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
