@@ -77,8 +77,11 @@ func (E *EncodeWorker) Initialize() {
 	E.resumeJobs()
 	go E.terminal.Render()
 	go E.downloadQueue()
-	go E.uploadQueue()
-	go E.encodeQueue()
+
+	for i := 0; i < E.workerConfig.EncodeJobs; i++ {
+		go E.uploadQueue()
+		go E.encodeQueue()
+	}
 
 }
 
