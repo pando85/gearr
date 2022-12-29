@@ -21,7 +21,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: build server docker
-        uses: docker/build-push-action@v1
+        uses: docker/build-push-action@v3
         with:
           dockerfile: server/Dockerfile
           tags: segator/transcoderd:${{ steps.branch.outputs.branch }}
@@ -32,13 +32,13 @@ jobs:
           sudo apt clean
           docker system prune --volumes -f
       - name: build worker docker
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v3
         with:
           dockerfile: worker/Dockerfile.encode
           tags: segator/encoder-agent:${{ steps.branch.outputs.branch }}
           push: true
       - name: build worker docker PGS
-        uses: docker/build-push-action@v1
+        uses: docker/build-push-action@v3
         with:
           dockerfile: worker/Dockerfile.pgs
           tags: segator/pgs-agent:${{ steps.branch.outputs.branch }}
