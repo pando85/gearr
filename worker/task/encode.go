@@ -305,6 +305,7 @@ func (j *EncodeWorker) clearData(data *ffprobe.ProbeData) (container *ContainerD
 	container = &ContainerData{}
 
 	videoStream := data.StreamType(ffprobe.StreamVideo)[0]
+	fmt.Println(videoStream.AvgFrameRate)
 	container.Video = &Video{
 		Id:       uint8(videoStream.Index),
 		Duration: data.Format.Duration(),
@@ -825,7 +826,7 @@ func (J *EncodeWorker) encodeVideo(job *model.WorkTaskEncode, track *TaskTracks)
 	}
 	J.updateTaskStatus(job, model.FFMPEGSNotification, model.StartedNotificationStatus, "")
 	track.ResetMessage()
-	track.SetTotal(10000)
+	track.SetTotal(100000)
 	FFMPEGProgressChan := make(chan FFMPEGProgress)
 
 	go func() {
@@ -838,16 +839,16 @@ func (J *EncodeWorker) encodeVideo(job *model.WorkTaskEncode, track *TaskTracks)
 				return
 			case FFMPEGProgress, open := <-FFMPEGProgressChan:
 				if !open {
-					track.Increment64(10000 - lastProgressUpdate)
+					track.Increment64(100000 - lastProgressUpdate)
 					break loop
 				}
 
-				percentNow := int64(FFMPEGProgress.percent * 100)
+				percentNow := int64(FFMPEGProgress.percent * 1000)
 				increment := percentNow - lastProgressUpdate
 				track.Increment64(increment)
 				lastProgressUpdate = percentNow
 
-				if percentNow-lastProgressEvent > 1000 {
+				if percentNow-lastProgressEvent > 10000 {
 					J.updateTaskStatus(job, model.FFMPEGSNotification, model.StartedNotificationStatus, fmt.Sprintf("{\"progress\":\"%.2f\"}", track.PercentDone()))
 					lastProgressEvent = percentNow
 				}
