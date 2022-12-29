@@ -227,7 +227,9 @@ func (j *EncodeWorker) dowloadFile(job *model.WorkTaskEncode, track *TaskTracks)
 		reader := NewProgressTrackStream(track, resp.Body)
 
 		_, err = io.Copy(dowloadFile, reader)
-
+		if err != nil {
+			return err
+		}
 		sha256String := hex.EncodeToString(reader.SumSha())
 		bodyString := ""
 
