@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y gcc git libgtk-3-dev libappindicator3-d
 RUN go run  build.go build worker -p linux-amd64 -m console
 RUN cp ./dist/transcoderw-console-linux-amd64 /bin/transcoderw && chmod +x /bin/transcoderw
 
-FROM alpine
+FROM alpine:3.14
 COPY --from=builder /bin/transcoderw /app/transcoderw
 RUN apk add wget && \
     wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub && \
