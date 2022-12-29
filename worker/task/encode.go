@@ -68,6 +68,7 @@ func NewEncodeWorker(ctx context.Context, workerConfig Config, workerName string
 		tempPath:      tempPath,
 		terminal:      printer,
 	}
+	os.MkdirAll(tempPath, os.ModePerm)
 
 	return encodeWorker
 }
