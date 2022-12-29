@@ -24,7 +24,6 @@ import (
 	"time"
 	"transcoder/helper"
 	"transcoder/helper/command"
-	"transcoder/helper/progress"
 	"transcoder/model"
 )
 
@@ -483,7 +482,8 @@ func (J *EncodeWorker) UploadJob(task *model.WorkTaskEncode, track *TaskTracks) 
 		}
 		checksum := hex.EncodeToString(sha.Sum(nil))
 		encodedFile.Seek(0, io.SeekStart)
-		reader := progress.NewReader(encodedFile)
+
+		reader := NewProgressTrackStream(track, encodedFile)
 
 		client := &http.Client{}
 		//go printProgress(J.ctx, reader, fileSize, wg, "Uploading")

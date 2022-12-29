@@ -1,6 +1,7 @@
 package task
 
 import (
+	"fmt"
 	"github.com/jedib0t/go-pretty/v6/progress"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"sync"
@@ -46,7 +47,7 @@ func NewConsoleWorkerPrinter() *ConsoleWorkerPrinter {
 	pw.Style().Visibility.SpeedOverall = true
 	pw.Style().Visibility.Time = true
 	pw.Style().Visibility.TrackerOverall = false
-	pw.Style().Visibility.Value = false
+	pw.Style().Visibility.Value = true
 	pw.Style().Visibility.Pinned = false
 	pw.Style().Options.TimeInProgressPrecision = time.Millisecond
 	pw.Style().Options.TimeDonePrecision = time.Millisecond
@@ -85,7 +86,13 @@ func (C *ConsoleWorkerPrinter) AddTask(id string, stepType JobStepType) *TaskTra
 		printer = text.FgGreen
 		break
 	case EncodeJobStepType:
-		unit = progress.UnitsDefault
+		unit = progress.Units{
+			Notation:         "",
+			NotationPosition: progress.UnitsNotationPositionBefore,
+			Formatter: func(value int64) string {
+				return fmt.Sprintf("%dF", value)
+			},
+		}
 		printer = text.FgBlue
 		break
 	}
