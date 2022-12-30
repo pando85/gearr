@@ -316,17 +316,33 @@ func (J *EncodeWorker) getVideoParameters(inputFile string) (data *ffprobe.Probe
 	}
 	return data, stat.Size(), nil
 }
+
+func FFProbeFrameRate(FFProbeFrameRate string) (frameRate int, err error) {
+	rate := 0
+	frameRatio := 0
+	avgFrameSpl := strings.Split(FFProbeFrameRate, "/")
+	if len(avgFrameSpl) != 2 {
+		return 0, errors.New("invalid Format")
+	}
+
+	frameRatio, err = strconv.Atoi(avgFrameSpl[0])
+	if err != nil {
+		return 0, err
+	}
+	rate, err = strconv.Atoi(avgFrameSpl[1])
+	if err != nil {
+		return 0, err
+	}
+	return frameRatio / rate, nil
+}
+
 func (j *EncodeWorker) clearData(data *ffprobe.ProbeData) (container *ContainerData, err error) {
 	container = &ContainerData{}
 
 	videoStream := data.StreamType(ffprobe.StreamVideo)[0]
-	avgFrameSpl := strings.Split(videoStream.AvgFrameRate, "/")
-
-	frameRate, err := strconv.Atoi(avgFrameSpl[0])
+	frameRate, err := FFProbeFrameRate(videoStream.AvgFrameRate)
 	if err != nil {
 		frameRate = 24
-	} else {
-		frameRate = frameRate / 1000
 	}
 
 	container.Video = &Video{
