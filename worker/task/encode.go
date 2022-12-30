@@ -118,7 +118,7 @@ func (E *EncodeWorker) resumeJobs() {
 				return nil
 			}
 			if taskEncode.LastState.IsUploading() {
-				t := E.terminal.AddTask(taskEncode.Task.TaskEncode.Id.String(), EncodeJobStepType)
+				t := E.terminal.AddTask(fmt.Sprintf("CACHED: %s", taskEncode.Task.TaskEncode.Id.String()), EncodeJobStepType)
 				t.Done()
 				E.uploadChan <- taskEncode.Task
 				return nil
