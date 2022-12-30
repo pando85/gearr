@@ -14,6 +14,16 @@ const DownloadJobStepType = "Download"
 const UploadJobStepType = "Upload"
 const EncodeJobStepType = "Encode"
 
+var (
+	unitScales = []int64{
+		1000000000000000,
+		1000000000000,
+		1000000000,
+		1000000,
+		1000,
+	}
+)
+
 type ConsoleWorkerPrinter struct {
 	pw progress.Writer
 	mu sync.RWMutex
@@ -79,7 +89,14 @@ func (C *ConsoleWorkerPrinter) AddTask(id string, stepType JobStepType) *TaskTra
 			Notation:         "",
 			NotationPosition: progress.UnitsNotationPositionBefore,
 			Formatter: func(value int64) string {
-				return fmt.Sprintf("%dFrames", value)
+				return formatNumber(value, map[int64]string{
+					1000000000000000: "PFrame",
+					1000000000000:    "TFrame",
+					1000000000:       "GFrame",
+					1000000:          "MFrame",
+					1000:             "KFrame",
+					0:                "Frame",
+				})
 			},
 		}
 		printer = text.FgBlue
@@ -155,4 +172,13 @@ func (C *TaskTracks) Done() {
 
 func (C *TaskTracks) Error() {
 	C.progressTracker.MarkAsErrored()
+}
+
+func formatNumber(value int64, notations map[int64]string) string {
+	for _, unitScale := range unitScales {
+		if value >= unitScale {
+			return fmt.Sprintf("%.2f%s", float64(value)/float64(unitScale), notations[unitScale])
+		}
+	}
+	return fmt.Sprintf("%d%s", value, notations[0])
 }
