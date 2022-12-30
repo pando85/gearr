@@ -15,9 +15,8 @@ const UploadJobStepType = "Upload"
 const EncodeJobStepType = "Encode"
 
 type ConsoleWorkerPrinter struct {
-	pw     progress.Writer
-	mu     sync.RWMutex
-	tracks []*TaskTracks
+	pw progress.Writer
+	mu sync.RWMutex
 }
 
 type TaskTracks struct {
@@ -60,16 +59,6 @@ func (C *ConsoleWorkerPrinter) Render() {
 	C.pw.Render()
 }
 
-func (C *ConsoleWorkerPrinter) GetTask(id string, stepType JobStepType) *TaskTracks {
-	C.mu.Lock()
-	defer C.mu.Unlock()
-	for _, v := range C.tracks {
-		if v.id == id && v.stepType == stepType {
-			return v
-		}
-	}
-	return nil
-}
 func (C *ConsoleWorkerPrinter) AddTask(id string, stepType JobStepType) *TaskTracks {
 	C.mu.Lock()
 	defer C.mu.Unlock()
@@ -90,7 +79,7 @@ func (C *ConsoleWorkerPrinter) AddTask(id string, stepType JobStepType) *TaskTra
 			Notation:         "",
 			NotationPosition: progress.UnitsNotationPositionBefore,
 			Formatter: func(value int64) string {
-				return fmt.Sprintf("%dF", value)
+				return fmt.Sprintf("%dFrames", value)
 			},
 		}
 		printer = text.FgBlue
@@ -107,13 +96,25 @@ func (C *ConsoleWorkerPrinter) AddTask(id string, stepType JobStepType) *TaskTra
 		progressTracker: tracker,
 		printer:         &printer,
 	}
-	C.tracks = append(C.tracks, taskTrack)
+
 	C.pw.AppendTracker(tracker)
 	return taskTrack
 }
 
 func (C *ConsoleWorkerPrinter) Log(msg string, a ...interface{}) {
 	C.pw.Log(msg, a...)
+}
+
+func (C *ConsoleWorkerPrinter) Warn(msg string, a ...interface{}) {
+	C.pw.Log(text.FgHiYellow.Sprintf(msg, a...))
+}
+
+func (C *ConsoleWorkerPrinter) Cmd(msg string, a ...interface{}) {
+	C.pw.Log(text.FgHiCyan.Sprintf(msg, a...))
+}
+
+func (C *ConsoleWorkerPrinter) Error(msg string, a ...interface{}) {
+	C.pw.Log(text.FgHiRed.Sprintf(msg, a...))
 }
 
 func (C *TaskTracks) SetTotal(total int64) {
@@ -148,6 +149,7 @@ func (C *TaskTracks) ResetMessage() {
 }
 
 func (C *TaskTracks) Done() {
+	C.progressTracker.SetValue(C.progressTracker.Total)
 	C.progressTracker.MarkAsDone()
 }
 

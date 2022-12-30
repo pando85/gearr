@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"transcoder/helper"
 	"transcoder/helper/command"
@@ -28,7 +29,7 @@ import (
 )
 
 const RESET_LINE = "\r\033[K"
-const DOWNLOAD_QUEUE_SIZE = 1
+const MAX_PREFETCHED_JOBS = 2
 
 var ffmpegSpeedRegex = regexp.MustCompile(`speed=(\d*\.?\d+)x`)
 var ErrorJobNotFound = errors.New("job Not found")
@@ -43,22 +44,29 @@ type EncodeWorker struct {
 	name          string
 	ctx           context.Context
 	cancelContext context.CancelFunc
-
-	downloadChan chan *model.WorkTaskEncode
-	encodeChan   chan *model.WorkTaskEncode
-	uploadChan   chan *model.WorkTaskEncode
-	workerConfig Config
-	tempPath     string
-	mu           sync.RWMutex
-	terminal     *ConsoleWorkerPrinter
+	prefetchJobs  uint32
+	downloadChan  chan *model.WorkTaskEncode
+	encodeChan    chan *model.WorkTaskEncode
+	uploadChan    chan *model.WorkTaskEncode
+	workerConfig  Config
+	tempPath      string
+	wg            sync.WaitGroup
+	mu            sync.RWMutex
+	terminal      *ConsoleWorkerPrinter
+	ctxStopQueues context.Context
+	stopQueues    context.CancelFunc
 }
 
 func NewEncodeWorker(ctx context.Context, workerConfig Config, workerName string, printer *ConsoleWorkerPrinter) *EncodeWorker {
 	newCtx, cancel := context.WithCancel(ctx)
+	ctxStopQueues, stopQueues := context.WithCancel(ctx)
 	tempPath := filepath.Join(workerConfig.TemporalPath, fmt.Sprintf("worker-%s", workerName))
 	encodeWorker := &EncodeWorker{
 		name:          workerName,
 		ctx:           newCtx,
+		ctxStopQueues: ctxStopQueues,
+		stopQueues:    stopQueues,
+		wg:            sync.WaitGroup{},
 		cancelContext: cancel,
 		workerConfig:  workerConfig,
 		downloadChan:  make(chan *model.WorkTaskEncode, 100),
@@ -66,6 +74,7 @@ func NewEncodeWorker(ctx context.Context, workerConfig Config, workerName string
 		uploadChan:    make(chan *model.WorkTaskEncode, 100),
 		tempPath:      tempPath,
 		terminal:      printer,
+		prefetchJobs:  0,
 	}
 	os.MkdirAll(tempPath, os.ModePerm)
 
@@ -97,14 +106,20 @@ func (E *EncodeWorker) resumeJobs() {
 			taskEncode := E.readTaskStatusFromDiskByPath(path)
 
 			if taskEncode.LastState.IsDownloading() {
-				E.downloadChan <- taskEncode.Task
+				E.AddDownloadJob(taskEncode.Task)
+				//E.downloadChan <- taskEncode.Task
 				return nil
 			}
 			if taskEncode.LastState.IsEncoding() {
+				atomic.AddUint32(&E.prefetchJobs, 1)
+				t := E.terminal.AddTask(fmt.Sprintf("CACHED: %s", taskEncode.Task.TaskEncode.Id.String()), DownloadJobStepType)
+				t.Done()
 				E.encodeChan <- taskEncode.Task
 				return nil
 			}
 			if taskEncode.LastState.IsUploading() {
+				t := E.terminal.AddTask(taskEncode.Task.TaskEncode.Id.String(), EncodeJobStepType)
+				t.Done()
 				E.uploadChan <- taskEncode.Task
 				return nil
 			}
@@ -192,7 +207,7 @@ func (J *EncodeWorker) AcceptJobs() bool {
 		stopAfter := time.Date(now.Year(), now.Month(), now.Day(), J.workerConfig.StopAfter.Hour, J.workerConfig.StopAfter.Minute, 0, 0, now.Location())
 		return now.After(startAfter) && now.Before(stopAfter)
 	}
-	return !J.isQueueFull()
+	return J.PrefetchJobs() < MAX_PREFETCHED_JOBS
 }
 
 func (j *EncodeWorker) dowloadFile(job *model.WorkTaskEncode, track *TaskTracks) (err error) {
@@ -256,7 +271,7 @@ func (j *EncodeWorker) dowloadFile(job *model.WorkTaskEncode, track *TaskTracks)
 			retry.Attempts(10),
 			retry.LastErrorOnly(true),
 			retry.OnRetry(func(n uint, err error) {
-				j.terminal.Log("Error %d on calculate checksum of downloaded job %s", err.Error())
+				j.terminal.Error("Error %d on calculate checksum of downloaded job %s", err.Error())
 			}),
 			retry.RetryIf(func(err error) bool {
 				return !errors.Is(err, context.Canceled)
@@ -276,7 +291,7 @@ func (j *EncodeWorker) dowloadFile(job *model.WorkTaskEncode, track *TaskTracks)
 		retry.Attempts(180), //15 min
 		retry.LastErrorOnly(true),
 		retry.OnRetry(func(n uint, err error) {
-			j.terminal.Log("Error on downloading job %s", err.Error())
+			j.terminal.Error("Error on downloading job %s", err.Error())
 		}),
 		retry.RetryIf(func(err error) bool {
 			return !(errors.Is(err, context.Canceled) || errors.Is(err, ErrorJobNotFound))
@@ -305,10 +320,19 @@ func (j *EncodeWorker) clearData(data *ffprobe.ProbeData) (container *ContainerD
 	container = &ContainerData{}
 
 	videoStream := data.StreamType(ffprobe.StreamVideo)[0]
-	fmt.Println(videoStream.AvgFrameRate)
+	avgFrameSpl := strings.Split(videoStream.AvgFrameRate, "/")
+
+	frameRate, err := strconv.Atoi(avgFrameSpl[0])
+	if err != nil {
+		frameRate = 24
+	} else {
+		frameRate = frameRate / 1000
+	}
+
 	container.Video = &Video{
-		Id:       uint8(videoStream.Index),
-		Duration: data.Format.Duration(),
+		Id:        uint8(videoStream.Index),
+		Duration:  data.Format.Duration(),
+		FrameRate: frameRate,
 	}
 
 	betterAudioStreamPerLanguage := make(map[string]*Audio)
@@ -378,7 +402,12 @@ func (j *EncodeWorker) clearData(data *ffprobe.ProbeData) (container *ContainerD
 	return container, nil
 }
 func (J *EncodeWorker) FFMPEG(job *model.WorkTaskEncode, videoContainer *ContainerData, ffmpegProgressChan chan<- FFMPEGProgress) error {
-	defer close(ffmpegProgressChan)
+	isClosed := false
+	defer func() {
+		//close(ffmpegProgressChan)
+		isClosed = true
+	}()
+
 	ffmpeg := &FFMPEGGenerator{}
 	ffmpeg.setInputFilters(videoContainer, job.SourceFilePath, job.WorkDir)
 	ffmpeg.setVideoFilters(videoContainer)
@@ -406,7 +435,7 @@ func (J *EncodeWorker) FFMPEG(job *model.WorkTaskEncode, videoContainer *Contain
 			sendObj.speed = speed
 		}
 
-		if sendObj.speed != -1 && sendObj.duration != -1 {
+		if sendObj.speed != -1 && sendObj.duration != -1 && !isClosed {
 			ffmpegProgressChan <- sendObj
 			sendObj.duration = -1
 			sendObj.speed = -1
@@ -420,7 +449,7 @@ func (J *EncodeWorker) FFMPEG(job *model.WorkTaskEncode, videoContainer *Contain
 	job.TargetFilePath = filepath.Join(job.WorkDir, encodedFilePath)
 
 	ffmpegArguments := ffmpeg.buildArguments(uint8(J.workerConfig.Threads), job.TargetFilePath)
-	//J.terminal.Log("FFMPEG Command:%s %s", helper.GetFFmpegPath(), ffmpegArguments)
+	J.terminal.Cmd("FFMPEG Command:%s %s", helper.GetFFmpegPath(), ffmpegArguments)
 	ffmpegCommand := command.NewCommandByString(helper.GetFFmpegPath(), ffmpegArguments).
 		SetWorkDir(job.WorkDir).
 		SetStdoutFunc(stdoutFFMPEG).
@@ -520,7 +549,7 @@ func (J *EncodeWorker) UploadJob(task *model.WorkTaskEncode, track *TaskTracks) 
 		retry.Attempts(17280),
 		retry.LastErrorOnly(true),
 		retry.OnRetry(func(n uint, err error) {
-			J.terminal.Log("Error on uploading job %s", err.Error())
+			J.terminal.Error("Error on uploading job %s", err.Error())
 		}))
 
 	if err != nil {
@@ -556,12 +585,19 @@ func (J *EncodeWorker) Execute(workData []byte) error {
 	os.MkdirAll(workDir, os.ModePerm)
 
 	J.updateTaskStatus(workTaskEncode, model.JobNotification, model.StartedNotificationStatus, "")
-	J.downloadChan <- workTaskEncode
+	J.AddDownloadJob(workTaskEncode)
 	return nil
 }
 
 func (J *EncodeWorker) Cancel() {
 	J.cancelContext()
+}
+func (J *EncodeWorker) StopQueues() {
+	defer close(J.downloadChan)
+	defer close(J.uploadChan)
+	defer close(J.encodeChan)
+	J.stopQueues()
+	J.wg.Wait()
 }
 func (J *EncodeWorker) GetID() string {
 	return J.name
@@ -718,49 +754,63 @@ func (J *EncodeWorker) MKVExtract(subtitles []*Subtitle, taskEncode *model.WorkT
 
 	_, err := mkvExtractCommand.RunWithContext(J.ctx, command.NewAllowedCodesOption(0, 1))
 	if err != nil {
-		J.terminal.Log("MKVExtract Command:%s", mkvExtractCommand.GetFullCommand())
+		J.terminal.Cmd("MKVExtract Command:%s", mkvExtractCommand.GetFullCommand())
 		return fmt.Errorf("MKVExtract unexpected error:%v", err.Error())
 		return err
 	}
 
 	return nil
 }
+func (J *EncodeWorker) PrefetchJobs() uint32 {
+	return atomic.LoadUint32(&J.prefetchJobs)
+}
+
+func (J *EncodeWorker) AddDownloadJob(job *model.WorkTaskEncode) {
+	atomic.AddUint32(&J.prefetchJobs, 1)
+	J.downloadChan <- job
+}
 
 func (J *EncodeWorker) downloadQueue() {
+	J.wg.Add(1)
 	for {
 		select {
 		case <-J.ctx.Done():
+		case <-J.ctxStopQueues.Done():
+			J.terminal.Warn("Stopping Download Queue")
+			J.wg.Done()
 			return
-		case <-time.After(time.Second):
-			if len(J.encodeChan) <= 1 {
-				job, ok := <-J.downloadChan
-				if !ok {
-					continue
-				}
-				taskTrack := J.terminal.AddTask(job.TaskEncode.Id.String(), DownloadJobStepType)
-
-				J.updateTaskStatus(job, model.DownloadNotification, model.StartedNotificationStatus, "")
-				time.Sleep(time.Second * 2)
-				err := J.dowloadFile(job, taskTrack)
-				if err != nil {
-					J.updateTaskStatus(job, model.DownloadNotification, model.FailedNotificationStatus, err.Error())
-					taskTrack.Error()
-					J.errorJob(job, err)
-					continue
-				}
-				J.updateTaskStatus(job, model.DownloadNotification, model.CompletedNotificationStatus, "")
-				taskTrack.Done()
-				J.encodeChan <- job
+		case job, ok := <-J.downloadChan:
+			if !ok {
+				continue
 			}
+
+			taskTrack := J.terminal.AddTask(job.TaskEncode.Id.String(), DownloadJobStepType)
+
+			J.updateTaskStatus(job, model.DownloadNotification, model.StartedNotificationStatus, "")
+			err := J.dowloadFile(job, taskTrack)
+			if err != nil {
+				J.updateTaskStatus(job, model.DownloadNotification, model.FailedNotificationStatus, err.Error())
+				taskTrack.Error()
+				J.errorJob(job, err)
+				atomic.AddUint32(&J.prefetchJobs, ^uint32(0))
+				continue
+			}
+			J.updateTaskStatus(job, model.DownloadNotification, model.CompletedNotificationStatus, "")
+			taskTrack.Done()
+			J.encodeChan <- job
 		}
 	}
 
 }
 
 func (J *EncodeWorker) uploadQueue() {
+	J.wg.Add(1)
 	for {
 		select {
 		case <-J.ctx.Done():
+		case <-J.ctxStopQueues.Done():
+			J.terminal.Warn("Stopping Upload Queue")
+			J.wg.Done()
 			return
 		case job, ok := <-J.uploadChan:
 			if !ok {
@@ -783,14 +833,19 @@ func (J *EncodeWorker) uploadQueue() {
 }
 
 func (J *EncodeWorker) encodeQueue() {
+	J.wg.Add(1)
 	for {
 		select {
 		case <-J.ctx.Done():
+		case <-J.ctxStopQueues.Done():
+			J.terminal.Warn("Stopping Encode Queue")
+			J.wg.Done()
 			return
 		case job, ok := <-J.encodeChan:
 			if !ok {
 				continue
 			}
+			atomic.AddUint32(&J.prefetchJobs, ^uint32(0))
 			taskTrack := J.terminal.AddTask(job.TaskEncode.Id.String(), EncodeJobStepType)
 			err := J.encodeVideo(job, taskTrack)
 			if err != nil {
@@ -818,7 +873,7 @@ func (J *EncodeWorker) encodeVideo(job *model.WorkTaskEncode, track *TaskTracks)
 
 	videoContainer, err := J.clearData(sourceVideoParams)
 	if err != nil {
-		J.terminal.Log("Error in clearData", J.GetID())
+		J.terminal.Warn("Error in clearData", J.GetID())
 		return err
 	}
 	if err = J.PGSMkvExtractDetectAndConvert(job, track, videoContainer); err != nil {
@@ -826,12 +881,12 @@ func (J *EncodeWorker) encodeVideo(job *model.WorkTaskEncode, track *TaskTracks)
 	}
 	J.updateTaskStatus(job, model.FFMPEGSNotification, model.StartedNotificationStatus, "")
 	track.ResetMessage()
-	track.SetTotal(100000)
+	track.SetTotal(int64(videoContainer.Video.Duration.Seconds()) * int64(videoContainer.Video.FrameRate))
 	FFMPEGProgressChan := make(chan FFMPEGProgress)
 
 	go func() {
-		lastProgressEvent := int64(0)
-		lastProgressUpdate := int64(0)
+		lastProgressEvent := float64(0)
+		lastDuration := 0
 	loop:
 		for {
 			select {
@@ -839,18 +894,17 @@ func (J *EncodeWorker) encodeVideo(job *model.WorkTaskEncode, track *TaskTracks)
 				return
 			case FFMPEGProgress, open := <-FFMPEGProgressChan:
 				if !open {
-					track.Increment64(100000 - lastProgressUpdate)
 					break loop
 				}
+				videoContainer.Video.Duration.Seconds()
+				encodeFramesIncrement := (FFMPEGProgress.duration - lastDuration) * videoContainer.Video.FrameRate
+				lastDuration = FFMPEGProgress.duration
 
-				percentNow := int64(FFMPEGProgress.percent * 1000)
-				increment := percentNow - lastProgressUpdate
-				track.Increment64(increment)
-				lastProgressUpdate = percentNow
+				track.Increment(encodeFramesIncrement)
 
-				if percentNow-lastProgressEvent > 10000 {
+				if FFMPEGProgress.percent-lastProgressEvent > 10 {
 					J.updateTaskStatus(job, model.FFMPEGSNotification, model.StartedNotificationStatus, fmt.Sprintf("{\"progress\":\"%.2f\"}", track.PercentDone()))
-					lastProgressEvent = percentNow
+					lastProgressEvent = FFMPEGProgress.percent
 				}
 			}
 		}
@@ -883,9 +937,9 @@ func (J *EncodeWorker) encodeVideo(job *model.WorkTaskEncode, track *TaskTracks)
 	return nil
 }
 
-func (J *EncodeWorker) isQueueFull() bool {
-	return len(J.downloadChan) >= DOWNLOAD_QUEUE_SIZE
-}
+/*func (J *EncodeWorker) isQueueFull() bool {
+	return len(J.encodeChan) >= MAX_PREFETCHED_JOBS || len(J.downloadChan) > 0
+}*/
 
 type FFMPEGGenerator struct {
 	inputPaths     []string
@@ -972,8 +1026,9 @@ func (F *FFMPEGGenerator) setInputFilters(container *ContainerData, sourceFilePa
 }
 
 type Video struct {
-	Id       uint8
-	Duration time.Duration
+	Id        uint8
+	Duration  time.Duration
+	FrameRate int
 }
 type Audio struct {
 	Id             uint8

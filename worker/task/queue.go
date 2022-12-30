@@ -10,6 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 	"math/rand"
+	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -156,7 +157,7 @@ func (Q *RabbitMQClient) handleWorkerQueue(channel *rabbitmq.Channel) {
 		}
 	loop:
 		for {
-			Q.printer.Log("AMQP Connection lost, recreating worker queue")
+			Q.printer.Warn("AMQP Connection lost, recreating worker queue")
 			err := Q.initWorkerQueue(channel)
 			if err == nil {
 				break loop
@@ -240,7 +241,7 @@ func (Q *RabbitMQClient) pgsQueueProcessor(ctx context.Context, taskQueueName st
 		taskQueue, err = channel.QueueDeclare(taskQueueName, true, false, false, false, args)
 		return err
 	}, retry.Delay(time.Second*1), retry.Attempts(10), retry.LastErrorOnly(true), retry.OnRetry(func(n uint, err error) {
-		Q.printer.Log("Error on Declare Queue %s:%v", taskQueueName, err)
+		Q.printer.Error("Error on Declare Queue %s:%v", taskQueueName, err)
 	}))
 
 	if err != nil {
@@ -260,17 +261,17 @@ func (Q *RabbitMQClient) pgsQueueProcessor(ctx context.Context, taskQueueName st
 						continue
 					}
 
-					/*	if !helper.IsApplicationUpToDate() {
+					if !helper.IsApplicationUpToDate() {
 						delivery.Nack(false, true)
-						Q.printer.Log("Application is not up to date, closing...")
+						Q.printer.Warn("Application is not up to date, closing...")
 						os.Exit(1)
-					}*/
+					}
 
 					Q.printer.Log("[%s] Job Assigned to %s", jobType, worker.pgsWorker.GetID())
 					if err := worker.pgsWorker.Prepare(delivery.Body, Q); err != nil {
 						worker.pgsWorker.Clean()
 						delivery.Nack(false, true)
-						Q.printer.Log("[%s] Error Preparing Job Execution on %s", jobType, worker.pgsWorker.GetID())
+						Q.printer.Error("[%s] Error Preparing Job Execution on %s", jobType, worker.pgsWorker.GetID())
 						continue
 					}
 					worker.jobID = worker.pgsWorker.GetTaskID()
@@ -296,7 +297,7 @@ func (Q *RabbitMQClient) encodeQueueProcessor(ctx context.Context, taskQueueName
 		taskQueue, err = channel.QueueDeclare(taskQueueName, true, false, false, false, args)
 		return err
 	}, retry.Delay(time.Second*1), retry.Attempts(10), retry.LastErrorOnly(true), retry.OnRetry(func(n uint, err error) {
-		Q.printer.Log("Error on Declare Queue %s:%v", taskQueueName, err)
+		Q.printer.Error("Error on Declare Queue %s:%v", taskQueueName, err)
 	}))
 
 	if err != nil {
@@ -315,15 +316,16 @@ func (Q *RabbitMQClient) encodeQueueProcessor(ctx context.Context, taskQueueName
 					continue
 				}
 
-				/*	if !helper.IsApplicationUpToDate(){
-					delivery.Nack(false,true)
-					log.Warn("Application is not up to date, closing...")
+				if !helper.IsApplicationUpToDate() {
+					delivery.Nack(false, true)
+					Q.printer.Warn("Application is not up to date, waitting for pending jobs to complete, before update...")
+					Q.EncodeWorker.encodeWorker.StopQueues()
 					os.Exit(1)
-				}*/
+				}
 
 				if err := Q.EncodeWorker.encodeWorker.Execute(delivery.Body); err != nil {
 					delivery.Nack(false, true)
-					Q.printer.Log("[%s] Error Preparing Job Execution: %v", model.EncodeJobType, err)
+					Q.printer.Error("[%s] Error Preparing Job Execution: %v", model.EncodeJobType, err)
 					continue
 				}
 				delivery.Ack(false)
@@ -337,7 +339,7 @@ func (Q *RabbitMQClient) controlPGSJobExecution(jobWorker *JobWorker) {
 		err := retry.Do(func() error {
 			return jobWorker.pgsWorker.Clean()
 		}, retry.Delay(time.Second*1), retry.Attempts(3600), retry.LastErrorOnly(true), retry.OnRetry(func(n uint, err error) {
-			Q.printer.Log("Error %s for %d time on cleaning working path for worker %s", err.Error(), n, jobWorker.pgsWorker.GetID())
+			Q.printer.Error("Error %s for %d time on cleaning working path for worker %s", err.Error(), n, jobWorker.pgsWorker.GetID())
 		}))
 		if err != nil {
 			panic(err)
@@ -380,7 +382,7 @@ func (Q *RabbitMQClient) publishAMQPMessage(queueName string, message amqp.Publi
 
 		return channel.Publish("", queueName, false, false, message)
 	}, retry.Delay(time.Second*1), retry.Attempts(3600), retry.LastErrorOnly(true), retry.OnRetry(func(n uint, err error) {
-		Q.printer.Log("Error %s on publish AMQP Message %s", err.Error(), string(message.Body))
+		Q.printer.Warn("Error %s on publish AMQP Message %s", err.Error(), string(message.Body))
 	}))
 }
 
