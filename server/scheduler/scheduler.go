@@ -11,12 +11,19 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 	"transcoder/helper"
 	"transcoder/model"
 	"transcoder/server/queue"
 	"transcoder/server/repository"
+)
+
+var (
+	x264ex = regexp.MustCompile(`(?i)(((x|h)264)|mpeg-4|mpeg-1|mpeg-2|mpeg|xvid|divx|vc-1|av1|vp8|vp9|wmv3|mp43)`)
+	ac3ex  = regexp.MustCompile(`(?i)(ac3|eac3|pcm|flac|mp2|dts|mp2|mp3|truehd|wma|vorbis|opus|mpeg audio)`)
 )
 
 type Scheduler interface {
@@ -76,10 +83,34 @@ func (R *RuntimeScheduler) start(ctx context.Context) {
 }
 
 func (R *RuntimeScheduler) schedule(ctx context.Context) {
+	jobEventConsumerChan := R.queue.ReceiveJobEvent()
 	for {
 		select {
 		case <-ctx.Done():
 			return
+		case jobEvent, ok := <-jobEventConsumerChan:
+			if !ok {
+				return
+			}
+			if jobEvent.EventType == model.NotificationEvent && jobEvent.NotificationType == model.JobNotification && jobEvent.Status == model.CompletedNotificationStatus {
+				video, err := R.repo.GetJob(ctx, jobEvent.Id.String())
+				if err != nil {
+					log.Error(err)
+					continue
+				}
+				sourcePath := filepath.Join(R.config.DownloadPath, video.SourcePath)
+				target := filepath.Join(R.config.DownloadPath, video.DestinationPath)
+				if _, err := os.Stat(target); err != nil {
+					log.Warnf("Job %s completed, source file %s can not be removed because Target file does not exists", jobEvent.Id.String(), sourcePath)
+					continue
+				}
+				log.Infof("Job %s completed, removing source file %s", jobEvent.Id.String(), sourcePath)
+				err = os.Remove(sourcePath)
+				if err != nil {
+					log.Error(err)
+				}
+
+			}
 		case checksumPath := <-R.checksumChan:
 			R.pathChecksumMap[checksumPath.path] = checksumPath.checksum
 		case <-time.After(R.config.ScheduleTime):
@@ -135,15 +166,21 @@ func (R *RuntimeScheduler) createNewJobRequestByJobRequestDirectory(ctx context.
 				jobRequestErrors = append(jobRequestErrors, fmt.Sprintf("%s Invalid Extension %s", pathFile, extension))
 			}
 
-			relativePath, err := filepath.Rel(R.config.DownloadPath, filepath.FromSlash(pathFile))
+			relativePathSource, err := filepath.Rel(R.config.DownloadPath, filepath.FromSlash(pathFile))
 			if err != nil {
 				jobRequestErrors = append(jobRequestErrors, err.Error())
+			}
+
+			relativePathTarget := formatTargetName(relativePathSource)
+			if relativePathTarget == relativePathSource {
+				ext := filepath.Ext(relativePathTarget)
+				relativePathTarget = strings.Replace(relativePathTarget, ext, "_encoded.mkv", 1)
 			}
 			pathFile = filepath.ToSlash(pathFile)
 			searchJobRequestChan <- &JobRequestResult{
 				jobRequest: &model.JobRequest{
-					SourcePath:      relativePath,
-					DestinationPath: relativePath,
+					SourcePath:      relativePathSource,
+					DestinationPath: relativePathTarget,
 					ForceCompleted:  parentJobRequest.ForceCompleted,
 					ForceFailed:     parentJobRequest.ForceFailed,
 					ForceExecuting:  parentJobRequest.ForceExecuting,
@@ -404,4 +441,42 @@ func (R *RuntimeScheduler) GetChecksum(ctx context.Context, uuid string) (string
 
 func (S *RuntimeScheduler) stop() {
 
+}
+
+/*
+func init() {
+	f, _ := os.Open("/mnt/d/encode_public_videos.csv")
+	fileScanner := bufio.NewScanner(f)
+	fileScanner.Split(bufio.ScanLines)
+	i := 0
+	for fileScanner.Scan() {
+		i++
+		line := fileScanner.Text()
+		if strings.Contains(line, "265") {
+			continue
+		}
+		if strings.Contains(line, "[ ]") {
+			continue
+		}
+		if !x264ex.MatchString(line) {
+			fmt.Printf("264: %d FAIL on %s\n\r", i, line)
+		}
+
+		if strings.Contains(strings.ToLower(line), "aac") {
+			continue
+		}
+		if !ac3ex.MatchString(line) {
+			fmt.Printf("AC3: %d FAIL on %s\n\r", i, line)
+		}
+		formatTargetName(line)
+
+	}
+}*/
+func formatTargetName(path string) string {
+	p := x264ex.ReplaceAllString(path, "x265")
+	p = ac3ex.ReplaceAllString(p, "AAC")
+	extension := filepath.Ext(p)
+	p = strings.Replace(p, extension, ".mkv", 1)
+
+	return p
 }

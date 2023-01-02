@@ -320,6 +320,7 @@ func (Q *RabbitMQClient) encodeQueueProcessor(ctx context.Context, taskQueueName
 					delivery.Nack(false, true)
 					Q.printer.Warn("Application is not up to date, waitting for pending jobs to complete, before update...")
 					Q.EncodeWorker.encodeWorker.StopQueues()
+					<-time.After(time.Second * 2)
 					os.Exit(1)
 				}
 

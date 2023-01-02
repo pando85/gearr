@@ -16,40 +16,39 @@ import (
 )
 
 type BrokerServer interface {
-	Run(wg *sync.WaitGroup,ctx context.Context)
+	Run(wg *sync.WaitGroup, ctx context.Context)
 	PublishJobRequest(request *model.TaskEncode) error
-	PublishJobEvent(jobEvent *model.JobEvent,workerQueue string)
+	PublishJobEvent(jobEvent *model.JobEvent, workerQueue string)
+	ReceiveJobEvent() <-chan *model.TaskEvent
 }
 
 type RabbitMQServer struct {
 	broker.Config
-	connection     *rabbitmq.Connection
-	repo           repository.Repository
-	newTask        chan *model.ControlEvent
-	newWorkerEvent chan *model.JobEventQueue
+	connection         *rabbitmq.Connection
+	repo               repository.Repository
+	newTask            chan *model.ControlEvent
+	newWorkerEvent     chan *model.JobEventQueue
+	taskEventConsumers []chan *model.TaskEvent
 }
 
+func (Q *RabbitMQServer) conn() (*rabbitmq.Connection, error) {
+	conn, err := rabbitmq.Dial(fmt.Sprintf("amqp://%s:%s@%s:%d/", Q.User, Q.Password, Q.Host, Q.Port))
 
-
-func (Q *RabbitMQServer) conn() (*rabbitmq.Connection,error) {
-	conn,err := rabbitmq.Dial(fmt.Sprintf("amqp://%s:%s@%s:%d/",Q.User,Q.Password,Q.Host,Q.Port))
-
-	return conn,err
+	return conn, err
 
 }
 
-
-func NewBrokerServerRabbit(config broker.Config,repo repository.Repository) (*RabbitMQServer,error) {
+func NewBrokerServerRabbit(config broker.Config, repo repository.Repository) (*RabbitMQServer, error) {
 	queueRabbit := &RabbitMQServer{
-		Config:  config,
-		repo:    repo,
-		newTask: make(chan *model.ControlEvent),
+		Config:         config,
+		repo:           repo,
+		newTask:        make(chan *model.ControlEvent),
 		newWorkerEvent: make(chan *model.JobEventQueue),
 	}
-	return queueRabbit,nil
+	return queueRabbit, nil
 }
 
-func (Q *RabbitMQServer) Run(wg *sync.WaitGroup,ctx context.Context){
+func (Q *RabbitMQServer) Run(wg *sync.WaitGroup, ctx context.Context) {
 	log.Info("Starting Broker...")
 	Q.start(ctx)
 	log.Info("Started Broker...")
@@ -65,37 +64,40 @@ func (Q *RabbitMQServer) Run(wg *sync.WaitGroup,ctx context.Context){
 func (Q *RabbitMQServer) PublishJobRequest(taskRequest *model.TaskEncode) error {
 	controlChan := make(chan interface{})
 	Q.newTask <- &model.ControlEvent{
-		Event:   taskRequest,
+		Event:       taskRequest,
 		ControlChan: controlChan,
 	}
-	rtn:=<-controlChan
-	if rtn ==nil {
+	rtn := <-controlChan
+	if rtn == nil {
 		return nil
 	}
 	err := (rtn).(error)
 	return err
 }
-
-func (Q *RabbitMQServer) PublishJobEvent(jobEvent *model.JobEvent,workerQueue string) {
+func (Q *RabbitMQServer) ReceiveJobEvent() <-chan *model.TaskEvent {
+	tc := make(chan *model.TaskEvent, 100)
+	Q.taskEventConsumers = append(Q.taskEventConsumers, tc)
+	return tc
+}
+func (Q *RabbitMQServer) PublishJobEvent(jobEvent *model.JobEvent, workerQueue string) {
 	jobEventQueue := &model.JobEventQueue{
 		Queue:    workerQueue,
 		JobEvent: jobEvent,
 	}
-	Q.newWorkerEvent<-jobEventQueue
+	Q.newWorkerEvent <- jobEventQueue
 }
 
 func (Q *RabbitMQServer) start(ctx context.Context) {
-	conn,err := Q.conn()
-	if err!=nil {
+	conn, err := Q.conn()
+	if err != nil {
 		log.Panic(err)
 	}
-	Q.connection=conn
+	Q.connection = conn
 
 	go Q.taskQueue(ctx)
 	go Q.taskEventQueue(ctx)
 
 }
-
 
 func (Q *RabbitMQServer) stop() {
 
@@ -103,47 +105,46 @@ func (Q *RabbitMQServer) stop() {
 
 func (Q *RabbitMQServer) taskQueue(ctx context.Context) {
 	taskChannel, err := Q.connection.Channel()
-	if err!=nil {
+	if err != nil {
 		log.Panic(err)
 	}
 	args := amqp.Table{}
-	args["x-max-priority"]=10
+	args["x-max-priority"] = 10
 
-	taskQueue, err := taskChannel.QueueDeclare(Q.TaskEncodeQueueName,true,false,false,false,args)
-	if err!=nil {
+	taskQueue, err := taskChannel.QueueDeclare(Q.TaskEncodeQueueName, true, false, false, false, args)
+	if err != nil {
 		log.Panic(err)
 	}
 	for {
 		select {
-			case <-ctx.Done():
-				return
-			case workerEvent := <-Q.newWorkerEvent:
-				b, _ := json.Marshal(workerEvent.JobEvent)
-				message := amqp.Publishing{
-					ContentType: "text/plain",
-					Type:        "JobEvent",
-					Body:        b,
-				}
-				log.Infof("Sending %s action for Job %s",workerEvent.JobEvent.Action,workerEvent.JobEvent.Id.String())
-				taskChannel.Publish("",workerEvent.Queue,false,false,message)
-			case taskEvent :=<-Q.newTask:
-				b, err := json.Marshal(taskEvent.Event)
-				if err != nil {
-					taskEvent.ControlChan<-err
-				}
-				message := amqp.Publishing{
-					ContentType: "text/plain",
-					Priority:    uint8(taskEvent.Event.Priority),
-					Body:        b,
-				}
-				if err := taskChannel.Publish("",taskQueue.Name,false,false,message); err!=nil {
-					taskEvent.ControlChan<-err
-					log.Infof("Failed Publish Job %s",taskEvent.Event.Id.String())
-				}else{
-					log.Infof("Published Job %s",taskEvent.Event.Id.String())
-				}
-				close(taskEvent.ControlChan)
-
+		case <-ctx.Done():
+			return
+		case workerEvent := <-Q.newWorkerEvent:
+			b, _ := json.Marshal(workerEvent.JobEvent)
+			message := amqp.Publishing{
+				ContentType: "text/plain",
+				Type:        "JobEvent",
+				Body:        b,
+			}
+			log.Infof("Sending %s action for Job %s", workerEvent.JobEvent.Action, workerEvent.JobEvent.Id.String())
+			taskChannel.Publish("", workerEvent.Queue, false, false, message)
+		case taskEvent := <-Q.newTask:
+			b, err := json.Marshal(taskEvent.Event)
+			if err != nil {
+				taskEvent.ControlChan <- err
+			}
+			message := amqp.Publishing{
+				ContentType: "text/plain",
+				Priority:    uint8(taskEvent.Event.Priority),
+				Body:        b,
+			}
+			if err := taskChannel.Publish("", taskQueue.Name, false, false, message); err != nil {
+				taskEvent.ControlChan <- err
+				log.Infof("Failed Publish Job %s", taskEvent.Event.Id.String())
+			} else {
+				log.Infof("Published Job %s", taskEvent.Event.Id.String())
+			}
+			close(taskEvent.ControlChan)
 
 		}
 	}
@@ -152,43 +153,47 @@ func (Q *RabbitMQServer) taskQueue(ctx context.Context) {
 
 func (Q *RabbitMQServer) taskEventQueue(ctx context.Context) {
 	taskEventChannel, err := Q.connection.Channel()
-	if err!=nil {
+	if err != nil {
 		log.Panic(err)
 	}
-	taskEventsQueue, err := taskEventChannel.QueueDeclare(Q.TaskEventQueueName,true,false,false,false,nil)
-	if err!=nil {
+	taskEventsQueue, err := taskEventChannel.QueueDeclare(Q.TaskEventQueueName, true, false, false, false, nil)
+	if err != nil {
 		log.Panic(err)
 	}
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
-	taskEvents, err := taskEventChannel.Consume(taskEventsQueue.Name,fmt.Sprintf("%s-%d", "server", rnd.Intn(5000000)),false,true,false,false,nil)
-	if err!=nil {
+	taskEvents, err := taskEventChannel.Consume(taskEventsQueue.Name, fmt.Sprintf("%s-%d", "server", rnd.Intn(5000000)), false, true, false, false, nil)
+	if err != nil {
 		log.Panic(err)
 	}
 	for {
 		select {
 		case <-ctx.Done():
-		case taskEventQueue :=<-taskEvents:
+		case taskEventQueue := <-taskEvents:
 			taskEvent := &model.TaskEvent{}
-			err := json.Unmarshal(taskEventQueue.Body,taskEvent)
-			if err!=nil {
+			err := json.Unmarshal(taskEventQueue.Body, taskEvent)
+			if err != nil {
 				log.Panic(err)
 			}
-			err = Q.repo.WithTransaction(ctx,func(ctx context.Context,tx repository.Repository) error{
-				err = tx.ProcessEvent(ctx,taskEvent)
-				if err!=nil{
+			err = Q.repo.WithTransaction(ctx, func(ctx context.Context, tx repository.Repository) error {
+				err = tx.ProcessEvent(ctx, taskEvent)
+				if err != nil {
 					return err
 				}
+				for _, consumer := range Q.taskEventConsumers {
+					consumer <- taskEvent
+				}
+
 				err = taskEventQueue.Ack(false)
-				if err!=nil {
+				if err != nil {
 					return err
 				}
 				return nil
 			})
-			if err!=nil {
-				taskEventQueue.Nack(false,false)
-				log.Errorf("TaskEncode Event Error, requeued, with error: %s",err.Error())
-				if taskEvent.EventType!=model.PingEvent {
-					b,_:= json.MarshalIndent(taskEvent,"","\t")
+			if err != nil {
+				taskEventQueue.Nack(false, false)
+				log.Errorf("TaskEncode Event Error, requeued, with error: %s", err.Error())
+				if taskEvent.EventType != model.PingEvent {
+					b, _ := json.MarshalIndent(taskEvent, "", "\t")
 					fmt.Println(string(b))
 				}
 			}
