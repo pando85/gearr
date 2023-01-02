@@ -22,7 +22,7 @@ import (
 
 var (
 	ApplicationFileName  string
-	ValidVideoExtensions = []string{"mp4", "m4a", "m4v", "f4v", "f4a", "m4b", "m4r", "f4b", "mov ", "ogg", "oga", "ogv", "ogx ", "wmv", "wma", "asf ", "webm", "avi", "flv", "vob ", "mkv"}
+	ValidVideoExtensions = []string{"mp4", "mpg", "m4a", "m4v", "f4v", "f4a", "m4b", "m4r", "f4b", "mov ", "ogg", "oga", "ogv", "ogx ", "wmv", "wma", "asf ", "webm", "avi", "flv", "vob ", "mkv"}
 	STUNServers          = []string{"https://api.ipify.org?format=text", "https://ifconfig.me", "https://ident.me/", "https://myexternalip.com/raw"}
 	updateURL            = "https://github.com/segator/transcoderd/releases/download/wip-master/%s"
 	workingDirectory     = filepath.Join(os.TempDir(), "transcoder")
