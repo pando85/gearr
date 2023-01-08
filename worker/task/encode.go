@@ -253,10 +253,10 @@ func (j *EncodeWorker) dowloadFile(job *model.WorkTaskEncode, track *TaskTracks)
 
 		err = retry.Do(func() error {
 			respsha256, err := http.Get(job.TaskEncode.ChecksumURL)
-			defer respsha256.Body.Close()
 			if err != nil {
 				return err
 			}
+			defer respsha256.Body.Close()
 			if respsha256.StatusCode != http.StatusOK {
 				return fmt.Errorf(fmt.Sprintf("not 200 respose in sha265 code %d", respsha256.StatusCode))
 			}
