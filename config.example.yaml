@@ -1,0 +1,22 @@
+database:
+  host: db.example.com
+  user: foo
+  password: xxxx
+  # schema -> database name
+  scheme: orchestrator
+
+web:
+  token: encoding123
+
+broker:
+  host: 127.0.0.1
+  user: encoding123
+  password: xxxxx
+  taskEncodeQueue: tasks
+  taskPGSQueue: tasks_pgstosrt
+  eventQueue: task_events
+
+scheduler:
+  downloadPath: /source
+  uploadPath: /target
+  domain: http://transcoder.example.com

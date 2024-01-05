@@ -9,7 +9,7 @@ transcoderd-gui:
 transcoderd: transcoderd-cli transcoderd-docker transcoderd-gui
 
 transcoderw-cli:
-	go run  build.go build worker -m console
+	go run build.go build worker -m console
 
 transcoderw-docker:
 	docker build -t transcoderw -f worker/Dockerfile .
