@@ -24,6 +24,11 @@ type WebServer struct {
 	ctx       context.Context
 }
 
+func (ws *WebServer) healthCheck(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, "OK")
+}
+
 func (W *WebServer) cancelJob(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 	values := request.URL.Query()
@@ -197,6 +202,8 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler) *WebSer
 			Handler: rtr,
 		},
 	}
+
+	rtr.HandleFunc("/-/healthy", webServer.healthCheck).Methods("GET")
 	rtr.Handle("/api/v1/job/", webServer.AuthFunc(webServer.addJobs)).Methods("POST")
 	rtr.HandleFunc("/api/v1/job/cancel", webServer.cancelJob).Methods("GET")
 	rtr.HandleFunc("/api/v1/download", webServer.download).Methods("GET")
