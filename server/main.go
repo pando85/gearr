@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -61,16 +62,17 @@ func init() {
 	pflag.String("database.User", "postgres", "DB User")
 	pflag.String("database.Password", "postgres", "DB Password")
 	pflag.String("database.Scheme", "server", "DB Scheme")
+	pflag.String("database.SSLMode", "disable", "DB Scheme")
 	pflag.Usage = usage
 
-	//pflag.Parse()
-	//viper.SetConfigFile("config")
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("/etc/transcoderd/")
 	viper.AddConfigPath("$HOME/.transcoderd/")
 	viper.AddConfigPath(".")
-	viper.AutomaticEnv()
-	viper.SetEnvPrefix("TR")
+
 	err := viper.ReadInConfig()
 	if err != nil {
 		switch err.(type) {
@@ -80,9 +82,9 @@ func init() {
 			log.Panic(err)
 		}
 	}
+
 	pflag.Parse()
 	viper.BindPFlags(pflag.CommandLine)
-
 	urlAndDurationDecoder := viper.DecodeHook(func(source reflect.Type, target reflect.Type, data interface{}) (interface{}, error) {
 		if source.Kind() != reflect.String {
 			return data, nil

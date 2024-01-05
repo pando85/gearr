@@ -1,5 +1,5 @@
 transcoderd-cli:
-	go run  build.go build worker -m console
+	go run build.go build server -m console
 
 transcoderd-docker:
 	docker build -t transcoderd -f server/Dockerfile .

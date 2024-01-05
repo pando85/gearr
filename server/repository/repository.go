@@ -75,13 +75,13 @@ type SQLRepository struct {
 }
 
 type SQLServerConfig struct {
-	Host     string `mapstructure:"host", envconfig:"DB_HOST"`
-	Port     int    `mapstructure:"port", envconfig:"DB_PORT"`
-	User     string `mapstructure:"user", envconfig:"DB_USER"`
-	Password string `mapstructure:"password", envconfig:"DB_PASSWORD"`
-	Scheme   string `mapstructure:"scheme", envconfig:"DB_SCHEME"`
-	Driver   string `mapstructure:"driver", envconfig:"DB_DRIVER"`
-	SSLMode  string `mapstructure:"sslmode", envconfig:"DB_SSL_MODE"`
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	User     string `mapstructure:"user"`
+	Password string `mapstructure:"password"`
+	Scheme   string `mapstructure:"scheme"`
+	Driver   string `mapstructure:"driver"`
+	SSLMode  string `mapstructure:"sslmode"`
 }
 
 func NewSQLRepository(config SQLServerConfig, assets http.FileSystem) (*SQLRepository, error) {
