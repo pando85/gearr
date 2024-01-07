@@ -43,6 +43,17 @@ image-%:
 		-f $*/Dockerfile \
 		.
 
+.PHONY: images
+push-images: push-image-server push-image-worker
+push-images:		## build and push container images
+
+push-image-%:
+	@docker buildx build \
+		--push \
+		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
+		-f $*/Dockerfile \
+		.
+
 MAX_ATTEMPTS ?= 10
 
 .PHONY: run-all
