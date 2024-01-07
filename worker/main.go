@@ -30,6 +30,7 @@ type CmdLineOpts struct {
 var (
 	opts                CmdLineOpts
 	ApplicationFileName string
+	logLevel            string
 )
 
 func init() {
@@ -40,6 +41,7 @@ func init() {
 	}
 
 	cmd.BrokerFlags()
+	pflag.StringVarP(&logLevel, "log-level", "l", "info", "Set the log level (debug, info, warning, error)")
 	pflag.Bool("worker.updateMode", false, "Run as Updater")
 	pflag.String("worker.temporalPath", os.TempDir(), "Path used for temporal data")
 	pflag.String("worker.name", hostname, "Worker Name used for statistics")
@@ -95,7 +97,7 @@ func usage() {
 }
 
 func main() {
-	log.SetLevel(log.DebugLevel)
+	helper.SetLogLevel(logLevel)
 	wg := &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
 	sigs := make(chan os.Signal, 1)
@@ -130,14 +132,14 @@ func shutdownHandler(ctx context.Context, sigs chan os.Signal, cancel context.Ca
 	select {
 	case <-sigs:
 		cancel()
-		log.Info("Termination Signal Detected...")
+		log.Info("termination signal detected")
 	}
 
 	signal.Stop(sigs)
 }
 
 func prepareWorkerEnvironment(ctx context.Context, assets http.FileSystem, acceptedJobs *task.AcceptedJobs) {
-	log.Infof("Initializing Environment...")
+	log.Infof("initializing environment")
 	if acceptedJobs.IsAccepted(model.EncodeJobType) {
 		if err := helper.DesembedFSFFProbe(assets); err != nil {
 			panic(err)

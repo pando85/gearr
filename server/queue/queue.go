@@ -4,15 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/isayme/go-amqp-reconnect/rabbitmq"
-	log "github.com/sirupsen/logrus"
-	"github.com/streadway/amqp"
 	"math/rand"
 	"sync"
 	"time"
 	"transcoder/broker"
 	"transcoder/model"
 	"transcoder/server/repository"
+
+	"github.com/isayme/go-amqp-reconnect/rabbitmq"
+	log "github.com/sirupsen/logrus"
+	"github.com/streadway/amqp"
 )
 
 type BrokerServer interface {
@@ -49,13 +50,13 @@ func NewBrokerServerRabbit(config broker.Config, repo repository.Repository) (*R
 }
 
 func (Q *RabbitMQServer) Run(wg *sync.WaitGroup, ctx context.Context) {
-	log.Info("Starting Broker...")
+	log.Info("starting broker")
 	Q.start(ctx)
-	log.Info("Started Broker...")
+	log.Info("started broker")
 	wg.Add(1)
 	go func() {
 		<-ctx.Done()
-		log.Info("Stopping Broker...")
+		log.Info("stopping broker")
 		Q.stop()
 		wg.Done()
 	}()
@@ -126,7 +127,7 @@ func (Q *RabbitMQServer) taskQueue(ctx context.Context) {
 				Type:        "JobEvent",
 				Body:        b,
 			}
-			log.Infof("Sending %s action for Job %s", workerEvent.JobEvent.Action, workerEvent.JobEvent.Id.String())
+			log.Infof("sending %s action for job %s", workerEvent.JobEvent.Action, workerEvent.JobEvent.Id.String())
 			taskChannel.Publish("", workerEvent.Queue, false, false, message)
 		case taskEvent := <-Q.newTask:
 			b, err := json.Marshal(taskEvent.Event)
@@ -140,9 +141,9 @@ func (Q *RabbitMQServer) taskQueue(ctx context.Context) {
 			}
 			if err := taskChannel.Publish("", taskQueue.Name, false, false, message); err != nil {
 				taskEvent.ControlChan <- err
-				log.Infof("Failed Publish Job %s", taskEvent.Event.Id.String())
+				log.Infof("failed publish job %s", taskEvent.Event.Id.String())
 			} else {
-				log.Infof("Published Job %s", taskEvent.Event.Id.String())
+				log.Infof("published job %s", taskEvent.Event.Id.String())
 			}
 			close(taskEvent.ControlChan)
 
@@ -191,7 +192,7 @@ func (Q *RabbitMQServer) taskEventQueue(ctx context.Context) {
 			})
 			if err != nil {
 				taskEventQueue.Nack(false, false)
-				log.Errorf("TaskEncode Event Error, requeued, with error: %s", err.Error())
+				log.Errorf("taskencode event error, requeued, with error: %s", err.Error())
 				if taskEvent.EventType != model.PingEvent {
 					b, _ := json.MarshalIndent(taskEvent, "", "\t")
 					fmt.Println(string(b))

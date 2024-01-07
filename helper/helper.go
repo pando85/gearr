@@ -297,3 +297,21 @@ func IsApplicationUpToDate() bool {
 	return true
 	//return HashSha1Myself() == GetGitHubLatestVersion()
 }
+
+func SetLogLevel(level string) {
+	switch strings.ToLower(level) {
+	case "debug":
+		log.SetLevel(log.DebugLevel)
+	case "info":
+		log.SetLevel(log.InfoLevel)
+	case "warning":
+		log.SetLevel(log.WarnLevel)
+	case "error":
+		log.SetLevel(log.ErrorLevel)
+	case "fatal":
+		log.SetLevel(log.FatalLevel)
+	default:
+		log.SetLevel(log.InfoLevel)
+		log.Warnf("invalid log level '%s', defaulting to 'info'", level)
+	}
+}

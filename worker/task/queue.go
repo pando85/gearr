@@ -83,13 +83,13 @@ func (Q *RabbitMQClient) RegisterEncodeWorker(worker *EncodeWorker) {
 }
 
 func (Q *RabbitMQClient) Run(wg *sync.WaitGroup, ctx context.Context) {
-	log.Info("Starting Broker Client...")
+	log.Info("starting broker client")
 	Q.start(ctx)
-	log.Info("Started Broker Client...")
+	log.Info("started broker client")
 	wg.Add(1)
 	go func() {
 		<-ctx.Done()
-		log.Info("Stopping Broker Client...")
+		log.Info("stopping broker client")
 		Q.stop()
 		wg.Done()
 	}()
@@ -118,7 +118,7 @@ func (Q *RabbitMQClient) EventNotification(event model.TaskEvent) {
 		log.Panic(err)
 	}
 
-	log.Debugf("[Job %s] %s have been %s", event.Id.String(), event.NotificationType, event.Status)
+	log.Debugf("[job %s] %s have been %s", event.Id.String(), event.NotificationType, event.Status)
 }
 func (Q *RabbitMQClient) RequestPGSJob(pgsJob model.TaskPGS) <-chan *model.TaskPGSResponse {
 	pgsJobControl := NewPGSJobControl(pgsJob)
@@ -266,7 +266,7 @@ func (Q *RabbitMQClient) pgsQueueProcessor(ctx context.Context, taskQueueName st
 
 					if !helper.IsApplicationUpToDate() {
 						delivery.Nack(false, true)
-						Q.printer.Warn("Application is not up to date, closing...")
+						Q.printer.Warn("application is not up to date, closing")
 						os.Exit(1)
 					}
 

@@ -3,10 +3,11 @@ package task
 import (
 	"context"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"runtime"
 	"sync"
 	"transcoder/model"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func NewWorkerClient(config Config, rabbit *RabbitMQClient, printer *ConsoleWorkerPrinter) *WorkerRuntime {
@@ -26,13 +27,13 @@ type WorkerRuntime struct {
 }
 
 func (W *WorkerRuntime) Run(wg *sync.WaitGroup, ctx context.Context) {
-	log.Info("Starting Worker Client...")
+	log.Info("starting worker client")
 	W.start(ctx)
-	log.Info("Started Worker Client...")
+	log.Info("started worker client")
 	wg.Add(1)
 	go func() {
 		<-ctx.Done()
-		log.Info("Stopping Worker Client...")
+		log.Info("stopping worker client")
 		W.stop()
 		wg.Done()
 	}()
@@ -42,13 +43,13 @@ func (W *WorkerRuntime) start(ctx context.Context) {
 		W.EncodeWorker = NewEncodeWorker(ctx, W.config, fmt.Sprintf("%s-%d", model.EncodeJobType, 1), W.printer)
 		W.rabbit.RegisterEncodeWorker(W.EncodeWorker)
 		W.EncodeWorker.Initialize()
-		log.Info("Initializing encode Worker")
+		log.Info("initializing encode worker")
 
 	}
 	if W.config.Jobs.IsAccepted(model.PGSToSrtJobType) {
 		for i := 0; i < runtime.NumCPU(); i++ {
 			pgsWorker := NewPGSWorker(ctx, W.config, fmt.Sprintf("%s-%d", model.PGSToSrtJobType, i))
-			log.Infof("Initializing PGS Worker %d", i)
+			log.Infof("initializing pgs worker %d", i)
 			W.PGSWorker = append(W.PGSWorker, pgsWorker)
 			W.rabbit.RegisterPGSWorker(pgsWorker)
 		}
@@ -56,7 +57,7 @@ func (W *WorkerRuntime) start(ctx context.Context) {
 }
 
 func (W *WorkerRuntime) stop() {
-	log.Warnf("Stopping all Workers")
+	log.Warnf("stopping all workers")
 	if W.EncodeWorker != nil {
 		W.EncodeWorker.Cancel()
 	}

@@ -27,10 +27,11 @@ import (
 )
 
 type CmdLineOpts struct {
-	Database  repository.SQLServerConfig `mapstructure:"database"`
-	Web       web.WebServerConfig        `mapstructure:"web"`
 	Broker    broker.Config              `mapstructure:"broker"`
+	Database  repository.SQLServerConfig `mapstructure:"database"`
+	LogLevel  string                     `mapstructure:"loglevel"`
 	Scheduler scheduler.SchedulerConfig  `mapstructure:"scheduler"`
+	Web       web.WebServerConfig        `mapstructure:"web"`
 }
 
 var (
@@ -41,6 +42,7 @@ var (
 func init() {
 	cmd.BrokerFlags()
 	cmd.DatabaseFlags()
+	cmd.LogLevelFlags()
 	cmd.SchedulerFlags()
 	cmd.WebFlags()
 
@@ -58,7 +60,7 @@ func init() {
 	if err != nil {
 		switch err.(type) {
 		case viper.ConfigFileNotFoundError:
-			log.Warnf("No Config File Found")
+			log.Warnf("no config file found")
 		default:
 			log.Panic(err)
 		}
@@ -114,7 +116,7 @@ func usage() {
 }
 
 func main() {
-	log.SetLevel(log.DebugLevel)
+	helper.SetLogLevel(opts.LogLevel)
 	wg := &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
 	sigs := make(chan os.Signal, 1)
@@ -124,7 +126,7 @@ func main() {
 		wg.Done()
 	}()
 	//Prepare resources
-	log.Infof("Preparing to RunWithContext...")
+	log.Infof("preparing to runwithcontext")
 	prepareResources(ctx, assets)
 	//Repository persist
 	var repo repository.Repository
@@ -167,10 +169,10 @@ func prepareResources(ctx context.Context, assets http.FileSystem) {
 func shutdownHandler(ctx context.Context, sigs chan os.Signal, cancel context.CancelFunc) {
 	select {
 	case <-ctx.Done():
-		log.Info("Termination Signal Detected...")
+		log.Info("termination signal detected")
 	case <-sigs:
 		cancel()
-		log.Info("Termination Signal Detected...")
+		log.Info("termination signal detected")
 	}
 
 	signal.Stop(sigs)

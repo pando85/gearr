@@ -214,13 +214,13 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler) *WebSer
 
 func (W *WebServer) Run(wg *sync.WaitGroup, ctx context.Context) {
 	W.ctx = ctx
-	log.Info("Starting WebServer...")
+	log.Info("starting webserver")
 	W.start()
-	log.Info("Started WebServer...")
+	log.Info("started webserver")
 	wg.Add(1)
 	go func() {
 		<-ctx.Done()
-		log.Info("Stopping WebServer...")
+		log.Info("stopping webserver")
 		W.stop(ctx)
 		wg.Done()
 	}()

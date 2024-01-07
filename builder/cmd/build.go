@@ -42,7 +42,7 @@ var buildWorkerCmd = &cobra.Command{
 }
 
 func buildTarget(targetName string, isWorker bool) {
-	log.Infof("Get Dependencies...")
+	log.Infof("get dependencies")
 	getDependency()
 
 	goos := os.Getenv("GOOS")
@@ -57,12 +57,12 @@ func buildTarget(targetName string, isWorker bool) {
 
 	platform := fmt.Sprintf("%s-%s", goos, goarch)
 	log.Infof("====== %s ======", platform)
-	log.Infof("[%s] Preparing Build Environment...", platform)
+	log.Infof("[%s] preparing build environment", platform)
 	buildPath, distPath := prepareBuildEnv(targetName)
 
-	log.Infof("[%s] Copy Resources...", platform)
+	log.Infof("[%s] copy resources", platform)
 	copyResources(buildPath, getResourcePath(targetName), goos, goarch)
-	log.Infof("[%s] Embedding resources...", platform)
+	log.Infof("[%s] embedding resources", platform)
 
 	Embed(buildPath, filepath.Join(command.GetWD(), targetName))
 
@@ -81,7 +81,7 @@ func buildTarget(targetName string, isWorker bool) {
 		envs = append(envs, "CGO_ENABLED=0")
 	}
 
-	log.Infof("[%s] Building executable...", platform)
+	log.Infof("[%s] building executable", platform)
 
 	binSuffix := "d"
 	if targetName == "worker" {

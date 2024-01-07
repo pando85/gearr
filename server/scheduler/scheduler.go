@@ -67,13 +67,13 @@ func NewScheduler(config SchedulerConfig, repo repository.Repository, queue queu
 }
 
 func (R *RuntimeScheduler) Run(wg *sync.WaitGroup, ctx context.Context) {
-	log.Info("Starting Scheduler...")
+	log.Info("starting scheduler")
 	R.start(ctx)
-	log.Info("Started Scheduler...")
+	log.Info("started scheduler")
 	wg.Add(1)
 	go func() {
 		<-ctx.Done()
-		log.Info("Stopping Scheduler...")
+		log.Info("stopping scheduler")
 		R.stop()
 		wg.Done()
 	}()
@@ -102,10 +102,10 @@ func (R *RuntimeScheduler) schedule(ctx context.Context) {
 				sourcePath := filepath.Join(R.config.DownloadPath, video.SourcePath)
 				target := filepath.Join(R.config.DownloadPath, video.DestinationPath)
 				if _, err := os.Stat(target); err != nil {
-					log.Warnf("Job %s completed, source file %s can not be removed because Target file does not exists", jobEvent.Id.String(), sourcePath)
+					log.Warnf("job %s completed, source file %s can not be removed because target file does not exists", jobEvent.Id.String(), sourcePath)
 					continue
 				}
-				log.Infof("Job %s completed, removing source file %s", jobEvent.Id.String(), sourcePath)
+				log.Infof("job %s completed, removing source file %s", jobEvent.Id.String(), sourcePath)
 				err = os.Remove(sourcePath)
 				if err != nil {
 					log.Error(err)
@@ -121,7 +121,7 @@ func (R *RuntimeScheduler) schedule(ctx context.Context) {
 			}
 			for _, taskEvent := range taskEvents {
 				if taskEvent.Status == model.StartedNotificationStatus {
-					log.Infof("Rescheduling %s after job timeout", taskEvent.Id.String())
+					log.Infof("rescheduling %s after job timeout", taskEvent.Id.String())
 					video, err := R.repo.GetJob(ctx, taskEvent.Id.String())
 					if err != nil {
 						log.Error(err)

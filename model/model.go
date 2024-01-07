@@ -1,10 +1,11 @@
 package model
 
 import (
-	"github.com/google/uuid"
 	"os"
 	"time"
 	"transcoder/helper/max"
+
+	"github.com/google/uuid"
 )
 
 type EventType string
@@ -181,7 +182,7 @@ func (e TaskEvent) IsUploading() bool {
 }
 
 func (W *WorkTaskEncode) Clean() error {
-	//log.Warnf("[%s] Cleaning up Task Workspace", W.TaskEncode.Id.String())
+	//log.Warnf("[%s] cleaning up task workspace", W.TaskEncode.Id.String())
 	err := os.RemoveAll(W.WorkDir)
 	if err != nil {
 		return err

@@ -23,17 +23,17 @@ func NewUpdater() *Updater {
 func (U *Updater) Run(wg *sync.WaitGroup, ctx context.Context) {
 	wg.Add(1)
 	go func() {
-		log.Info("Checking for Updates...")
+		log.Info("checking for updates")
 		for {
 			sha1Hash := helper.HashSha1Myself()
 			sha1LatestHash := helper.GetGitHubLatestVersion()
 			U.binaryPath = os.Args[0]
 			if sha1Hash != sha1LatestHash {
-				log.Warn("Application is outdated..")
-				log.Info("Downloading latest version..")
+				log.Warn("application is outdated..")
+				log.Info("downloading latest version..")
 				U.binaryPath = helper.DownloadAppLatestVersion()
 			} else {
-				log.Info("Already up to date")
+				log.Info("already up to date")
 			}
 			arguments := os.Args[1:]
 			ecode, err := command.NewCommand(U.binaryPath, arguments...).
@@ -61,7 +61,7 @@ func (U *Updater) Run(wg *sync.WaitGroup, ctx context.Context) {
 func (U *Updater) stop() {
 	if U.binaryPath != "" {
 		for {
-			log.Info("Cleaning before close...")
+			log.Info("cleaning before close")
 			err := os.Remove(U.binaryPath)
 			if err == nil {
 				break

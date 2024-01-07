@@ -5,16 +5,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
-	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
 	"transcoder/helper/command"
 	"transcoder/model"
+
+	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
 )
+
 var langMapping []PGSTesseractLanguage
+
 type PGSWorker struct {
 	workerConfig  Config
 	tempPath      string
@@ -25,19 +28,19 @@ type PGSWorker struct {
 	task          model.TaskPGS
 }
 
-type PGSTesseractLanguage struct{
-	tessLanguage string
+type PGSTesseractLanguage struct {
+	tessLanguage    string
 	mappingLanguage []string
 }
 
-func init(){
-	langMapping=append(langMapping,PGSTesseractLanguage{"deu",[]string{"ger","ge","de"}})
-	langMapping=append(langMapping,PGSTesseractLanguage{"eng",[]string{"en","uk"}})
-	langMapping=append(langMapping,PGSTesseractLanguage{"spa",[]string{"es","esp"}})
-	langMapping=append(langMapping,PGSTesseractLanguage{"fra",[]string{"fre"}})
-	langMapping=append(langMapping,PGSTesseractLanguage{"chi_tra",[]string{"chi"}})
+func init() {
+	langMapping = append(langMapping, PGSTesseractLanguage{"deu", []string{"ger", "ge", "de"}})
+	langMapping = append(langMapping, PGSTesseractLanguage{"eng", []string{"en", "uk"}})
+	langMapping = append(langMapping, PGSTesseractLanguage{"spa", []string{"es", "esp"}})
+	langMapping = append(langMapping, PGSTesseractLanguage{"fra", []string{"fre"}})
+	langMapping = append(langMapping, PGSTesseractLanguage{"chi_tra", []string{"chi"}})
 }
-func NewPGSWorker(ctx context.Context, workerConfig Config, workerName string)  *PGSWorker {
+func NewPGSWorker(ctx context.Context, workerConfig Config, workerName string) *PGSWorker {
 	newCtx, cancel := context.WithCancel(ctx)
 	tempPath := filepath.Join(workerConfig.TemporalPath, fmt.Sprintf("worker-%s", workerName))
 	encodeWorker := &PGSWorker{
@@ -69,59 +72,59 @@ func (P *PGSWorker) Prepare(workData []byte, queueManager model.Manager) error {
 }
 
 func (P *PGSWorker) Execute() (err error) {
-	log.Infof("Converting PGS To Srt for Job %s stream %d",P.task.Id.String(),P.task.PGSID)
+	log.Infof("converting pgs to srt for job %s stream %d", P.task.Id.String(), P.task.PGSID)
 	//TODO events??
-	inputFilePath:= filepath.Join(P.tempPath,strconv.Itoa(P.task.PGSID)+".sup")
-	outputFileName:= strconv.Itoa(P.task.PGSID)+".srt"
-	outputFilePath:= filepath.Join(P.tempPath,outputFileName)
+	inputFilePath := filepath.Join(P.tempPath, strconv.Itoa(P.task.PGSID)+".sup")
+	outputFileName := strconv.Itoa(P.task.PGSID) + ".srt"
+	outputFilePath := filepath.Join(P.tempPath, outputFileName)
 	var outputBytes []byte
-	defer func(){
-		errString:=""
-		if err!=nil{
-			errString=err.Error()
+	defer func() {
+		errString := ""
+		if err != nil {
+			errString = err.Error()
 		}
 
 		pgsTaskResponse := model.TaskPGSResponse{
 			Id:    P.task.Id,
 			PGSID: P.task.PGSID,
 			Srt:   outputBytes,
-			Err:  errString,
+			Err:   errString,
 			Queue: P.task.ReplyTo,
 		}
 		P.Manager.ResponsePGSJob(pgsTaskResponse)
 	}()
 
-	err = ioutil.WriteFile(inputFilePath,P.task.PGSdata,os.ModePerm)
-	if err!=nil {
+	err = ioutil.WriteFile(inputFilePath, P.task.PGSdata, os.ModePerm)
+	if err != nil {
 		return err
 	}
 
 	language := calculateTesseractLanguage(P.task.PGSLanguage)
 	//<-time.After(time.Minute*30)
-	PGSToSrtCommand:=command.NewCommand(P.workerConfig.DotnetPath,fmt.Sprintf("%s",P.workerConfig.PGSTOSrtDLLPath),"--input",inputFilePath,"--output",outputFilePath,"--tesseractlanguage",language,"--tesseractdata",P.workerConfig.TesseractDataPath).
+	PGSToSrtCommand := command.NewCommand(P.workerConfig.DotnetPath, fmt.Sprintf("%s", P.workerConfig.PGSTOSrtDLLPath), "--input", inputFilePath, "--output", outputFilePath, "--tesseractlanguage", language, "--tesseractdata", P.workerConfig.TesseractDataPath).
 		SetWorkDir(P.tempPath)
-	log.Debugf("PGSTOSrt Command: %s",PGSToSrtCommand.GetFullCommand())
-	ecode,err := PGSToSrtCommand.RunWithContext(P.ctx)
-	if err!=nil {
+	log.Debugf("pgstosrt command: %s", PGSToSrtCommand.GetFullCommand())
+	ecode, err := PGSToSrtCommand.RunWithContext(P.ctx)
+	if err != nil {
 		return err
 	}
-	if ecode!=0 {
-		return errors.New(fmt.Sprintf("PGSToSrt invalid exit code %d",ecode))
+	if ecode != 0 {
+		return errors.New(fmt.Sprintf("PGSToSrt invalid exit code %d", ecode))
 	}
 	f, err := os.Open(outputFilePath)
-	if err!=nil {
+	if err != nil {
 		return err
 	}
 	defer f.Close()
-	outputBytes,err = ioutil.ReadAll(f)
-	log.Infof("Converted PGS To Srt for Job %s stream %d",P.task.Id.String(),P.task.PGSID)
+	outputBytes, err = ioutil.ReadAll(f)
+	log.Infof("converted pgs to srt for job %s stream %d", P.task.Id.String(), P.task.PGSID)
 	return err
 }
 
 func calculateTesseractLanguage(language string) string {
-	for _,mapping := range langMapping{
-		for _,mapLang := range mapping.mappingLanguage{
-			if language == mapLang{
+	for _, mapping := range langMapping {
+		for _, mapLang := range mapping.mappingLanguage {
+			if language == mapLang {
 				return mapping.tessLanguage
 			}
 		}
@@ -130,7 +133,7 @@ func calculateTesseractLanguage(language string) string {
 }
 
 func (P *PGSWorker) Clean() error {
-	log.Warnf("[%s] Cleaning up worker workspace...", P.GetID())
+	log.Warnf("[%s] cleaning up worker workspace", P.GetID())
 	err := os.RemoveAll(P.tempPath)
 	if err != nil {
 		log.Error("error in clean folder", P.GetID())
@@ -140,7 +143,7 @@ func (P *PGSWorker) Clean() error {
 }
 
 func (P *PGSWorker) Cancel() {
-	log.Warnf("[%s] Canceling job %s...", P.GetID(), P.task.Id.String())
+	log.Warnf("[%s] canceling job %s", P.GetID(), P.task.Id.String())
 	P.cancelContext()
 	//TODO hauriem de esperar de alguna manera a asegurar que el Execute() ha sortit..
 }

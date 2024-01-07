@@ -1,3 +1,5 @@
+loglevel: info
+
 database:
   host: db.example.com
   user: foo

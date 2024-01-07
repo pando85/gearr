@@ -26,6 +26,10 @@ func DatabaseFlags() {
 	pflag.String("database.SSLMode", "disable", "DB Scheme")
 }
 
+func LogLevelFlags() {
+	pflag.String("loglevel", "info", "Set the log level (debug, info, warning, error, fatal)")
+}
+
 func SchedulerFlags() {
 	pflag.String("scheduler.domain", "http://localhost:8080", "Base domain where workers will try to download upload videos")
 	pflag.Duration("scheduler.scheduleTime", time.Minute*5, "Execute the scheduling loop every X seconds")

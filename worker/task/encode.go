@@ -718,7 +718,7 @@ func (J *EncodeWorker) convertPGSToSrt(taskEncode *model.WorkTaskEncode, contain
 			return err
 		}
 		subFile.Close()
-		//log.Infof("Subtitle %d is PGS, requesting  conversion...", subtitle.Id)
+		//log.Infof("subtitle %d is pgs, requesting  conversion", subtitle.Id)
 
 		PGSResponse := J.RequestPGSJob(model.TaskPGS{
 			Id:          taskEncode.TaskEncode.Id,
