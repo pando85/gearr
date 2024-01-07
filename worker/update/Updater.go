@@ -36,7 +36,6 @@ func (U *Updater) Run(wg *sync.WaitGroup, ctx context.Context) {
 				log.Info("Already up to date")
 			}
 			arguments := os.Args[1:]
-			arguments = append(arguments, "--worker.noUpdateMode")
 			ecode, err := command.NewCommand(U.binaryPath, arguments...).
 				SetStderrFunc(func(buffer []byte, exit bool) {
 					os.Stderr.Write(buffer)

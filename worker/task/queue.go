@@ -4,11 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/avast/retry-go"
-	"github.com/google/uuid"
-	"github.com/isayme/go-amqp-reconnect/rabbitmq"
-	log "github.com/sirupsen/logrus"
-	"github.com/streadway/amqp"
 	"math/rand"
 	"os"
 	"strconv"
@@ -18,6 +13,12 @@ import (
 	"transcoder/helper"
 	"transcoder/helper/concurrent"
 	"transcoder/model"
+
+	"github.com/avast/retry-go"
+	"github.com/google/uuid"
+	"github.com/isayme/go-amqp-reconnect/rabbitmq"
+	log "github.com/sirupsen/logrus"
+	"github.com/streadway/amqp"
 )
 
 type JobWorker struct {
@@ -117,7 +118,7 @@ func (Q *RabbitMQClient) EventNotification(event model.TaskEvent) {
 		log.Panic(err)
 	}
 
-	//log.Infof("[Job %s] %s have been %s", event.Id.String(), event.NotificationType, event.Status)
+	log.Debugf("[Job %s] %s have been %s", event.Id.String(), event.NotificationType, event.Status)
 }
 func (Q *RabbitMQClient) RequestPGSJob(pgsJob model.TaskPGS) <-chan *model.TaskPGSResponse {
 	pgsJobControl := NewPGSJobControl(pgsJob)
@@ -174,6 +175,7 @@ func (Q *RabbitMQClient) eventProcessor(ctx context.Context) {
 	if err != nil {
 		log.Panic(err)
 	}
+	log.Debug("start init worker queue")
 	err = Q.initWorkerQueue(workerchan)
 	if err != nil {
 		log.Panic(err)
@@ -233,7 +235,8 @@ func (Q *RabbitMQClient) pgsQueueProcessor(ctx context.Context, taskQueueName st
 	if err != nil {
 		log.Panic(err)
 	}
-	//Declare Task Queue
+
+	log.Debug("declare task queue")
 	args := amqp.Table{}
 	args["x-max-priority"] = 10
 	var taskQueue amqp.Queue
@@ -285,11 +288,13 @@ func (Q *RabbitMQClient) pgsQueueProcessor(ctx context.Context, taskQueueName st
 }
 
 func (Q *RabbitMQClient) encodeQueueProcessor(ctx context.Context, taskQueueName string) {
+	log.Debug("start encode queue processor")
 	channel, err := Q.connection.Channel()
 	if err != nil {
 		log.Panic(err)
 	}
-	//Declare Task Queue
+
+	log.Debug("declare task queue")
 	args := amqp.Table{}
 	args["x-max-priority"] = 10
 	var taskQueue amqp.Queue
@@ -303,6 +308,8 @@ func (Q *RabbitMQClient) encodeQueueProcessor(ctx context.Context, taskQueueName
 	if err != nil {
 		log.Panic(err)
 	}
+
+	log.Debug("start encode worker manager")
 	Q.EncodeWorker.encodeWorker.Manager = Q
 	for {
 		select {
@@ -318,7 +325,7 @@ func (Q *RabbitMQClient) encodeQueueProcessor(ctx context.Context, taskQueueName
 
 				if !helper.IsApplicationUpToDate() {
 					delivery.Nack(false, true)
-					Q.printer.Warn("Application is not up to date, waitting for pending jobs to complete, before update...")
+					log.Error("application is not up to date, waiting for pending jobs to complete, before update")
 					Q.EncodeWorker.encodeWorker.StopQueues()
 					<-time.After(time.Second * 2)
 					os.Exit(1)

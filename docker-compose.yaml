@@ -4,9 +4,6 @@ services:
   server:
     image: pando85/transcoder:latest-server
     environment:
-      BROKER_TASKEVENTQUEUENAME: task_events
-      BROKER_TASKENCODEQUEUENAME: tasks
-      BROKER_TASKPGSTOSRTQUEUENAME: tasks_pgstosrt
       BROKER_HOST: rabbitmq
       BROKER_USER: rabbit
       BROKER_PASSWORD: rabbit_password
@@ -14,7 +11,10 @@ services:
       DATABASE_USER: postgres
       DATABASE_PASSWORD: postgres_password
       DATABASE_DATABASE: transcoder
-      SCHEDULER_DOMAIN: server
+      SCHEDULER_DOMAIN: http://server:8080
+      WEB_TOKEN: super-secret-token
+    volumes:
+      - ./demo-files:/data/current:ro
     ports:
       - "8080:8080"
     depends_on:

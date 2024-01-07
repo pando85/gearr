@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/avast/retry-go"
-	"gopkg.in/vansante/go-ffprobe.v2"
 	"hash"
 	"io"
 	"io/ioutil"
@@ -26,6 +24,9 @@ import (
 	"transcoder/helper"
 	"transcoder/helper/command"
 	"transcoder/model"
+
+	"github.com/avast/retry-go"
+	"gopkg.in/vansante/go-ffprobe.v2"
 )
 
 const RESET_LINE = "\r\033[K"

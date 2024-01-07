@@ -5,10 +5,6 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"github.com/avast/retry-go"
-	"github.com/rakyll/statik/fs"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/vansante/go-ffprobe.v2"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -18,13 +14,18 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/avast/retry-go"
+	"github.com/rakyll/statik/fs"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/vansante/go-ffprobe.v2"
 )
 
 var (
 	ApplicationFileName  string
 	ValidVideoExtensions = []string{"mp4", "mpg", "m4a", "m4v", "f4v", "f4a", "m4b", "m4r", "f4b", "mov ", "ogg", "oga", "ogv", "ogx ", "wmv", "wma", "asf ", "webm", "avi", "flv", "vob ", "mkv"}
 	STUNServers          = []string{"https://api.ipify.org?format=text", "https://ifconfig.me", "https://ident.me/", "https://myexternalip.com/raw"}
-	updateURL            = "https://github.com/segator/transcoderd/releases/download/wip-master/%s"
+	updateURL            = "https://github.com/pando85/transcoderd/releases/download/master/%s"
 	workingDirectory     = filepath.Join(os.TempDir(), "transcoder")
 	ffmpegPath           = ""
 	mkvExtractPath       = ""
@@ -293,6 +294,6 @@ func DownloadAppLatestVersion() string {
 }
 
 func IsApplicationUpToDate() bool {
-	//return true
-	return HashSha1Myself() == GetGitHubLatestVersion()
+	return true
+	//return HashSha1Myself() == GetGitHubLatestVersion()
 }
