@@ -1,22 +1,33 @@
-transcoderd-cli:
-	go run build.go build server -m console
+GO ?= go
+GOFMT ?= $(GO)fmt
+FIRST_GOPATH := $(firstword $(subst :, ,$(shell $(GO) env GOPATH)))
+GOOPTS ?=
+GOOS ?= $(shell $(GO) env GOHOSTOS)
+GOARCH ?= $(shell $(GO) env GOHOSTARCH)
 
-transcoderd-docker:
-	docker build -t transcoderd -f server/Dockerfile .
+IMAGE_NAME ?= pando85/transcoder
+IMAGE_VERSION ?= latest
 
-transcoderd-gui:
+.PHONY: build-all
+build-all: server worker
 
-transcoderd: transcoderd-cli transcoderd-docker transcoderd-gui
+.PHONY: server
+server: build-server
 
-transcoderw-cli:
-	go run build.go build worker -m console
+.PHONY: worker
+worker: build-worker
 
-transcoderw-docker:
-	docker build -t transcoderw -f worker/Dockerfile .
+build-%:
+	@echo "Building $*"
+	@GOOS=$(GOOS) GOARCH=$(GOARCH) $(GO) run build.go build $*
 
-transcoderw-gui:
+.PHONY: images
+images: image-server image-worker
 
-transcoderw: transcoderw-cli transcoderw-docker transcoderw-gui
-
-build: transcoderd transcoderw
+image-%:
+	@docker buildx build \
+		--load \
+		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
+		-f $*/Dockerfile \
+		.
 

@@ -160,7 +160,7 @@ func (R *RuntimeScheduler) createNewJobRequestByJobRequestDirectory(ctx context.
 				return nil
 			}
 			if f.Size() < R.config.MinFileSize {
-				jobRequestErrors = append(jobRequestErrors, fmt.Sprintf("%s File Size bigger than %d", pathFile, R.config.MinFileSize))
+				jobRequestErrors = append(jobRequestErrors, fmt.Sprintf("%s File size must be bigger than %d", pathFile, R.config.MinFileSize))
 			}
 			extension := filepath.Ext(f.Name())[1:]
 			if !helper.ValidExtension(extension) {
