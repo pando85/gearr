@@ -51,7 +51,7 @@ func (t *TimeHourMinute) Set(value string) error {
 }
 
 type Config struct {
-	NoUpdateMode      bool           `mapstructure:"noUpdateMode"`
+	UpdateMode        bool           `mapstructure:"updateMode"`
 	TemporalPath      string         `mapstructure:"temporalPath"`
 	Name              string         `mapstructure:"name"`
 	Threads           int            `mapstructure:"threads"`

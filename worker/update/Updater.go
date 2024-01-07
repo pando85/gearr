@@ -2,12 +2,13 @@ package update
 
 import (
 	"context"
-	log "github.com/sirupsen/logrus"
 	"os"
 	"sync"
 	"time"
 	"transcoder/helper"
 	"transcoder/helper/command"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Updater struct {

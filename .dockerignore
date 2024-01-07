@@ -1,0 +1,8 @@
+build/
+dist/
+.git
+.gitignore
+assets_*
+Makefile
+docker-compose.yaml
+config.example.yaml

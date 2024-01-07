@@ -4,6 +4,7 @@ database:
   password: xxxx
   # schema -> database name
   scheme: orchestrator
+  sslmode: disable
 
 web:
   token: encoding123

@@ -1,11 +1,10 @@
-FROM golang:1.14.3-alpine3.11 as builder
-RUN apk update && apk add --no-cache git
+FROM golang:1.21.0 as builder
 WORKDIR $GOPATH/src/transcoder/
 COPY . .
-RUN go run build.go build server
-RUN cp ./dist/transcoderd-linux-amd64 /bin/transcoderd && chmod +x /bin/transcoderd
+RUN go run build.go build server && \
+    mv ./dist/transcoderd-linux-amd64 /transcoderd
 
-FROM scratch
-COPY --from=builder /bin/transcoderd /bin/transcoderd
+FROM alpine:3.14
+COPY --from=builder /transcoderd /bin/transcoderd
 
 ENTRYPOINT ["/bin/transcoderd"]

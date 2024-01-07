@@ -79,13 +79,13 @@ type SQLServerConfig struct {
 	Port     int    `mapstructure:"port"`
 	User     string `mapstructure:"user"`
 	Password string `mapstructure:"password"`
-	Scheme   string `mapstructure:"scheme"`
+	Database string `mapstructure:"database"`
 	Driver   string `mapstructure:"driver"`
 	SSLMode  string `mapstructure:"sslmode"`
 }
 
 func NewSQLRepository(config SQLServerConfig, assets http.FileSystem) (*SQLRepository, error) {
-	connectionString := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s", config.Host, config.Port, config.User, config.Password, config.Scheme, config.SSLMode)
+	connectionString := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s", config.Host, config.Port, config.User, config.Password, config.Database, config.SSLMode)
 	db, err := sql.Open(config.Driver, connectionString)
 	if err != nil {
 		return nil, err

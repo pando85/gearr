@@ -31,3 +31,18 @@ image-%:
 		-f $*/Dockerfile \
 		.
 
+.PHONY: run-all
+run-all: images
+run-all:
+	@docker-compose up -d postgres rabbitmq
+	@ATTEMPT=1; \
+	while [ $$ATTEMPT -le $(MAX_ATTEMPTS) ]; do \
+		echo "Attempt $$ATTEMPT of $(MAX_ATTEMPTS)"; \
+		if docker-compose exec postgres psql -U postgres -d transcoder -c "SELECT 1"; then \
+			echo "Command succeeded."; \
+			break; \
+		fi; \
+		ATTEMPT=$$((ATTEMPT + 1)); \
+	done
+	@docker-compose up -d
+

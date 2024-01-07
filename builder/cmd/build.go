@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"transcoder/helper"
 	"transcoder/helper/command"
 
@@ -45,7 +46,15 @@ func buildTarget(targetName string, isWorker bool) {
 	getDependency()
 
 	goos := os.Getenv("GOOS")
+	if goos == "" {
+		goos = runtime.GOOS
+	}
+
 	goarch := os.Getenv("GOARCH")
+	if goarch == "" {
+		goarch = runtime.GOARCH
+	}
+
 	platform := fmt.Sprintf("%s-%s", goos, goarch)
 	log.Infof("====== %s ======", platform)
 	log.Infof("[%s] Preparing Build Environment...", platform)
@@ -87,10 +96,22 @@ func buildTarget(targetName string, isWorker bool) {
 	fileName := fmt.Sprintf("transcoder%s-%s%s", binSuffix, platform, extension)
 	outputBinPath := fmt.Sprintf("%s/%s", distPath, fileName)
 
+	print := func(buffer []byte, exit bool) {
+		if output := string(buffer); output != "" {
+			log.Info(output)
+		}
+	}
+	printErr := func(buffer []byte, exit bool) {
+		if output := string(buffer); output != "" {
+			log.Error(output)
+		}
+	}
+
 	cmd := command.NewCommand("go", "build", "-ldflags", fmt.Sprintf("-X main.ApplicationFileName=%s", fileName), "-o", outputBinPath).
 		SetWorkDir(filepath.Join(command.GetWD(), targetName)).
-		SetEnv(envs)
-
+		SetEnv(envs).
+		SetStdoutFunc(print).
+		SetStderrFunc(printErr)
 	cmd.Run(command.NewPanicOption())
 
 	helper.GenerateSha1File(outputBinPath)

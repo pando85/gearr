@@ -3,9 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	log "github.com/sirupsen/logrus"
-	pflag "github.com/spf13/pflag"
-	"github.com/spf13/viper"
 	"net/http"
 	"os"
 	"os/signal"
@@ -19,6 +16,10 @@ import (
 	"transcoder/model"
 	"transcoder/worker/task"
 	"transcoder/worker/update"
+
+	log "github.com/sirupsen/logrus"
+	pflag "github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 type CmdLineOpts struct {
@@ -39,7 +40,7 @@ func init() {
 	}
 
 	cmd.BrokerFlags()
-	pflag.Bool("worker.noUpdateMode", false, "Run as Updater")
+	pflag.Bool("worker.updateMode", false, "Run as Updater")
 	pflag.String("worker.temporalPath", os.TempDir(), "Path used for temporal data")
 	pflag.String("worker.name", hostname, "Worker Name used for statistics")
 	pflag.Int("worker.threads", runtime.NumCPU(), "Worker Threads")
@@ -105,7 +106,8 @@ func main() {
 		wg.Done()
 	}()
 	helper.ApplicationFileName = ApplicationFileName
-	if !opts.Worker.NoUpdateMode {
+	log.Debugf("%+v", opts)
+	if opts.Worker.UpdateMode {
 		updater := update.NewUpdater()
 		updater.Run(wg, ctx)
 	} else {

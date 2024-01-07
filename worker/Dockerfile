@@ -1,16 +1,30 @@
-FROM golang:1.19.4 as builder
+FROM golang:1.21.0 as builder
+
+RUN apt-get update && \
+    apt-get install -y \
+        gcc \
+        git \
+        libgtk-3-dev \
+        libappindicator3-dev \
+        && rm -rf /var/lib/apt/lists/*
+
 WORKDIR $GOPATH/src/transcoder/
 COPY . .
-RUN apt-get update && apt-get install -y gcc git libgtk-3-dev libappindicator3-dev
-RUN go run  build.go build worker
-RUN cp ./dist/transcoderw-linux-amd64 /bin/transcoderw && chmod +x /bin/transcoderw
+RUN go run build.go build worker && \
+    mv ./dist/transcoderw-linux-amd64 /transcoderw
+
+FROM tentacule/pgstosrt as pgs
+COPY --from=builder /transcoderw /app/transcoderw
+
+ENTRYPOINT ["/app/transcoderw"]
 
 FROM alpine:3.14
-COPY --from=builder /bin/transcoderw /app/transcoderw
-RUN apk add wget && \
-    wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub && \
-    wget https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.31-r0/glibc-2.31-r0.apk && \
-    apk add glibc-2.31-r0.apk && \
-    rm glibc-2.31-r0.apk
+RUN apk add curl && \
+    curl -sSLo /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub && \
+    curl -sSLO https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.34-r0/glibc-2.34-r0.apk && \
+    apk add glibc-2.34-r0.apk && \
+    rm glibc-2.34-r0.apk
+
+COPY --from=builder /transcoderw /app/transcoderw
 
 ENTRYPOINT ["/app/transcoderw"]
