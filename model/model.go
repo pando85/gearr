@@ -6,6 +6,7 @@ import (
 	"transcoder/helper/max"
 
 	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
 )
 
 type EventType string
@@ -197,6 +198,13 @@ func (t *TaskEvents) GetLatest() *TaskEvent {
 	return max.Max(t).(*TaskEvent)
 }
 func (t *TaskEvents) GetLatestPerNotificationType(notificationType NotificationType) (returnEvent *TaskEvent) {
+	log.Debugf("notification type: %+v", notificationType)
+	log.Debugf("task events: %+v", t)
+
+	if t == nil || len(*t) == 0 {
+		log.Panic("task events are empty")
+	}
+
 	eventID := -1
 	for _, event := range *t {
 		if event.NotificationType == notificationType && event.EventID > eventID {

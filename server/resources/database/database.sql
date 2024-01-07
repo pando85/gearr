@@ -2,8 +2,7 @@ CREATE TABLE IF NOT EXISTS videos
 (
     id varchar(255)  primary key,
     source_path    text not null,
-    destination_path text not null,
-    duration int
+    destination_path text not null
 );
 
 CREATE TABLE IF NOT EXISTS video_events(

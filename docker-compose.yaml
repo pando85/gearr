@@ -4,6 +4,7 @@ services:
   server:
     image: pando85/transcoder:latest-server
     environment:
+      LOGLEVEL: DEBUG
       BROKER_HOST: rabbitmq
       BROKER_USER: rabbit
       BROKER_PASSWORD: rabbit_password

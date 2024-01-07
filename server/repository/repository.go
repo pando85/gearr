@@ -10,6 +10,7 @@ import (
 	"transcoder/model"
 
 	_ "github.com/lib/pq"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -225,6 +226,7 @@ func (S *SQLRepository) getJob(ctx context.Context, tx Transaction, uuid string)
 func (S *SQLRepository) getTaskEvents(ctx context.Context, tx Transaction, uuid string) ([]*model.TaskEvent, error) {
 	rows, err := tx.QueryContext(ctx, "select * from video_events where video_id=$1 order by event_time asc", uuid)
 	if err != nil {
+		log.Errorf("no video events founds by uuid: %s", uuid)
 		return nil, err
 	}
 	defer rows.Close()
@@ -234,25 +236,34 @@ func (S *SQLRepository) getTaskEvents(ctx context.Context, tx Transaction, uuid 
 		rows.Scan(&event.Id, &event.EventID, &event.WorkerName, &event.EventTime, &event.EventType, &event.NotificationType, &event.Status, &event.Message)
 		taskEvents = append(taskEvents, &event)
 	}
+	log.Debugf("task events: %+v", taskEvents)
 	return taskEvents, nil
 }
 func (S *SQLRepository) getJobByPath(ctx context.Context, tx Transaction, path string) (*model.Video, error) {
+	log.Debugf("get video by path: %s", path)
 	rows, err := tx.QueryContext(ctx, "select * from videos where source_path=$1", path)
 	if err != nil {
+		log.Errorf("no video founds by path: %s", path)
 		return nil, err
 	}
+
+	log.Debugf("rows: %+v", rows)
+
 	video := model.Video{}
+
 	found := false
 	if rows.Next() {
 		rows.Scan(&video.Id, &video.SourcePath, &video.DestinationPath)
 		found = true
 	}
+	log.Debugf("video: %+v", video)
 	rows.Close()
 	if !found {
 		return nil, nil
 	}
 
 	taskEvents, err := S.getTaskEvents(ctx, tx, video.Id.String())
+	log.Debugf("taskEvents: %+v", taskEvents)
 	if err != nil {
 		return nil, err
 	}
