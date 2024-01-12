@@ -22,3 +22,9 @@ docker run -it -d --restart unless-stopped --cpuset-cpus 16-32 \
     --name encode-video2 --hostname $(hostname) \
     -v $DIR:/tmp/ segator/encoder-agent:master $EXTRA_PARAMS
 ```
+
+## Add movies from Radarr
+
+```bash
+go run ./radarr/main.go --api-key XXXXXX --url https://radarr.example.com --movies 5 --transcoder-url 'https://transcorder.example.com' --transcoder-token XXXXXX
+```

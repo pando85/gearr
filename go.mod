@@ -22,8 +22,8 @@ require (
 	github.com/spf13/pflag v1.0.3
 	github.com/spf13/viper v1.7.0
 	github.com/streadway/amqp v0.0.0-20200108173154-1c71cc93ed71
-	golang.org/x/sys v0.0.0-20200515095857-1151b9dac4a9 // indirect
-	golang.org/x/tools v0.0.0-20200617042924-7f3f4b10a808 // indirect
+	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
+	golift.io/starr v1.0.0 // indirect
 	gopkg.in/errgo.v2 v2.1.0
 	gopkg.in/vansante/go-ffprobe.v2 v2.0.0
 	gopkg.in/yaml.v2 v2.2.7 // indirect
