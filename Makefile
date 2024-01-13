@@ -49,7 +49,7 @@ image-% push-image-%:
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
 		-f $*/Dockerfile \
 		. ; \
-	if [[ "$*" == "worker" ]]; then \
+	if [ "$*" = "worker" ]; then \
 		docker buildx build \
 		$${DOCKER_BUILD_ARG} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$*-pgs \
