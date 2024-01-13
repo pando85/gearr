@@ -40,6 +40,7 @@ type FFMPEGProgress struct {
 	speed    float64
 	percent  float64
 }
+
 type EncodeWorker struct {
 	model.Manager
 	name            string
@@ -59,11 +60,18 @@ type EncodeWorker struct {
 	stopQueues      context.CancelFunc
 }
 
+func ensureDirectoryExists(path string) {
+	os.MkdirAll(path, os.ModePerm)
+}
+
 func NewEncodeWorker(ctx context.Context, workerConfig Config, workerName string, printer *ConsoleWorkerPrinter) *EncodeWorker {
 	newCtx, cancel := context.WithCancel(ctx)
 	ctxStopQueues, stopQueues := context.WithCancel(ctx)
 	tempPath := filepath.Join(workerConfig.TemporalPath, fmt.Sprintf("worker-%s", workerName))
-	encodeWorker := &EncodeWorker{
+
+	ensureDirectoryExists(tempPath)
+
+	return &EncodeWorker{
 		name:            workerName,
 		ctx:             newCtx,
 		ctxStopQueues:   ctxStopQueues,
@@ -79,9 +87,44 @@ func NewEncodeWorker(ctx context.Context, workerConfig Config, workerName string
 		maxPrefetchJobs: uint32(workerConfig.MaxPrefetchJobs),
 		prefetchJobs:    0,
 	}
-	os.MkdirAll(tempPath, os.ModePerm)
+}
 
-	return encodeWorker
+func durToSec(dur string) (sec int) {
+	durAry := strings.Split(dur, ":")
+	if len(durAry) == 3 {
+		hr, _ := strconv.Atoi(durAry[0])
+		sec = hr * (60 * 60)
+		min, _ := strconv.Atoi(durAry[1])
+		sec += min * 60
+		second, _ := strconv.Atoi(durAry[2])
+		sec += second
+	}
+	return
+}
+
+func getSpeed(res string) float64 {
+	rs := ffmpegSpeedRegex.FindStringSubmatch(res)
+	if len(rs) == 0 {
+		return -1
+	}
+	speed, err := strconv.ParseFloat(rs[1], 64)
+	if err != nil {
+		return -1
+	}
+	return speed
+}
+
+func getDuration(res string) int {
+	i := strings.Index(res, "time=")
+	if i >= 0 {
+		time := res[i+5:]
+		if len(time) > 8 {
+			time = time[0:8]
+			sec := durToSec(time)
+			return sec
+		}
+	}
+	return -1
 }
 
 func (E *EncodeWorker) Initialize() {
@@ -98,33 +141,23 @@ func (E *EncodeWorker) Initialize() {
 
 func (E *EncodeWorker) resumeJobs() {
 	err := filepath.Walk(E.tempPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
+		if err != nil || info.IsDir() || filepath.Ext(path) != ".json" {
 			return nil
 		}
-		if filepath.Ext(path) == ".json" {
-			filepath.Base(path)
-			taskEncode := E.readTaskStatusFromDiskByPath(path)
 
-			if taskEncode.LastState.IsDownloading() {
-				E.AddDownloadJob(taskEncode.Task)
-				//E.downloadChan <- taskEncode.Task
-				return nil
-			}
-			if taskEncode.LastState.IsEncoding() {
-				t := E.terminal.AddTask(fmt.Sprintf("CACHED: %s", taskEncode.Task.TaskEncode.Id.String()), DownloadJobStepType)
-				t.Done()
-				E.encodeChan <- taskEncode.Task
-				return nil
-			}
-			if taskEncode.LastState.IsUploading() {
-				t := E.terminal.AddTask(fmt.Sprintf("CACHED: %s", taskEncode.Task.TaskEncode.Id.String()), EncodeJobStepType)
-				t.Done()
-				E.uploadChan <- taskEncode.Task
-				return nil
-			}
+		taskEncode := E.readTaskStatusFromDiskByPath(path)
+
+		switch {
+		case taskEncode.LastState.IsDownloading():
+			E.AddDownloadJob(taskEncode.Task)
+		case taskEncode.LastState.IsEncoding():
+			t := E.terminal.AddTask(fmt.Sprintf("cached: %s", taskEncode.Task.TaskEncode.Id.String()), DownloadJobStepType)
+			t.Done()
+			E.encodeChan <- taskEncode.Task
+		case taskEncode.LastState.IsUploading():
+			t := E.terminal.AddTask(fmt.Sprintf("cached: %s", taskEncode.Task.TaskEncode.Id.String()), EncodeJobStepType)
+			t.Done()
+			E.uploadChan <- taskEncode.Task
 		}
 
 		return nil
@@ -134,67 +167,6 @@ func (E *EncodeWorker) resumeJobs() {
 		panic(err)
 	}
 }
-func durToSec(dur string) (sec int) {
-	durAry := strings.Split(dur, ":")
-	if len(durAry) != 3 {
-		return
-	}
-	hr, _ := strconv.Atoi(durAry[0])
-	sec = hr * (60 * 60)
-	min, _ := strconv.Atoi(durAry[1])
-	sec += min * (60)
-	second, _ := strconv.Atoi(durAry[2])
-	sec += second
-	return
-}
-func getSpeed(res string) float64 {
-	rs := ffmpegSpeedRegex.FindStringSubmatch(res)
-	if len(rs) == 0 {
-		return -1
-	}
-	speed, err := strconv.ParseFloat(rs[1], 64)
-	if err != nil {
-		return -1
-	}
-	return speed
-
-}
-
-func getDuration(res string) int {
-	i := strings.Index(res, "time=")
-	if i >= 0 {
-		time := res[i+5:]
-		if len(time) > 8 {
-			time = time[0:8]
-			sec := durToSec(time)
-			return sec
-		}
-	}
-	return -1
-}
-
-/*func printProgress(ctx context.Context, reader *progress.Reader, size int64, wg *sync.WaitGroup, label string) {
-	wg.Add(1)
-	//TODO no calcula be el temps/velocitat, donat que el calcula desde el principi i hauria de calcular amb els ultims X segons
-	progressChan := progress.NewTicker(ctx, reader, size, 1*time.Second)
-
-	for p := range progressChan {
-		blocks := int((p.Percent() / 100) * 50)
-		line := "|<"
-		for i := 0; i < blocks; i++ {
-			line = line + "#"
-		}
-		for i := 0; i < (50 - blocks); i++ {
-			line = line + "-"
-		}
-		line = line + ">|"
-		fmt.Printf("%s%s %s Speed:%s/s Remaining:%s EstimatedAt: %02d:%02d", RESET_LINE, label, line, bytesize.New(p.Speed()), durafmt.Parse(p.Remaining()).LimitFirstN(2).String(), p.Estimated().Hour(), p.Estimated().Minute())
-	}
-	fmt.Printf("\n")
-	wg.Done()
-
-}*/
-
 func (J *EncodeWorker) IsTypeAccepted(jobType string) bool {
 	return jobType == string(model.EncodeJobType)
 }
@@ -212,134 +184,149 @@ func (J *EncodeWorker) AcceptJobs() bool {
 	return J.PrefetchJobs() < uint32(J.workerConfig.MaxPrefetchJobs)
 }
 
-func (j *EncodeWorker) downloadFile(job *model.WorkTaskEncode, track *TaskTracks) (err error) {
-	err = retry.Do(func() error {
+func (J *EncodeWorker) downloadFile(job *model.WorkTaskEncode, track *TaskTracks) error {
+	err := retry.Do(func() error {
 		track.UpdateValue(0)
 		resp, err := http.Get(job.TaskEncode.DownloadURL)
 		if err != nil {
 			return err
 		}
+		defer resp.Body.Close()
+
 		if resp.StatusCode == http.StatusNotFound {
 			return ErrorJobNotFound
 		}
 		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf(fmt.Sprintf("not 200 response in download code %d", resp.StatusCode))
+			return fmt.Errorf("non-200 response in download code %d", resp.StatusCode)
 		}
-		defer resp.Body.Close()
+
 		size, err := strconv.ParseInt(resp.Header.Get("Content-Length"), 10, 64)
-		track.SetTotal(size)
 		if err != nil {
 			return err
 		}
+		track.SetTotal(size)
+
 		_, params, err := mime.ParseMediaType(resp.Header.Get("Content-Disposition"))
 		if err != nil {
 			return err
 		}
 
 		job.SourceFilePath = filepath.Join(job.WorkDir, fmt.Sprintf("%s%s", job.TaskEncode.Id.String(), filepath.Ext(params["filename"])))
-		dowloadFile, err := os.Create(job.SourceFilePath)
+		downloadFile, err := os.Create(job.SourceFilePath)
 		if err != nil {
 			return err
 		}
-
-		defer dowloadFile.Close()
+		defer downloadFile.Close()
 
 		reader := NewProgressTrackStream(track, resp.Body)
-
-		_, err = io.Copy(dowloadFile, reader)
+		_, err = io.Copy(downloadFile, reader)
 		if err != nil {
 			return err
 		}
+
 		sha256String := hex.EncodeToString(reader.SumSha())
-		bodyString := ""
-
-		err = retry.Do(func() error {
-			respsha256, err := http.Get(job.TaskEncode.ChecksumURL)
-			if err != nil {
-				return err
-			}
-			defer respsha256.Body.Close()
-			if respsha256.StatusCode != http.StatusOK {
-				return fmt.Errorf(fmt.Sprintf("not 200 response in sha265 code %d", respsha256.StatusCode))
-			}
-
-			bodyBytes, err := ioutil.ReadAll(respsha256.Body)
-			if err != nil {
-				return err
-			}
-			bodyString = string(bodyBytes)
-			return nil
-		}, retry.Delay(time.Second*5),
-			retry.Attempts(10),
-			retry.LastErrorOnly(true),
-			retry.OnRetry(func(n uint, err error) {
-				j.terminal.Error("error %d on calculate checksum of downloaded job %s", err.Error())
-			}),
-			retry.RetryIf(func(err error) bool {
-				return !errors.Is(err, context.Canceled)
-			}))
-		if err != nil {
-			return err
+		bodyString, checksumErr := J.calculateChecksum(job.TaskEncode.ChecksumURL)
+		if checksumErr != nil {
+			return checksumErr
 		}
 
 		if sha256String != bodyString {
-			return fmt.Errorf("Checksum error on download source:%s downloaded:%s", bodyString, sha256String)
+			return fmt.Errorf("checksum error on download source:%s downloaded:%s", bodyString, sha256String)
 		}
 
 		track.UpdateValue(size)
 		return nil
 	}, retry.Delay(time.Second*5),
-		retry.DelayType(retry.FixedDelay),
-		retry.Attempts(180), //15 min
+		retry.Attempts(180), // 15 min
 		retry.LastErrorOnly(true),
 		retry.OnRetry(func(n uint, err error) {
-			j.terminal.Error("error on downloading job %s", err.Error())
+			J.terminal.Error("error on downloading job %s", err.Error())
 		}),
 		retry.RetryIf(func(err error) bool {
 			return !(errors.Is(err, context.Canceled) || errors.Is(err, ErrorJobNotFound))
 		}))
+
 	return err
 }
-func (J *EncodeWorker) getVideoParameters(inputFile string) (data *ffprobe.ProbeData, size int64, err error) {
 
+func (J *EncodeWorker) calculateChecksum(checksumURL string) (string, error) {
+	var bodyString string
+
+	err := retry.Do(func() error {
+		respSha256, err := http.Get(checksumURL)
+		if err != nil {
+			return err
+		}
+		defer respSha256.Body.Close()
+
+		if respSha256.StatusCode != http.StatusOK {
+			return fmt.Errorf("non 200 response in sha265 code %d", respSha256.StatusCode)
+		}
+
+		bodyBytes, err := ioutil.ReadAll(respSha256.Body)
+		if err != nil {
+			return err
+		}
+		bodyString = string(bodyBytes)
+		return nil
+	}, retry.Delay(time.Second*5),
+		retry.Attempts(10),
+		retry.LastErrorOnly(true),
+		retry.OnRetry(func(n uint, err error) {
+			J.terminal.Error("error %d on calculate checksum of downloaded job %s", err.Error())
+		}),
+		retry.RetryIf(func(err error) bool {
+			return !errors.Is(err, context.Canceled)
+		}))
+
+	if err != nil {
+		return "", err
+	}
+
+	return bodyString, nil
+}
+
+func (J *EncodeWorker) getVideoParameters(inputFile string) (data *ffprobe.ProbeData, size int64, err error) {
 	fileReader, err := os.Open(inputFile)
 	if err != nil {
-		return nil, -1, fmt.Errorf("error opening file %s because %v", inputFile, err)
+		return nil, -1, fmt.Errorf("error opening file %s: %v", inputFile, err)
 	}
+	defer fileReader.Close()
+
 	stat, err := fileReader.Stat()
 	if err != nil {
 		return nil, 0, err
 	}
 
-	defer fileReader.Close()
 	data, err = ffprobe.ProbeReader(J.ctx, fileReader)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error getting data: %v", err)
 	}
+
 	return data, stat.Size(), nil
 }
 
 func FFProbeFrameRate(FFProbeFrameRate string) (frameRate int, err error) {
-	rate := 0
-	frameRatio := 0
 	avgFrameSpl := strings.Split(FFProbeFrameRate, "/")
 	if len(avgFrameSpl) != 2 {
-		return 0, errors.New("invalid Format")
+		return 0, errors.New("invalid format")
 	}
 
-	frameRatio, err = strconv.Atoi(avgFrameSpl[0])
+	frameRatio, err := strconv.Atoi(avgFrameSpl[0])
 	if err != nil {
 		return 0, err
 	}
-	rate, err = strconv.Atoi(avgFrameSpl[1])
+
+	rate, err := strconv.Atoi(avgFrameSpl[1])
 	if err != nil {
 		return 0, err
 	}
+
 	return frameRatio / rate, nil
 }
 
-func (j *EncodeWorker) clearData(data *ffprobe.ProbeData) (container *ContainerData, err error) {
-	container = &ContainerData{}
+func (J *EncodeWorker) clearData(data *ffprobe.ProbeData) (*ContainerData, error) {
+	container := &ContainerData{}
 
 	videoStream := data.StreamType(ffprobe.StreamVideo)[0]
 	frameRate, err := FFProbeFrameRate(videoStream.AvgFrameRate)
@@ -354,14 +341,17 @@ func (j *EncodeWorker) clearData(data *ffprobe.ProbeData) (container *ContainerD
 	}
 
 	betterAudioStreamPerLanguage := make(map[string]*Audio)
+
 	for _, stream := range data.StreamType(ffprobe.StreamAudio) {
 		if stream.BitRate == "" {
 			stream.BitRate = "0"
 		}
-		bitRateInt, err := strconv.ParseUint(stream.BitRate, 10, 32) //TODO Aqui revem diferents tipos de numeros
+
+		bitRateInt, err := strconv.ParseUint(stream.BitRate, 10, 32)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
+
 		newAudio := &Audio{
 			Id:             uint8(stream.Index),
 			Language:       stream.Tags.Language,
@@ -372,25 +362,22 @@ func (j *EncodeWorker) clearData(data *ffprobe.ProbeData) (container *ContainerD
 			Bitrate:        uint(bitRateInt),
 			Title:          stream.Tags.Title,
 		}
+
 		betterAudio := betterAudioStreamPerLanguage[newAudio.Language]
 
-		//If more channels or same channels and better bitrate
-		if betterAudio != nil {
-			if newAudio.ChannelsNumber > betterAudio.ChannelsNumber {
-				betterAudioStreamPerLanguage[newAudio.Language] = newAudio
-			} else if newAudio.ChannelsNumber == betterAudio.ChannelsNumber && newAudio.Bitrate > betterAudio.Bitrate {
-				betterAudioStreamPerLanguage[newAudio.Language] = newAudio
-			}
-		} else {
-			betterAudioStreamPerLanguage[stream.Tags.Language] = newAudio
+		if betterAudio != nil && (newAudio.ChannelsNumber > betterAudio.ChannelsNumber || (newAudio.ChannelsNumber == betterAudio.ChannelsNumber && newAudio.Bitrate > betterAudio.Bitrate)) {
+			betterAudioStreamPerLanguage[newAudio.Language] = newAudio
+		} else if betterAudio == nil {
+			betterAudioStreamPerLanguage[newAudio.Language] = newAudio
 		}
-
 	}
+
 	for _, audioStream := range betterAudioStreamPerLanguage {
 		container.Audios = append(container.Audios, audioStream)
 	}
 
 	betterSubtitleStreamPerLanguage := make(map[string]*Subtitle)
+
 	for _, stream := range data.StreamType(ffprobe.StreamSubtitle) {
 		newSubtitle := &Subtitle{
 			Id:       uint8(stream.Index),
@@ -405,39 +392,45 @@ func (j *EncodeWorker) clearData(data *ffprobe.ProbeData) (container *ContainerD
 			container.Subtitle = append(container.Subtitle, newSubtitle)
 			continue
 		}
-		//TODO Filter Languages we don't want
+
 		betterSubtitle := betterSubtitleStreamPerLanguage[newSubtitle.Language]
-		if betterSubtitle == nil { //TODO Potser perdem subtituls que es necesiten
-			betterSubtitleStreamPerLanguage[stream.Tags.Language] = newSubtitle
+
+		if betterSubtitle == nil {
+			betterSubtitleStreamPerLanguage[newSubtitle.Language] = newSubtitle
 		} else {
-			//TODO aixo es temporal per fer proves, borrar aquest else!!
 			container.Subtitle = append(container.Subtitle, newSubtitle)
 		}
 	}
+
 	for _, value := range betterSubtitleStreamPerLanguage {
 		container.Subtitle = append(container.Subtitle, value)
 	}
+
 	return container, nil
 }
-func (J *EncodeWorker) FFMPEG(job *model.WorkTaskEncode, videoContainer *ContainerData, ffmpegProgressChan chan<- FFMPEGProgress) error {
-	isClosed := false
-	defer func() {
-		//close(ffmpegProgressChan)
-		isClosed = true
-	}()
 
+func (J *EncodeWorker) FFMPEG(job *model.WorkTaskEncode, videoContainer *ContainerData, ffmpegProgressChan chan<- FFMPEGProgress) error {
 	ffmpeg := &FFMPEGGenerator{}
 	ffmpeg.setInputFilters(videoContainer, job.SourceFilePath, job.WorkDir)
 	ffmpeg.setVideoFilters(videoContainer)
 	ffmpeg.setAudioFilters(videoContainer)
 	ffmpeg.setSubtFilters(videoContainer)
 	ffmpeg.setMetadata(videoContainer)
+
 	ffmpegErrLog := ""
 	ffmpegOutLog := ""
+
 	sendObj := FFMPEGProgress{
 		duration: -1,
 		speed:    -1,
 	}
+
+	isClosed := false
+	defer func() {
+		// close(ffmpegProgressChan)
+		isClosed = true
+	}()
+
 	checkPercentageFFMPEG := func(buffer []byte, exit bool) {
 		stringedBuffer := string(buffer)
 		ffmpegErrLog += stringedBuffer
@@ -446,8 +439,8 @@ func (J *EncodeWorker) FFMPEG(job *model.WorkTaskEncode, videoContainer *Contain
 		if duration != -1 {
 			sendObj.duration = duration
 			sendObj.percent = float64(duration*100) / videoContainer.Video.Duration.Seconds()
-
 		}
+
 		speed := getSpeed(stringedBuffer)
 		if speed != -1 {
 			sendObj.speed = speed
@@ -459,15 +452,18 @@ func (J *EncodeWorker) FFMPEG(job *model.WorkTaskEncode, videoContainer *Contain
 			sendObj.speed = -1
 		}
 	}
+
 	stdoutFFMPEG := func(buffer []byte, exit bool) {
 		ffmpegOutLog += string(buffer)
 	}
+
 	sourceFileName := filepath.Base(job.SourceFilePath)
 	encodedFilePath := fmt.Sprintf("%s-encoded.%s", strings.TrimSuffix(sourceFileName, filepath.Ext(sourceFileName)), "mkv")
 	job.TargetFilePath = filepath.Join(job.WorkDir, encodedFilePath)
 
 	ffmpegArguments := ffmpeg.buildArguments(uint8(J.workerConfig.Threads), job.TargetFilePath)
 	J.terminal.Cmd("FFMPEG Command:%s %s", helper.GetFFmpegPath(), ffmpegArguments)
+
 	ffmpegCommand := command.NewCommandByString(helper.GetFFmpegPath(), ffmpegArguments).
 		SetWorkDir(job.WorkDir).
 		SetStdoutFunc(stdoutFFMPEG).
@@ -476,12 +472,14 @@ func (J *EncodeWorker) FFMPEG(job *model.WorkTaskEncode, videoContainer *Contain
 	if runtime.GOOS == "linux" {
 		ffmpegCommand.AddEnv(fmt.Sprintf("LD_LIBRARY_PATH=%s", filepath.Dir(helper.GetFFmpegPath())))
 	}
+
 	exitCode, err := ffmpegCommand.RunWithContext(J.ctx)
 	if err != nil {
-		return fmt.Errorf("%w: stder:%s stdout:%s", err, ffmpegErrLog, ffmpegOutLog)
+		return fmt.Errorf("%w: stderr:%s stdout:%s", err, ffmpegErrLog, ffmpegOutLog)
 	}
+
 	if exitCode != 0 {
-		return fmt.Errorf("exit code %d: stder:%s stdout:%s", exitCode, ffmpegErrLog, ffmpegOutLog)
+		return fmt.Errorf("exit code %d: stderr:%s stdout:%s", exitCode, ffmpegErrLog, ffmpegOutLog)
 	}
 
 	return nil
