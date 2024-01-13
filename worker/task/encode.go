@@ -31,7 +31,6 @@ import (
 )
 
 const RESET_LINE = "\r\033[K"
-const MAX_PREFETCHED_JOBS = 1
 
 var ffmpegSpeedRegex = regexp.MustCompile(`speed=(\d*\.?\d+)x`)
 var ErrorJobNotFound = errors.New("job Not found")
@@ -43,20 +42,21 @@ type FFMPEGProgress struct {
 }
 type EncodeWorker struct {
 	model.Manager
-	name          string
-	ctx           context.Context
-	cancelContext context.CancelFunc
-	prefetchJobs  uint32
-	downloadChan  chan *model.WorkTaskEncode
-	encodeChan    chan *model.WorkTaskEncode
-	uploadChan    chan *model.WorkTaskEncode
-	workerConfig  Config
-	tempPath      string
-	wg            sync.WaitGroup
-	mu            sync.RWMutex
-	terminal      *ConsoleWorkerPrinter
-	ctxStopQueues context.Context
-	stopQueues    context.CancelFunc
+	name            string
+	ctx             context.Context
+	cancelContext   context.CancelFunc
+	maxPrefetchJobs uint32
+	prefetchJobs    uint32
+	downloadChan    chan *model.WorkTaskEncode
+	encodeChan      chan *model.WorkTaskEncode
+	uploadChan      chan *model.WorkTaskEncode
+	workerConfig    Config
+	tempPath        string
+	wg              sync.WaitGroup
+	mu              sync.RWMutex
+	terminal        *ConsoleWorkerPrinter
+	ctxStopQueues   context.Context
+	stopQueues      context.CancelFunc
 }
 
 func NewEncodeWorker(ctx context.Context, workerConfig Config, workerName string, printer *ConsoleWorkerPrinter) *EncodeWorker {
@@ -64,19 +64,20 @@ func NewEncodeWorker(ctx context.Context, workerConfig Config, workerName string
 	ctxStopQueues, stopQueues := context.WithCancel(ctx)
 	tempPath := filepath.Join(workerConfig.TemporalPath, fmt.Sprintf("worker-%s", workerName))
 	encodeWorker := &EncodeWorker{
-		name:          workerName,
-		ctx:           newCtx,
-		ctxStopQueues: ctxStopQueues,
-		stopQueues:    stopQueues,
-		wg:            sync.WaitGroup{},
-		cancelContext: cancel,
-		workerConfig:  workerConfig,
-		downloadChan:  make(chan *model.WorkTaskEncode, 100),
-		encodeChan:    make(chan *model.WorkTaskEncode, 100),
-		uploadChan:    make(chan *model.WorkTaskEncode, 100),
-		tempPath:      tempPath,
-		terminal:      printer,
-		prefetchJobs:  0,
+		name:            workerName,
+		ctx:             newCtx,
+		ctxStopQueues:   ctxStopQueues,
+		stopQueues:      stopQueues,
+		wg:              sync.WaitGroup{},
+		cancelContext:   cancel,
+		workerConfig:    workerConfig,
+		downloadChan:    make(chan *model.WorkTaskEncode, 100),
+		encodeChan:      make(chan *model.WorkTaskEncode, 100),
+		uploadChan:      make(chan *model.WorkTaskEncode, 100),
+		tempPath:        tempPath,
+		terminal:        printer,
+		maxPrefetchJobs: uint32(workerConfig.MaxPrefetchJobs),
+		prefetchJobs:    0,
 	}
 	os.MkdirAll(tempPath, os.ModePerm)
 
@@ -208,7 +209,7 @@ func (J *EncodeWorker) AcceptJobs() bool {
 		stopAfter := time.Date(now.Year(), now.Month(), now.Day(), J.workerConfig.StopAfter.Hour, J.workerConfig.StopAfter.Minute, 0, 0, now.Location())
 		return now.After(startAfter) && now.Before(stopAfter)
 	}
-	return J.PrefetchJobs() < MAX_PREFETCHED_JOBS
+	return J.PrefetchJobs() < uint32(J.workerConfig.MaxPrefetchJobs)
 }
 
 func (j *EncodeWorker) downloadFile(job *model.WorkTaskEncode, track *TaskTracks) (err error) {
