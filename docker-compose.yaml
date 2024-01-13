@@ -2,7 +2,7 @@ version: '3'
 
 services:
   server:
-    image: pando85/transcoder:latest-server
+    image: ghcr.io/pando85/transcoder:latest-server
     environment:
       LOGLEVEL: DEBUG
       BROKER_HOST: rabbitmq
@@ -40,7 +40,7 @@ services:
       - "5672:5672"
 
   worker:
-    image: pando85/transcoder:latest-worker
+    image: ghcr.io/pando85/transcoder:latest-worker
     command:
       - --log-level
       - debug
@@ -61,7 +61,7 @@ services:
       - server
 
   worker-pgs:
-    image: pando85/transcoder:latest-worker-pgs
+    image: ghcr.io/pando85/transcoder:latest-worker-pgs
     command:
       - --log-level
       - debug
