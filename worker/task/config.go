@@ -71,6 +71,6 @@ type Config struct {
 	DotnetPath        string `mapstructure:"dotnetPath"`
 }
 
-func (c Config) HaveSettedPeriodTime() bool {
+func (c Config) HaveSetPeriodTime() bool {
 	return c.StartAfter.Hour != 0 || c.StopAfter.Hour != 0
 }

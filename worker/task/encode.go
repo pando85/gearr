@@ -31,7 +31,7 @@ import (
 )
 
 const RESET_LINE = "\r\033[K"
-const MAX_PREFETCHED_JOBS = 2
+const MAX_PREFETCHED_JOBS = 1
 
 var ffmpegSpeedRegex = regexp.MustCompile(`speed=(\d*\.?\d+)x`)
 var ErrorJobNotFound = errors.New("job Not found")
@@ -113,7 +113,6 @@ func (E *EncodeWorker) resumeJobs() {
 				return nil
 			}
 			if taskEncode.LastState.IsEncoding() {
-				atomic.AddUint32(&E.prefetchJobs, 1)
 				t := E.terminal.AddTask(fmt.Sprintf("CACHED: %s", taskEncode.Task.TaskEncode.Id.String()), DownloadJobStepType)
 				t.Done()
 				E.encodeChan <- taskEncode.Task
@@ -204,7 +203,7 @@ func (J *EncodeWorker) AcceptJobs() bool {
 	if J.workerConfig.Paused {
 		return false
 	}
-	if J.workerConfig.HaveSettedPeriodTime() {
+	if J.workerConfig.HaveSetPeriodTime() {
 		startAfter := time.Date(now.Year(), now.Month(), now.Day(), J.workerConfig.StartAfter.Hour, J.workerConfig.StartAfter.Minute, 0, 0, now.Location())
 		stopAfter := time.Date(now.Year(), now.Month(), now.Day(), J.workerConfig.StopAfter.Hour, J.workerConfig.StopAfter.Minute, 0, 0, now.Location())
 		return now.After(startAfter) && now.Before(stopAfter)
@@ -212,7 +211,7 @@ func (J *EncodeWorker) AcceptJobs() bool {
 	return J.PrefetchJobs() < MAX_PREFETCHED_JOBS
 }
 
-func (j *EncodeWorker) dowloadFile(job *model.WorkTaskEncode, track *TaskTracks) (err error) {
+func (j *EncodeWorker) downloadFile(job *model.WorkTaskEncode, track *TaskTracks) (err error) {
 	err = retry.Do(func() error {
 		track.UpdateValue(0)
 		resp, err := http.Get(job.TaskEncode.DownloadURL)
@@ -223,7 +222,7 @@ func (j *EncodeWorker) dowloadFile(job *model.WorkTaskEncode, track *TaskTracks)
 			return ErrorJobNotFound
 		}
 		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf(fmt.Sprintf("not 200 respose in dowload code %d", resp.StatusCode))
+			return fmt.Errorf(fmt.Sprintf("not 200 response in download code %d", resp.StatusCode))
 		}
 		defer resp.Body.Close()
 		size, err := strconv.ParseInt(resp.Header.Get("Content-Length"), 10, 64)
@@ -260,7 +259,7 @@ func (j *EncodeWorker) dowloadFile(job *model.WorkTaskEncode, track *TaskTracks)
 			}
 			defer respsha256.Body.Close()
 			if respsha256.StatusCode != http.StatusOK {
-				return fmt.Errorf(fmt.Sprintf("not 200 respose in sha265 code %d", respsha256.StatusCode))
+				return fmt.Errorf(fmt.Sprintf("not 200 response in sha265 code %d", respsha256.StatusCode))
 			}
 
 			bodyBytes, err := ioutil.ReadAll(respsha256.Body)
@@ -304,7 +303,7 @@ func (J *EncodeWorker) getVideoParameters(inputFile string) (data *ffprobe.Probe
 
 	fileReader, err := os.Open(inputFile)
 	if err != nil {
-		return nil, -1, fmt.Errorf("error opening file %s because %v", inputFile, err)
+		return nil, -1, fmt.Errorf("Error opening file %s because %v", inputFile, err)
 	}
 	stat, err := fileReader.Stat()
 	if err != nil {
@@ -314,7 +313,7 @@ func (J *EncodeWorker) getVideoParameters(inputFile string) (data *ffprobe.Probe
 	defer fileReader.Close()
 	data, err = ffprobe.ProbeReader(J.ctx, fileReader)
 	if err != nil {
-		return nil, 0, fmt.Errorf("error getting data: %v", err)
+		return nil, 0, fmt.Errorf("Error getting data: %v", err)
 	}
 	return data, stat.Size(), nil
 }
@@ -555,7 +554,7 @@ func (J *EncodeWorker) UploadJob(task *model.WorkTaskEncode, track *TaskTracks) 
 		}
 		//wg.Wait()
 		if resp.StatusCode != 201 {
-			return fmt.Errorf("invalid status Code %d", resp.StatusCode)
+			return fmt.Errorf("invalid status code %d", resp.StatusCode)
 		}
 		track.UpdateValue(fileSize)
 		return nil
@@ -748,14 +747,14 @@ func (J *EncodeWorker) convertPGSToSrt(taskEncode *model.WorkTaskEncode, contain
 		case <-J.ctx.Done():
 			return J.ctx.Err()
 		case <-time.After(time.Minute * 90):
-			return errors.New("timeout Waiting for PGS Job Done")
+			return errors.New("timeout waiting for PGS job done")
 		case response, ok := <-out:
 			if !ok {
 				return nil
 			}
 			log.Debugf("response: %+v", response)
 			if response.Err != "" {
-				return fmt.Errorf("error on Process PGS %d: %s", response.PGSID, response.Err)
+				return fmt.Errorf("error on process PGS %d: %s", response.PGSID, response.Err)
 			}
 			subtFilePath := filepath.Join(taskEncode.WorkDir, fmt.Sprintf("%d.srt", response.PGSID))
 			err := ioutil.WriteFile(subtFilePath, response.Srt, os.ModePerm)
@@ -778,7 +777,7 @@ func (J *EncodeWorker) MKVExtract(subtitles []*Subtitle, taskEncode *model.WorkT
 
 	_, err := mkvExtractCommand.RunWithContext(J.ctx, command.NewAllowedCodesOption(0, 1))
 	if err != nil {
-		J.terminal.Cmd("MKVExtract Command:%s", mkvExtractCommand.GetFullCommand())
+		J.terminal.Cmd("MKVExtract command:%s", mkvExtractCommand.GetFullCommand())
 		return fmt.Errorf("MKVExtract unexpected error:%v", err.Error())
 	}
 
@@ -789,6 +788,7 @@ func (J *EncodeWorker) PrefetchJobs() uint32 {
 }
 
 func (J *EncodeWorker) AddDownloadJob(job *model.WorkTaskEncode) {
+	log.Debug("add another download job")
 	atomic.AddUint32(&J.prefetchJobs, 1)
 	J.downloadChan <- job
 }
@@ -799,7 +799,7 @@ func (J *EncodeWorker) downloadQueue() {
 		select {
 		case <-J.ctx.Done():
 		case <-J.ctxStopQueues.Done():
-			J.terminal.Warn("Stopping Download Queue")
+			J.terminal.Warn("stopping download queue")
 			J.wg.Done()
 			return
 		case job, ok := <-J.downloadChan:
@@ -810,7 +810,7 @@ func (J *EncodeWorker) downloadQueue() {
 			taskTrack := J.terminal.AddTask(job.TaskEncode.Id.String(), DownloadJobStepType)
 
 			J.updateTaskStatus(job, model.DownloadNotification, model.StartedNotificationStatus, "")
-			err := J.dowloadFile(job, taskTrack)
+			err := J.downloadFile(job, taskTrack)
 			if err != nil {
 				J.updateTaskStatus(job, model.DownloadNotification, model.FailedNotificationStatus, err.Error())
 				taskTrack.Error()
@@ -832,7 +832,7 @@ func (J *EncodeWorker) uploadQueue() {
 		select {
 		case <-J.ctx.Done():
 		case <-J.ctxStopQueues.Done():
-			J.terminal.Warn("Stopping Upload Queue")
+			J.terminal.Warn("stopping upload queue")
 			J.wg.Done()
 			return
 		case job, ok := <-J.uploadChan:
@@ -861,7 +861,7 @@ func (J *EncodeWorker) encodeQueue() {
 		select {
 		case <-J.ctx.Done():
 		case <-J.ctxStopQueues.Done():
-			J.terminal.Warn("Stopping Encode Queue")
+			J.terminal.Warn("stopping encode queue")
 			J.wg.Done()
 			return
 		case job, ok := <-J.encodeChan:
@@ -896,7 +896,7 @@ func (J *EncodeWorker) encodeVideo(job *model.WorkTaskEncode, track *TaskTracks)
 
 	videoContainer, err := J.clearData(sourceVideoParams)
 	if err != nil {
-		J.terminal.Warn("Error in clearData", J.GetID())
+		J.terminal.Warn("Error in clear data", J.GetID())
 		return err
 	}
 	if err = J.PGSMkvExtractDetectAndConvert(job, track, videoContainer); err != nil {
@@ -947,12 +947,12 @@ func (J *EncodeWorker) encodeVideo(job *model.WorkTaskEncode, track *TaskTracks)
 	}
 	diffDuration := encodedVideoParams.Format.DurationSeconds - sourceVideoParams.Format.DurationSeconds
 	if diffDuration > 60 || diffDuration < -60 {
-		err = fmt.Errorf("source File duration %f is diferent than encoded %f", sourceVideoParams.Format.DurationSeconds, encodedVideoParams.Format.DurationSeconds)
+		err = fmt.Errorf("source file duration %f is diferent than encoded %f", sourceVideoParams.Format.DurationSeconds, encodedVideoParams.Format.DurationSeconds)
 		J.updateTaskStatus(job, model.FFMPEGSNotification, model.FailedNotificationStatus, err.Error())
 		return err
 	}
 	if encodedVideoSize > sourceVideoSize {
-		err = fmt.Errorf("source File size %d bytes is less than encoded %d bytes", sourceVideoSize, encodedVideoSize)
+		err = fmt.Errorf("source file size %d bytes is less than encoded %d bytes", sourceVideoSize, encodedVideoSize)
 		J.updateTaskStatus(job, model.FFMPEGSNotification, model.FailedNotificationStatus, err.Error())
 		return err
 	}
