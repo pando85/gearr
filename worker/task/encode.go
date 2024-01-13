@@ -151,6 +151,7 @@ func (E *EncodeWorker) resumeJobs() {
 		case taskEncode.LastState.IsDownloading():
 			E.AddDownloadJob(taskEncode.Task)
 		case taskEncode.LastState.IsEncoding():
+			atomic.AddUint32(&E.prefetchJobs, 1)
 			t := E.terminal.AddTask(fmt.Sprintf("cached: %s", taskEncode.Task.TaskEncode.Id.String()), DownloadJobStepType)
 			t.Done()
 			E.encodeChan <- taskEncode.Task
