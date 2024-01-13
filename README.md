@@ -2,9 +2,9 @@
 
 ## Container images
 
-- server: `ghcr.io/pando85/transcoder:latest-server`
-- worker: `ghcr.io/pando85/transcoder:latest-worker`
-- PGS worker: `ghcr.io/pando85/transcoder:latest-worker-pgs`
+- server: `pando85/transcoder:latest-server`
+- worker: `pando85/transcoder:latest-worker`
+- PGS worker: `pando85/transcoder:latest-worker-pgs`
 
 ## Config
 
@@ -18,7 +18,7 @@ DIR=/tmp/images/encode
 mkdir -p $DIR
 docker run -it -d --restart unless-stopped --cpuset-cpus 16-32 \
     --name transcoder-worker --hostname $(hostname) \
-    -v $DIR:/tmp/ pando85/ghcr.io/pando85/transcoder:latest-worker \
+    -v $DIR:/tmp/ pando85/pando85/transcoder:latest-worker \
     --broker.host transcoder.example.com \
     --worker.priority 9
 ```
@@ -31,7 +31,7 @@ DIR=/tmp/images/pgs
 mkdir -p $DIR
 docker run -it -d --restart unless-stopped --cpuset-cpus 1-2 \
     --name transcoder-worker-pgs --hostname $(hostname) \
-    -v $DIR:/tmp/ ghcr.io/pando85/transcoder:latest-worker-pgs \
+    -v $DIR:/tmp/ pando85/transcoder:latest-worker-pgs \
     --broker.host transcoder.example.com \
     --worker.priority 9
 ```

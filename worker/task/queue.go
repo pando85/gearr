@@ -332,6 +332,7 @@ func (Q *RabbitMQClient) encodeQueueProcessor(ctx context.Context, taskQueueName
 					Q.printer.Error("[%s] Error Preparing Job Execution: %v", model.EncodeJobType, err)
 					continue
 				}
+				log.Debug("execute a new encoder job")
 				delivery.Ack(false)
 			}
 		}
