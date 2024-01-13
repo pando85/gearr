@@ -119,7 +119,7 @@ func (P *PGSWorker) Execute() (err error) {
 	}
 	f, err := os.Open(outputFilePath)
 	if err != nil {
-		log.Errorf("Error opening %s file", outputFilePath)
+		log.Errorf("error opening %s file", outputFilePath)
 		return err
 	}
 	defer f.Close()

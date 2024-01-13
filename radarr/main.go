@@ -145,7 +145,7 @@ func main() {
 			if !*dryRun {
 				err := AddMovieToTranscoderQueue(m.MovieFile.Path, transcoderPostURL)
 				if err != nil {
-					fmt.Println("Error:", err)
+					fmt.Println("error:", err)
 					os.Exit(1)
 				}
 			}
