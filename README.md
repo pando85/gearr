@@ -1,19 +1,23 @@
-# Transcoderd
+# Transcoder
 
-## Container images
+Transcoder is a program designed to operate on a server with two distinct types of agents for video transcoding tasks, specifically converting a video library to the x265 format using ffmpeg. The following information provides details on how to use and configure the Transcoder system.
 
-- server: `pando85/transcoder:latest-server`
-- worker: `pando85/transcoder:latest-worker`
-- PGS worker: `pando85/transcoder:latest-worker-pgs`
+## Container Images
 
-## Config
+- **Server:** `pando85/transcoder:latest-server`
+- **Worker:** `pando85/transcoder:latest-worker`
+- **PGS Worker:** `pando85/transcoder:latest-worker-pgs`
 
-Example in `config.example.yaml`.
+## Configuration
 
-## Client execution
+Refer to the `config.example.yaml` file for a configuration example.
 
-```
-DIR=/tmp/images/encode
+## Client Execution
+
+### Worker
+
+```bash
+DIR=/data/images/encode
 
 mkdir -p $DIR
 docker run -it -d --restart unless-stopped --cpuset-cpus 16-32 \
@@ -23,22 +27,27 @@ docker run -it -d --restart unless-stopped --cpuset-cpus 16-32 \
     --worker.priority 9
 ```
 
-**Warning:** PGS agent is also needed if PGS are detected. And it needs to run before they are detected to create the RabbitMQ queue.
+**Note:** Adjust the `--cpuset-cpus` and other parameters according to your system specifications.
 
-```
-DIR=/tmp/images/pgs
+### PGS Worker
+
+```bash
+DIR=/data/images/pgs
 
 mkdir -p $DIR
-docker run -it -d --restart unless-stopped --cpuset-cpus 1-2 \
+docker run -it -d --restart unless-stopped \
     --name transcoder-worker-pgs --hostname $(hostname) \
     -v $DIR:/tmp/ pando85/transcoder:latest-worker-pgs \
     --broker.host transcoder.example.com \
     --worker.priority 9
 ```
 
+**Warning:** The PGS agent must be started in advance if PGS is detected. It should run before detection to create the RabbitMQ queue.
 
-## Add movies from Radarr
+## Add Movies from Radarr
 
 ```bash
-go run ./radarr/main.go --api-key XXXXXX --url https://radarr.example.com --movies 5 --transcoder-url 'https://transcorder.example.com' --transcoder-token XXXXXX
+go run ./radarr/main.go --api-key XXXXXX --url https://radarr.example.com --movies 5 --transcoder-url 'https://transcoder.example.com' --transcoder-token XXXXXX
 ```
+
+Feel free to customize the parameters based on your Radarr and Transcoder setup.
