@@ -3,7 +3,7 @@ package progress
 import (
 	"errors"
 	"io"
-"sync"
+	"sync"
 )
 
 // Reader counts the bytes read through it.
@@ -22,8 +22,8 @@ func NewReader(r io.Reader) *Reader {
 		r: r,
 	}
 }
-func (r *Reader) Close() error{
-	r.err=errors.New("closed")
+func (r *Reader) Close() error {
+	r.err = errors.New("closed")
 	return nil
 }
 

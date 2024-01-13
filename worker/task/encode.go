@@ -273,7 +273,7 @@ func (j *EncodeWorker) downloadFile(job *model.WorkTaskEncode, track *TaskTracks
 			retry.Attempts(10),
 			retry.LastErrorOnly(true),
 			retry.OnRetry(func(n uint, err error) {
-				j.terminal.Error("Error %d on calculate checksum of downloaded job %s", err.Error())
+				j.terminal.Error("error %d on calculate checksum of downloaded job %s", err.Error())
 			}),
 			retry.RetryIf(func(err error) bool {
 				return !errors.Is(err, context.Canceled)
@@ -293,7 +293,7 @@ func (j *EncodeWorker) downloadFile(job *model.WorkTaskEncode, track *TaskTracks
 		retry.Attempts(180), //15 min
 		retry.LastErrorOnly(true),
 		retry.OnRetry(func(n uint, err error) {
-			j.terminal.Error("Error on downloading job %s", err.Error())
+			j.terminal.Error("error on downloading job %s", err.Error())
 		}),
 		retry.RetryIf(func(err error) bool {
 			return !(errors.Is(err, context.Canceled) || errors.Is(err, ErrorJobNotFound))
@@ -304,7 +304,7 @@ func (J *EncodeWorker) getVideoParameters(inputFile string) (data *ffprobe.Probe
 
 	fileReader, err := os.Open(inputFile)
 	if err != nil {
-		return nil, -1, fmt.Errorf("Error opening file %s because %v", inputFile, err)
+		return nil, -1, fmt.Errorf("error opening file %s because %v", inputFile, err)
 	}
 	stat, err := fileReader.Stat()
 	if err != nil {
@@ -314,7 +314,7 @@ func (J *EncodeWorker) getVideoParameters(inputFile string) (data *ffprobe.Probe
 	defer fileReader.Close()
 	data, err = ffprobe.ProbeReader(J.ctx, fileReader)
 	if err != nil {
-		return nil, 0, fmt.Errorf("Error getting data: %v", err)
+		return nil, 0, fmt.Errorf("error getting data: %v", err)
 	}
 	return data, stat.Size(), nil
 }
@@ -567,7 +567,7 @@ func (J *EncodeWorker) UploadJob(task *model.WorkTaskEncode, track *TaskTracks) 
 		retry.Attempts(17280),
 		retry.LastErrorOnly(true),
 		retry.OnRetry(func(n uint, err error) {
-			J.terminal.Error("Error on uploading job %s", err.Error())
+			J.terminal.Error("error on uploading job %s", err.Error())
 		}))
 
 	if err != nil {
@@ -633,7 +633,7 @@ func (J *EncodeWorker) updateTaskStatus(encode *model.WorkTaskEncode, notificati
 		Message:          message,
 	}
 	J.Manager.EventNotification(event)
-	J.terminal.Log("[%s] %s have been %s: %s", event.Id.String(), event.NotificationType, event.Status, event.Message)
+	J.terminal.Log("[%s] %s has been %s: %s", event.Id.String(), event.NotificationType, event.Status, event.Message)
 
 	J.saveTaskStatusDisk(&model.TaskStatus{
 		LastState: &event,
@@ -897,7 +897,7 @@ func (J *EncodeWorker) encodeVideo(job *model.WorkTaskEncode, track *TaskTracks)
 
 	videoContainer, err := J.clearData(sourceVideoParams)
 	if err != nil {
-		J.terminal.Warn("Error in clear data", J.GetID())
+		J.terminal.Warn("error in clear data", J.GetID())
 		return err
 	}
 	if err = J.PGSMkvExtractDetectAndConvert(job, track, videoContainer); err != nil {

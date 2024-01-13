@@ -118,7 +118,7 @@ func (Q *RabbitMQClient) EventNotification(event model.TaskEvent) {
 		log.Panic(err)
 	}
 
-	log.Debugf("[job %s] %s have been %s", event.Id.String(), event.NotificationType, event.Status)
+	log.Debugf("[job %s] %s has been %s", event.Id.String(), event.NotificationType, event.Status)
 }
 func (Q *RabbitMQClient) RequestPGSJob(pgsJob model.TaskPGS) <-chan *model.TaskPGSResponse {
 	pgsJobControl := NewPGSJobControl(pgsJob)
@@ -245,7 +245,7 @@ func (Q *RabbitMQClient) declareQueue(queueName string) (rabbitmq.Channel, amqp.
 		queue, err = channel.QueueDeclare(queueName, true, false, false, false, nil)
 		return err
 	}, retry.Delay(time.Second*1), retry.Attempts(10), retry.LastErrorOnly(true), retry.OnRetry(func(n uint, err error) {
-		Q.printer.Error("Error on declare queue %s:%v", queueName, err)
+		Q.printer.Error("error on declare queue %s:%v", queueName, err)
 	}))
 
 	if err != nil {
@@ -344,7 +344,7 @@ func (Q *RabbitMQClient) controlPGSJobExecution(jobWorker *JobWorker) {
 		err := retry.Do(func() error {
 			return jobWorker.pgsWorker.Clean()
 		}, retry.Delay(time.Second*1), retry.Attempts(3600), retry.LastErrorOnly(true), retry.OnRetry(func(n uint, err error) {
-			Q.printer.Error("Error %s for %d time on cleaning working path for worker %s", err.Error(), n, jobWorker.pgsWorker.GetID())
+			Q.printer.Error("error %s for %d time on cleaning working path for worker %s", err.Error(), n, jobWorker.pgsWorker.GetID())
 		}))
 		if err != nil {
 			panic(err)
@@ -388,7 +388,7 @@ func (Q *RabbitMQClient) publishAMQPMessage(queueName string, message amqp.Publi
 		log.Debugf("publishing message to queue %s", queueName)
 		return channel.Publish("", queueName, false, false, message)
 	}, retry.Delay(time.Second*1), retry.Attempts(3600), retry.LastErrorOnly(true), retry.OnRetry(func(n uint, err error) {
-		Q.printer.Warn("Error %s on publish AMQP Message %s", err.Error(), string(message.Body))
+		Q.printer.Warn("error %s on publish AMQP Message %s", err.Error(), string(message.Body))
 	}))
 }
 

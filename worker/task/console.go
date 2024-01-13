@@ -12,9 +12,9 @@ import (
 
 type JobStepType string
 
-const DownloadJobStepType = "Download"
-const UploadJobStepType = "Upload"
-const EncodeJobStepType = "Encode"
+const DownloadJobStepType = "download"
+const UploadJobStepType = "upload"
+const EncodeJobStepType = "encode"
 
 var (
 	unitScales = []int64{
