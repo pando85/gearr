@@ -42,6 +42,8 @@ services:
   worker:
     image: pando85/transcoder:latest-worker
     command:
+      - --log-level
+      - debug
       - --broker.host
       - rabbitmq
       - --broker.user
@@ -50,6 +52,31 @@ services:
       - rabbit_password
       - --worker.priority
       - "9"
+      - --worker.acceptedJobs
+      - encode
+      - --worker.pgsJobs
+      - "1"
+    depends_on:
+      - rabbitmq
+      - server
+
+  worker-pgs:
+    image: pando85/transcoder:latest-worker-pgs
+    command:
+      - --log-level
+      - debug
+      - --broker.host
+      - rabbitmq
+      - --broker.user
+      - rabbit
+      - --broker.password
+      - rabbit_password
+      - --worker.priority
+      - "9"
+      - --worker.pgsJobs
+      - "1"
+      - --worker.acceptedJobs
+      - pgstosrt
     depends_on:
       - rabbitmq
       - server

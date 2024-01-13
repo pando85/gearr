@@ -36,23 +36,27 @@ build-%:
 images: image-server image-worker
 images:		## build container images
 
-image-%:
-	@docker buildx build \
-		--load \
-		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
-		-f $*/Dockerfile \
-		.
-
 .PHONY: images
 push-images: push-image-server push-image-worker
 push-images:		## build and push container images
 
-push-image-%:
-	@docker buildx build \
-		--push \
+.PHONY: image-%
+.PHONY: push-image-%
+image-% push-image-%:
+	@export DOCKER_BUILD_ARG=$(if $(findstring push,$@),--push,--load); \
+	docker buildx build \
+		$${DOCKER_BUILD_ARG} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
 		-f $*/Dockerfile \
-		.
+		. ; \
+	if [[ "$*" == "worker" ]]; then \
+		docker buildx build \
+		$${DOCKER_BUILD_ARG} \
+		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$*-pgs \
+		--target pgs \
+		-f $*/Dockerfile \
+		. ; \
+	fi;
 
 MAX_ATTEMPTS ?= 10
 

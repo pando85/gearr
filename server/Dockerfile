@@ -1,4 +1,4 @@
-FROM golang:1.21.0 as builder
+FROM golang:1.21.6 as builder
 WORKDIR $GOPATH/src/transcoder/
 COPY . .
 RUN go run build.go build server && \
