@@ -123,9 +123,11 @@ func (Q *RabbitMQClient) EventNotification(event model.TaskEvent) {
 func (Q *RabbitMQClient) RequestPGSJob(pgsJob model.TaskPGS) <-chan *model.TaskPGSResponse {
 	pgsJobControl := NewPGSJobControl(pgsJob)
 	pgsJob.ReplyTo = Q.workerUniqueQueue
+	log.Debugf("pgsJobControl %s", pgsJobControl.task.Id)
 	if err := Q.publishMessage(Q.brokerConfig.TaskPGSToSrtQueueName, pgsJob); err != nil {
 		log.Panic(err)
 	}
+	log.Debugf("published job %s to queue %+v", pgsJob.Id, Q.brokerConfig.TaskPGSToSrtQueueName)
 
 	Q.EncodeWorker.pgs.Append(pgsJobControl)
 	return pgsJobControl.response
@@ -230,22 +232,31 @@ func (Q *RabbitMQClient) ObjectUnmarshall(rabbitEvent amqp.Delivery, object inte
 		log.Panic(err)
 	}
 }
-func (Q *RabbitMQClient) pgsQueueProcessor(ctx context.Context, taskQueueName string, jobType model.JobType) {
+
+func (Q *RabbitMQClient) declareQueue(queueName string) (rabbitmq.Channel, amqp.Queue, error) {
 	channel, err := Q.connection.Channel()
+	var queue amqp.Queue
+	if err != nil {
+		return *channel, queue, err
+	}
+
+	log.Debugf("declare queue: %s", queueName)
+	err = retry.Do(func() error {
+		queue, err = channel.QueueDeclare(queueName, true, false, false, false, nil)
+		return err
+	}, retry.Delay(time.Second*1), retry.Attempts(10), retry.LastErrorOnly(true), retry.OnRetry(func(n uint, err error) {
+		Q.printer.Error("Error on declare queue %s:%v", queueName, err)
+	}))
+
 	if err != nil {
 		log.Panic(err)
 	}
+	return *channel, queue, nil
+}
 
-	log.Debug("declare task queue")
-	args := amqp.Table{}
-	args["x-max-priority"] = 10
-	var taskQueue amqp.Queue
-	err = retry.Do(func() error {
-		taskQueue, err = channel.QueueDeclare(taskQueueName, true, false, false, false, args)
-		return err
-	}, retry.Delay(time.Second*1), retry.Attempts(10), retry.LastErrorOnly(true), retry.OnRetry(func(n uint, err error) {
-		Q.printer.Error("Error on Declare Queue %s:%v", taskQueueName, err)
-	}))
+func (Q *RabbitMQClient) pgsQueueProcessor(ctx context.Context, taskQueueName string, jobType model.JobType) {
+	log.Info("starting PGS queue processor")
+	channel, taskQueue, err := Q.declareQueue(taskQueueName)
 
 	if err != nil {
 		log.Panic(err)
@@ -274,7 +285,7 @@ func (Q *RabbitMQClient) pgsQueueProcessor(ctx context.Context, taskQueueName st
 					if err := worker.pgsWorker.Prepare(delivery.Body, Q); err != nil {
 						worker.pgsWorker.Clean()
 						delivery.Nack(false, true)
-						Q.printer.Error("[%s] Error Preparing Job Execution on %s", jobType, worker.pgsWorker.GetID())
+						Q.printer.Error("[%s] Error preparing job execution on %s", jobType, worker.pgsWorker.GetID())
 						continue
 					}
 					worker.jobID = worker.pgsWorker.GetTaskID()
@@ -288,23 +299,8 @@ func (Q *RabbitMQClient) pgsQueueProcessor(ctx context.Context, taskQueueName st
 }
 
 func (Q *RabbitMQClient) encodeQueueProcessor(ctx context.Context, taskQueueName string) {
-	log.Debug("start encode queue processor")
-	channel, err := Q.connection.Channel()
-	if err != nil {
-		log.Panic(err)
-	}
-
-	log.Debug("declare task queue")
-	args := amqp.Table{}
-	args["x-max-priority"] = 10
-	var taskQueue amqp.Queue
-	err = retry.Do(func() error {
-		taskQueue, err = channel.QueueDeclare(taskQueueName, true, false, false, false, args)
-		return err
-	}, retry.Delay(time.Second*1), retry.Attempts(10), retry.LastErrorOnly(true), retry.OnRetry(func(n uint, err error) {
-		Q.printer.Error("Error on Declare Queue %s:%v", taskQueueName, err)
-	}))
-
+	log.Info("starting encode queue processor")
+	channel, taskQueue, err := Q.declareQueue(taskQueueName)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -381,13 +377,14 @@ func (Q *RabbitMQClient) publishMessageTtl(queueName string, obj interface{}, tt
 	return Q.publishAMQPMessage(queueName, message)
 }
 func (Q *RabbitMQClient) publishAMQPMessage(queueName string, message amqp.Publishing) error {
+	log.Debugf("starting publish messages to queue %s", queueName)
 	return retry.Do(func() error {
 		channel, err := Q.connection.Channel()
 		if err != nil {
 			return err
 		}
 		defer channel.Close()
-
+		log.Debugf("publishing message to queue %s", queueName)
 		return channel.Publish("", queueName, false, false, message)
 	}, retry.Delay(time.Second*1), retry.Attempts(3600), retry.LastErrorOnly(true), retry.OnRetry(func(n uint, err error) {
 		Q.printer.Warn("Error %s on publish AMQP Message %s", err.Error(), string(message.Body))

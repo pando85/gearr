@@ -109,10 +109,7 @@ func (Q *RabbitMQServer) taskQueue(ctx context.Context) {
 	if err != nil {
 		log.Panic(err)
 	}
-	args := amqp.Table{}
-	args["x-max-priority"] = 10
-
-	taskQueue, err := taskChannel.QueueDeclare(Q.TaskEncodeQueueName, true, false, false, false, args)
+	taskQueue, err := taskChannel.QueueDeclare(Q.TaskEncodeQueueName, true, false, false, false, nil)
 	if err != nil {
 		log.Panic(err)
 	}

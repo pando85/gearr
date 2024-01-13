@@ -72,7 +72,7 @@ func (P *PGSWorker) Prepare(workData []byte, queueManager model.Manager) error {
 }
 
 func (P *PGSWorker) Execute() (err error) {
-	log.Infof("converting pgs to srt for job %s stream %d", P.task.Id.String(), P.task.PGSID)
+	log.Infof("converting PGS to SRT for job %s stream %d", P.task.Id.String(), P.task.PGSID)
 	//TODO events??
 	inputFilePath := filepath.Join(P.tempPath, strconv.Itoa(P.task.PGSID)+".sup")
 	outputFileName := strconv.Itoa(P.task.PGSID) + ".srt"
@@ -84,6 +84,8 @@ func (P *PGSWorker) Execute() (err error) {
 			errString = err.Error()
 		}
 
+		log.Debug("send SRT back to rabbit")
+
 		pgsTaskResponse := model.TaskPGSResponse{
 			Id:    P.task.Id,
 			PGSID: P.task.PGSID,
@@ -91,6 +93,7 @@ func (P *PGSWorker) Execute() (err error) {
 			Err:   errString,
 			Queue: P.task.ReplyTo,
 		}
+		log.Debugf("task response: %+v", pgsTaskResponse)
 		P.Manager.ResponsePGSJob(pgsTaskResponse)
 	}()
 
@@ -106,18 +109,22 @@ func (P *PGSWorker) Execute() (err error) {
 	log.Debugf("pgstosrt command: %s", PGSToSrtCommand.GetFullCommand())
 	ecode, err := PGSToSrtCommand.RunWithContext(P.ctx)
 	if err != nil {
+		log.Errorf("error executing pgstosrt command: %s", err)
 		return err
 	}
 	if ecode != 0 {
-		return errors.New(fmt.Sprintf("PGSToSrt invalid exit code %d", ecode))
+		errorMessage := fmt.Sprintf("PGSToSrt invalid exit code %d", ecode)
+		log.Error(errorMessage)
+		return errors.New(errorMessage)
 	}
 	f, err := os.Open(outputFilePath)
 	if err != nil {
+		log.Errorf("Error opening %s file", outputFilePath)
 		return err
 	}
 	defer f.Close()
 	outputBytes, err = ioutil.ReadAll(f)
-	log.Infof("converted pgs to srt for job %s stream %d", P.task.Id.String(), P.task.PGSID)
+	log.Infof("converted PGS to SRT for job %s stream %d", P.task.Id.String(), P.task.PGSID)
 	return err
 }
 

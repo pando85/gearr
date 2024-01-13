@@ -2,10 +2,12 @@ package task
 
 import (
 	"fmt"
-	"github.com/jedib0t/go-pretty/v6/progress"
-	"github.com/jedib0t/go-pretty/v6/text"
 	"sync"
 	"time"
+
+	"github.com/jedib0t/go-pretty/v6/progress"
+	"github.com/jedib0t/go-pretty/v6/text"
+	log "github.com/sirupsen/logrus"
 )
 
 type JobStepType string
@@ -158,6 +160,7 @@ func (C *TaskTracks) Increment(increment int) {
 }
 
 func (C *TaskTracks) Message(msg string) {
+	log.Debug("Showing progress message")
 	C.progressTracker.UpdateMessage(C.printer.Sprintf("[%s] %s", C.id, msg))
 }
 
