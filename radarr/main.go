@@ -50,6 +50,48 @@ func HumanReadableSize(size int64) string {
 	return fmt.Sprintf("%.2f %cB", float64(size)/float64(div), "KMGTPE"[exp])
 }
 
+type ScheduledItem struct {
+	SourcePath      string      `json:"sourcePath"`
+	DestinationPath string      `json:"destinationPath"`
+	ID              string      `json:"id"`
+	Events          interface{} `json:"events"`
+}
+
+type FailedItem struct {
+	SourcePath      string `json:"sourcePath"`
+	DestinationPath string `json:"destinationPath"`
+	ForceCompleted  bool   `json:"forceCompleted"`
+	ForceFailed     bool   `json:"forceFailed"`
+	ForceExecuting  bool   `json:"forceExecuting"`
+	ForceAdded      bool   `json:"forceAdded"`
+	Priority        int    `json:"priority"`
+	Error           string `json:"error"`
+}
+
+type Response struct {
+	Scheduled []ScheduledItem `json:"scheduled"`
+	Failed    []FailedItem    `json:"failed"`
+	Skipped   interface{}     `json:"skipped"`
+}
+
+func PrintTranscoderResponse(jsonStr []byte) error {
+	var response Response
+	if err := json.Unmarshal(jsonStr, &response); err != nil {
+		return err
+	}
+
+	switch {
+	case len(response.Scheduled) > 0:
+		fmt.Println("Movie successfully added.")
+	case len(response.Failed) > 0:
+		fmt.Println("Movie was not added.")
+	default:
+		return errors.New("Movie was neither added nor failed.")
+	}
+
+	return nil
+}
+
 func AddMovieToTranscoderQueue(path string, url string) error {
 	payload := map[string]string{
 		"SourcePath": path,
@@ -83,11 +125,17 @@ func AddMovieToTranscoderQueue(path string, url string) error {
 		return err
 	}
 
+	err = PrintTranscoderResponse(body)
+	if err != nil {
+		fmt.Printf("Error decoding transcoder response: %s", err)
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		// Return an error with a detailed message
 		return errors.New(fmt.Sprintf("Request failed with status %s. Response Body: %s", resp.Status, body))
 	}
 
+	fmt.Println()
 	return nil
 }
 
