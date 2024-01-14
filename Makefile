@@ -43,7 +43,7 @@ push-images:		## build and push container images
 .PHONY: image-%
 .PHONY: push-image-%
 image-% push-image-%:
-	@export DOCKER_BUILD_ARG=$(if $(findstring push,$@),--push,--load); \
+	@export DOCKER_BUILD_ARG="--cache-to type=inline $(if $(findstring push,$@),--push,--load)"; \
 	docker buildx build \
 		$${DOCKER_BUILD_ARG} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
@@ -64,38 +64,7 @@ MAX_ATTEMPTS ?= 10
 run-all: images
 run-all:	## run all services in local using docker-compose
 run-all:
-	@docker-compose up -d postgres rabbitmq
-	@ATTEMPT=1; \
-	while [ $$ATTEMPT -le $(MAX_ATTEMPTS) ]; do \
-		echo "Attempt $$ATTEMPT of $(MAX_ATTEMPTS)"; \
-		if docker-compose exec postgres psql -U postgres -d transcoder -c "SELECT 1" &> /dev/null; then \
-			echo "postgres running"; \
-			break; \
-		fi; \
-		sleep 1; \
-		ATTEMPT=$$((ATTEMPT + 1)); \
-	done
-	@ATTEMPT=1; \
-	while [ $$ATTEMPT -le $(MAX_ATTEMPTS) ]; do \
-		echo "Attempt $$ATTEMPT of $(MAX_ATTEMPTS)"; \
-		if docker-compose exec rabbitmq rabbitmqctl status &> /dev/null; then \
-			echo "rabbitmq running"; \
-			break; \
-		fi; \
-		sleep 1; \
-		ATTEMPT=$$((ATTEMPT + 1)); \
-	done
-	@docker-compose up -d
-	@ATTEMPT=1; \
-	while [ $$ATTEMPT -le $(MAX_ATTEMPTS) ]; do \
-		echo "Attempt $$ATTEMPT of $(MAX_ATTEMPTS)"; \
-		if curl -s http://localhost:8080/-/healthy; then \
-			echo "server running"; \
-			break; \
-		fi; \
-		sleep 1; \
-		ATTEMPT=$$((ATTEMPT + 1)); \
-	done
+	@scripts/run-all.sh
 
 .PHONY: down
 down:		## stop all containers from docker-compose
@@ -114,5 +83,5 @@ demo-files:
 
 .PHONY: test-upload
 test-upload:	## upload job to test all process
-test-upload: run-all
-	@scripts/upload.sh
+test-upload: demo-files run-all
+	@scripts/test-upload.sh

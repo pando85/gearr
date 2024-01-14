@@ -76,6 +76,53 @@ func (W *WebServer) addJobs(writer http.ResponseWriter, request *http.Request) {
 	writer.Write(b)
 }
 
+func (W *WebServer) handleJobsResponse(writer http.ResponseWriter, jobs interface{}, err error) {
+	if err != nil {
+		webError(writer, err, 500)
+		return
+	}
+
+	b, err := json.MarshalIndent(jobs, "", "\t")
+	if err != nil {
+		if webError(writer, err, 500) {
+			return
+		}
+	}
+
+	writer.WriteHeader(http.StatusOK)
+	writer.Write(b)
+}
+
+func (W *WebServer) getAllJobs(writer http.ResponseWriter, request *http.Request) {
+	videos, err := W.scheduler.GetJobs(W.ctx)
+	W.handleJobsResponse(writer, videos, err)
+}
+
+func (W *WebServer) getJobs(writer http.ResponseWriter, request *http.Request) {
+	values := request.URL.Query()
+	uuid := values.Get("uuid")
+	defer request.Body.Close()
+
+	if uuid == "" {
+		W.getAllJobs(writer, request)
+	} else {
+		video, err := W.scheduler.GetJob(W.ctx, uuid)
+		W.handleJobsResponse(writer, video, err)
+	}
+}
+
+func (W *WebServer) jobs(writer http.ResponseWriter, request *http.Request) {
+	log.Debugf("method: %s", request.Method)
+	switch request.Method {
+	case http.MethodGet:
+		W.getJobs(writer, request)
+	case http.MethodPost:
+		W.addJobs(writer, request)
+	default:
+		http.Error(writer, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
 func (W *WebServer) upload(writer http.ResponseWriter, request *http.Request) {
 	values := request.URL.Query()
 	uuid := values.Get("uuid")
@@ -204,7 +251,7 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler) *WebSer
 	}
 
 	rtr.HandleFunc("/-/healthy", webServer.healthCheck).Methods("GET")
-	rtr.Handle("/api/v1/job/", webServer.AuthFunc(webServer.addJobs)).Methods("POST")
+	rtr.Handle("/api/v1/job/", webServer.AuthFunc(webServer.jobs)).Methods("GET", "POST")
 	rtr.HandleFunc("/api/v1/job/cancel", webServer.cancelJob).Methods("GET")
 	rtr.HandleFunc("/api/v1/download", webServer.download).Methods("GET")
 	rtr.HandleFunc("/api/v1/checksum", webServer.checksum).Methods("GET")

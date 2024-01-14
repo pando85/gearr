@@ -24,6 +24,7 @@ type Repository interface {
 	PingServerUpdate(ctx context.Context, name string, ip string, queueName string) error
 	GetTimeoutJobs(ctx context.Context, timeout time.Duration) ([]*model.TaskEvent, error)
 	GetJob(ctx context.Context, uuid string) (*model.Video, error)
+	GetJobs(ctx context.Context) (*[]model.Video, error)
 	GetJobByPath(ctx context.Context, path string) (*model.Video, error)
 	AddNewTaskEvent(ctx context.Context, event *model.TaskEvent) error
 	AddVideo(ctx context.Context, video *model.Video) error
@@ -188,6 +189,15 @@ func (S *SQLRepository) GetJob(ctx context.Context, uuid string) (video *model.V
 	return video, err
 }
 
+func (S *SQLRepository) GetJobs(ctx context.Context) (videos *[]model.Video, returnError error) {
+	db, err := S.getConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	videos, err = S.getJobs(ctx, db)
+	return videos, err
+}
+
 func (S *SQLRepository) GetTimeoutJobs(ctx context.Context, timeout time.Duration) (taskEvent []*model.TaskEvent, returnError error) {
 	conn, err := S.getConnection(ctx)
 	if err != nil {
@@ -223,6 +233,22 @@ func (S *SQLRepository) getJob(ctx context.Context, tx Transaction, uuid string)
 	video.Events = taskEvents
 	return &video, nil
 }
+
+func (S *SQLRepository) getJobs(ctx context.Context, tx Transaction) (*[]model.Video, error) {
+	rows, err := tx.QueryContext(ctx, "select id from videos")
+	if err != nil {
+		return nil, err
+	}
+	videos := []model.Video{}
+	if rows.Next() {
+		video := model.Video{}
+		rows.Scan(&video.Id)
+		videos = append(videos, video)
+	}
+	rows.Close()
+	return &videos, nil
+}
+
 func (S *SQLRepository) getTaskEvents(ctx context.Context, tx Transaction, uuid string) ([]*model.TaskEvent, error) {
 	rows, err := tx.QueryContext(ctx, "select * from video_events where video_id=$1 order by event_time asc", uuid)
 	if err != nil {

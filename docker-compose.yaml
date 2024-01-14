@@ -13,6 +13,7 @@ services:
       DATABASE_PASSWORD: postgres_password
       DATABASE_DATABASE: transcoder
       SCHEDULER_DOMAIN: http://server:8080
+      SCHEDULER_MINFILESIZE: "100"
       WEB_TOKEN: super-secret-token
     volumes:
       - ./demo-files:/data/current:ro
