@@ -4,10 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"time"
 	"transcoder/model"
+
+	_ "embed"
 
 	_ "github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
@@ -71,9 +71,8 @@ func (S *SQLTransaction) ExecContext(ctx context.Context, query string, args ...
 }
 
 type SQLRepository struct {
-	db     *sql.DB
-	con    Transaction
-	assets http.FileSystem
+	db  *sql.DB
+	con Transaction
 }
 
 type SQLServerConfig struct {
@@ -86,7 +85,7 @@ type SQLServerConfig struct {
 	SSLMode  string `mapstructure:"sslmode"`
 }
 
-func NewSQLRepository(config SQLServerConfig, assets http.FileSystem) (*SQLRepository, error) {
+func NewSQLRepository(config SQLServerConfig) (*SQLRepository, error) {
 	connectionString := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s", config.Host, config.Port, config.User, config.Password, config.Database, config.SSLMode)
 	db, err := sql.Open(config.Driver, connectionString)
 	if err != nil {
@@ -102,8 +101,7 @@ func NewSQLRepository(config SQLServerConfig, assets http.FileSystem) (*SQLRepos
 		}
 	}()*/
 	return &SQLRepository{
-		db:     db,
-		assets: assets,
+		db: db,
 	}, nil
 
 }
@@ -126,17 +124,11 @@ func (S *SQLRepository) ProcessEvent(ctx context.Context, taskEvent *model.TaskE
 	return err
 }
 
+//go:embed resources/database.sql
+var databaseScript string
+
 func (S *SQLRepository) prepareDatabase(ctx context.Context) (returnError error) {
-	schemeName, err := S.assets.Open("/database/database.sql")
-	if err != nil {
-		return err
-	}
-	filebytes, err := ioutil.ReadAll(schemeName)
-	if err != nil {
-		return err
-	}
-	databaseScript := string(filebytes)
-	err = S.WithTransaction(ctx, func(ctx context.Context, tx Repository) error {
+	err := S.WithTransaction(ctx, func(ctx context.Context, tx Repository) error {
 		con, err := tx.getConnection(ctx)
 		if err != nil {
 			return err

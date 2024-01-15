@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -52,8 +51,6 @@ func init() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath("/etc/transcoderd/")
-	viper.AddConfigPath("$HOME/.transcoderd/")
 	viper.AddConfigPath(".")
 
 	err := viper.ReadInConfig()
@@ -127,10 +124,9 @@ func main() {
 	}()
 	//Prepare resources
 	log.Infof("preparing to runwithcontext")
-	prepareResources(ctx, assets)
-	//Repository persist
+
 	var repo repository.Repository
-	repo, err := repository.NewSQLRepository(opts.Database, assets)
+	repo, err := repository.NewSQLRepository(opts.Database)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -158,12 +154,6 @@ func main() {
 	webServer = web.NewWebServer(opts.Web, scheduler)
 	webServer.Run(wg, ctx)
 	wg.Wait()
-}
-
-func prepareResources(ctx context.Context, assets http.FileSystem) {
-	if err := helper.DesembedFSFFProbe(assets); err != nil {
-		panic(err)
-	}
 }
 
 func shutdownHandler(ctx context.Context, sigs chan os.Signal, cancel context.CancelFunc) {

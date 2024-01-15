@@ -28,9 +28,10 @@ server:		## build server binary
 worker: build-worker
 worker:		## build worker binary
 
+.PHONY: build-%
 build-%:
-	@echo "Building $*"
-	@GOOS=$(GOOS) GOARCH=$(GOARCH) $(GO) run build.go build $*
+	@echo "Building dist/transcoder-$*"
+	@CGO_ENABLED=0 go build -o dist/transcoder-$* $*/main.go
 
 .PHONY: images
 images: image-server image-worker
@@ -42,19 +43,20 @@ push-images:		## build and push container images
 
 .PHONY: image-%
 .PHONY: push-image-%
-image-% push-image-%:
+image-% push-image-%: build-%
 	@export DOCKER_BUILD_ARG="--cache-to type=inline $(if $(findstring push,$@),--push,--load)"; \
 	docker buildx build \
 		$${DOCKER_BUILD_ARG} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
-		-f $*/Dockerfile \
+		-f Dockerfile \
+		--target $* \
 		. ; \
 	if [ "$*" = "worker" ]; then \
 		docker buildx build \
 		$${DOCKER_BUILD_ARG} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$*-pgs \
-		--target pgs \
-		-f $*/Dockerfile \
+		--target worker-pgs \
+		-f Dockerfile \
 		. ; \
 	fi;
 

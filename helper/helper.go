@@ -18,17 +18,16 @@ import (
 	"github.com/avast/retry-go"
 	"github.com/rakyll/statik/fs"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/vansante/go-ffprobe.v2"
 )
 
 var (
 	ApplicationFileName  string
 	ValidVideoExtensions = []string{"mp4", "mpg", "m4a", "m4v", "f4v", "f4a", "m4b", "m4r", "f4b", "mov ", "ogg", "oga", "ogv", "ogx ", "wmv", "wma", "asf ", "webm", "avi", "flv", "vob ", "mkv"}
 	STUNServers          = []string{"https://api.ipify.org?format=text", "https://ifconfig.me", "https://ident.me/", "https://myexternalip.com/raw"}
-	updateURL            = "https://github.com/pando85/transcoderd/releases/download/master/%s"
+	updateURL            = "https://github.com/pando85/transcoder-server/releases/download/master/%s"
 	workingDirectory     = filepath.Join(os.TempDir(), "transcoder")
-	ffmpegPath           = ""
-	mkvExtractPath       = ""
+	ffmpegPath           = "ffmpeg"
+	mkvExtractPath       = "mkvextract"
 )
 
 func ValidExtension(extension string) bool {
@@ -144,53 +143,6 @@ func DisembedFile(embedFS http.FileSystem, statikPath string, targetFilePath str
 	return targetCopyFile, nil
 }
 
-func DesembedFSFFProbe(embedFS http.FileSystem) error {
-	ffprobeFile := "ffprobe"
-	if runtime.GOOS == "windows" {
-		ffprobeFile = ffprobeFile + ".exe"
-	}
-	ffprobePath, err := DisembedFile(embedFS, fmt.Sprintf("/ffprobe/%s-%s/%s", runtime.GOOS, runtime.GOARCH, ffprobeFile), ffprobeFile)
-	if err != nil {
-		return err
-	}
-
-	ffprobe.SetFFProbeBinPath(ffprobePath)
-	return nil
-}
-
-func DesembedFFmpeg(embedFS http.FileSystem) error {
-	ffmpegFileName := "ffmpeg"
-	if runtime.GOOS == "windows" {
-		ffmpegFileName = ffmpegFileName + ".exe"
-	}
-	DisembedPath, err := DisembedFile(embedFS, fmt.Sprintf("/ffmpeg/%s-%s", runtime.GOOS, runtime.GOARCH), ffmpegFileName)
-	if err != nil {
-		return err
-	}
-	setFFmpegPath(filepath.Join(DisembedPath, ffmpegFileName))
-	return nil
-}
-
-func DesembedMKVExtract(embedFS http.FileSystem) error {
-	mkvExtractFileName := "mkvextract"
-	if runtime.GOOS == "windows" {
-		mkvExtractFileName = mkvExtractFileName + ".exe"
-	}
-	DisembedPath, err := DisembedFile(embedFS, fmt.Sprintf("/mkvextract/%s-%s", runtime.GOOS, runtime.GOARCH), mkvExtractFileName)
-	if err != nil {
-		return err
-	}
-	setMKVExtractPath(filepath.Join(DisembedPath, mkvExtractFileName))
-	return nil
-}
-
-func setFFmpegPath(newFFmpegPath string) {
-	ffmpegPath = newFFmpegPath
-}
-func setMKVExtractPath(newMKVExtractPath string) {
-	mkvExtractPath = newMKVExtractPath
-}
-
 func GetFFmpegPath() string {
 	return ffmpegPath
 }
@@ -265,7 +217,7 @@ func DownloadAppLatestVersion() string {
 	if runtime.GOOS == "windows" {
 		ext = ".exe"
 	}
-	RunFile, err := ioutil.TempFile("", fmt.Sprintf("transcoderw*%s", ext))
+	RunFile, err := ioutil.TempFile("", fmt.Sprintf("transcoder-worker*%s", ext))
 
 	if err != nil {
 		panic(err)

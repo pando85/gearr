@@ -12,6 +12,7 @@ type MapItem struct {
 	Key   string
 	Value interface{}
 }
+
 func (cm *Map) Set(key string, value interface{}) {
 	cm.Lock()
 	defer cm.Unlock()

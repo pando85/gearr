@@ -983,7 +983,7 @@ func (F *FFMPEGGenerator) setAudioFilters(container *ContainerData) {
 	}
 }
 func (F *FFMPEGGenerator) setVideoFilters(container *ContainerData) {
-	videoFilterParameters := fmt.Sprintf("\"scale='min(%d,iw)':-1:force_original_aspect_ratio\"", 1920)
+	videoFilterParameters := fmt.Sprintf("\"scale='min(%d,iw)':-1:force_original_aspect_ratio=decrease\"", 1920)
 	videoEncoderQuality := fmt.Sprintf("-c:v %s -crf %d -preset %s", "libx265", 21, "medium")
 	//TODO HDR??
 	videoHDR := ""

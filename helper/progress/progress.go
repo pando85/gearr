@@ -1,9 +1,9 @@
 package progress
 
 import (
-"context"
-"io"
-"time"
+	"context"
+	"io"
+	"time"
 )
 
 // Counter counts bytes.
@@ -23,7 +23,7 @@ type Counter interface {
 type Progress struct {
 	n         float64
 	size      float64
-	speed	  float64
+	speed     float64
 	estimated time.Time
 	err       error
 }
@@ -31,11 +31,11 @@ type Progress struct {
 func (p Progress) Err() error {
 	return p.err
 }
+
 // Speed
 func (p Progress) Speed() float64 {
 	return p.speed
 }
-
 
 // N gets the total number of bytes read or written
 // so far.
@@ -97,9 +97,9 @@ func (p Progress) Estimated() time.Time {
 // If the context cancels the operation, the channel is closed.
 func NewTicker(ctx context.Context, counter Counter, size int64, d time.Duration) <-chan Progress {
 	var (
-		lastCheckTime = time.Now()
+		lastCheckTime  = time.Now()
 		lastBytesCheck = int64(0)
-		ch      = make(chan Progress)
+		ch             = make(chan Progress)
 	)
 	go func() {
 		defer close(ch)
@@ -116,16 +116,16 @@ func NewTicker(ctx context.Context, counter Counter, size int64, d time.Duration
 				}
 				pastLastCheckpoint := time.Since(lastCheckTime)
 				if progress.n > 0.0 {
-					speedByteMillisecond := float64((counter.N()-lastBytesCheck) / pastLastCheckpoint.Milliseconds())
+					speedByteMillisecond := float64((counter.N() - lastBytesCheck) / pastLastCheckpoint.Milliseconds())
 					progress.speed = speedByteMillisecond * float64(1000)
-					remaining:= (progress.size-progress.n)/ progress.speed
-					remainingTime:=time.Duration(remaining)*time.Second
-					progress.estimated=time.Now().Add(remainingTime)
+					remaining := (progress.size - progress.n) / progress.speed
+					remainingTime := time.Duration(remaining) * time.Second
+					progress.estimated = time.Now().Add(remainingTime)
 				}
-				lastBytesCheck=counter.N()
-				lastCheckTime=time.Now()
+				lastBytesCheck = counter.N()
+				lastCheckTime = time.Now()
 				ch <- progress
-				if progress.Complete() || counter.Err()!=nil {
+				if progress.Complete() || counter.Err() != nil {
 					return
 				}
 			}

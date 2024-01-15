@@ -3,17 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"reflect"
 	"runtime"
+	"strings"
 	"sync"
 	"syscall"
 	"transcoder/broker"
 	"transcoder/cmd"
 	"transcoder/helper"
-	"transcoder/model"
 	"transcoder/worker/task"
 	"transcoder/worker/update"
 
@@ -56,13 +55,15 @@ func init() {
 	pflag.String("worker.tesseractDataPath", "/tessdata", "tesseract data path (https://github.com/tesseract-ocr/tessdata/)")
 	pflag.Var(&opts.Worker.StartAfter, "worker.startAfter", "Accept jobs only After HH:mm")
 	pflag.Var(&opts.Worker.StopAfter, "worker.stopAfter", "Stop Accepting new Jobs after HH:mm")
+
 	pflag.Usage = usage
+
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
-	viper.AddConfigPath("/etc/transcoderw/")
-	viper.AutomaticEnv()
-	viper.SetEnvPrefix("TR")
+
 	err = viper.ReadInConfig()
 	if err != nil {
 		switch err.(type) {
@@ -114,9 +115,6 @@ func main() {
 		updater := update.NewUpdater()
 		updater.Run(wg, ctx)
 	} else {
-		//Prepare work environment
-		prepareWorkerEnvironment(ctx, assets, &opts.Worker.Jobs)
-
 		printer := task.NewConsoleWorkerPrinter()
 
 		//BrokerClient System
@@ -137,21 +135,4 @@ func shutdownHandler(ctx context.Context, sigs chan os.Signal, cancel context.Ca
 	}
 
 	signal.Stop(sigs)
-}
-
-func prepareWorkerEnvironment(ctx context.Context, assets http.FileSystem, acceptedJobs *task.AcceptedJobs) {
-	log.Infof("initializing environment")
-	if acceptedJobs.IsAccepted(model.EncodeJobType) {
-		if err := helper.DesembedFSFFProbe(assets); err != nil {
-			panic(err)
-		}
-
-		if err := helper.DesembedFFmpeg(assets); err != nil {
-			panic(err)
-		}
-
-		if err := helper.DesembedMKVExtract(assets); err != nil {
-			panic(err)
-		}
-	}
 }
