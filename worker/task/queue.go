@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
-	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -275,12 +274,6 @@ func (Q *RabbitMQClient) pgsQueueProcessor(ctx context.Context, taskQueueName st
 						continue
 					}
 
-					if !helper.IsApplicationUpToDate() {
-						delivery.Nack(false, true)
-						Q.printer.Warn("application is not up to date, closing")
-						os.Exit(1)
-					}
-
 					Q.printer.Log("[%s] Job Assigned to %s", jobType, worker.pgsWorker.GetID())
 					if err := worker.pgsWorker.Prepare(delivery.Body, Q); err != nil {
 						worker.pgsWorker.Clean()
@@ -317,14 +310,6 @@ func (Q *RabbitMQClient) encodeQueueProcessor(ctx context.Context, taskQueueName
 				if err != nil || !ok {
 					<-time.After(time.Second * 5)
 					continue
-				}
-
-				if !helper.IsApplicationUpToDate() {
-					delivery.Nack(false, true)
-					log.Error("application is not up to date, waiting for pending jobs to complete, before update")
-					Q.EncodeWorker.encodeWorker.StopQueues()
-					<-time.After(time.Second * 2)
-					os.Exit(1)
 				}
 
 				if err := Q.EncodeWorker.encodeWorker.Execute(delivery.Body); err != nil {
