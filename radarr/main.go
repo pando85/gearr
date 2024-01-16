@@ -119,22 +119,17 @@ func AddMovieToTranscoderQueue(path string, url string) error {
 	}
 	defer resp.Body.Close()
 
-	// Read the response body
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
 
 	err = PrintTranscoderResponse(body)
-	if err != nil {
-		fmt.Printf("Error decoding transcoder response: %s", err)
-	}
-
 	if resp.StatusCode != http.StatusOK {
-		// Return an error with a detailed message
-		return errors.New(fmt.Sprintf("Request failed with status %s. Response Body: %s", resp.Status, body))
+		fmt.Fprintf(os.Stderr, "Failed with status %s and message: %s", resp.Status, body)
 	}
 
+	fmt.Println()
 	fmt.Println()
 	return nil
 }
