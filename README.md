@@ -4,9 +4,9 @@ Transcoder is a program designed to operate on a server with two distinct types 
 
 ## Container Images
 
-- **Server:** `pando85/transcoder:latest-server`
-- **Worker:** `pando85/transcoder:latest-worker`
-- **PGS Worker:** `pando85/transcoder:latest-worker-pgs`
+- **Server:** `ghcr.io/pando85/transcoder:latest-server`
+- **Worker:** `ghcr.io/pando85/transcoder:latest-worker`
+- **PGS Worker:** `ghcr.io/pando85/transcoder:latest-worker-pgs`
 
 ## Configuration
 
@@ -22,7 +22,7 @@ DIR=/data/images/encode
 mkdir -p $DIR
 docker run -it -d --restart unless-stopped --cpuset-cpus 16-32 \
     --name transcoder-worker --hostname $(hostname) \
-    -v $DIR:/tmp/ pando85/pando85/transcoder:latest-worker \
+    -v $DIR:/tmp/ ghcr.io/pando85/transcoder:latest-worker \
     --broker.host transcoder.example.com \
     --worker.priority 9
 ```
@@ -37,7 +37,7 @@ DIR=/data/images/pgs
 mkdir -p $DIR
 docker run -it -d --restart unless-stopped \
     --name transcoder-worker-pgs --hostname $(hostname) \
-    -v $DIR:/tmp/ pando85/transcoder:latest-worker-pgs \
+    -v $DIR:/tmp/ ghcr.io/pando85/transcoder:latest-worker-pgs \
     --broker.host transcoder.example.com \
     --worker.priority 9
 ```

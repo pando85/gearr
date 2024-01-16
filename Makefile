@@ -5,7 +5,7 @@ GOOPTS ?=
 GOOS ?= $(shell $(GO) env GOHOSTOS)
 GOARCH ?= $(shell $(GO) env GOHOSTARCH)
 
-IMAGE_NAME ?= pando85/transcoder
+IMAGE_NAME ?= ghcr.io/pando85/transcoder
 IMAGE_VERSION ?= latest
 
 .DEFAULT: help
@@ -47,6 +47,7 @@ image-% push-image-%: build-%
 	@export DOCKER_BUILD_ARG="--cache-to type=inline $(if $(findstring push,$@),--push,--load)"; \
 	docker buildx build \
 		$${DOCKER_BUILD_ARG} \
+		--cache-from $(IMAGE_NAME):latest-$* \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
 		-f Dockerfile \
 		--target $* \
@@ -54,7 +55,8 @@ image-% push-image-%: build-%
 	if [ "$*" = "worker" ]; then \
 		docker buildx build \
 		$${DOCKER_BUILD_ARG} \
-		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$*-pgs \
+		--cache-from $(IMAGE_NAME):latest-worker-pgs \
+		-t $(IMAGE_NAME):$(IMAGE_VERSION)-worker-pgs \
 		--target worker-pgs \
 		-f Dockerfile \
 		. ; \
