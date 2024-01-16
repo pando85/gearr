@@ -155,7 +155,7 @@ func (S *SQLRepository) GetWorker(ctx context.Context, name string) (worker *mod
 	return worker, err
 }
 func (S *SQLRepository) getWorker(ctx context.Context, db Transaction, name string) (*model.Worker, error) {
-	rows, err := db.QueryContext(ctx, "select * from workers where name=$1", name)
+	rows, err := db.QueryContext(ctx, "SELECT * FROM workers WHERE name=$1", name)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +203,7 @@ func (S *SQLRepository) GetTimeoutJobs(ctx context.Context, timeout time.Duratio
 }
 
 func (S *SQLRepository) getJob(ctx context.Context, tx Transaction, uuid string) (*model.Video, error) {
-	rows, err := tx.QueryContext(ctx, "select * from videos where id=$1", uuid)
+	rows, err := tx.QueryContext(ctx, "SELECT id, source_path, destination_path FROM videos WHERE id=$1", uuid)
 	if err != nil {
 		return nil, err
 	}
@@ -223,11 +223,16 @@ func (S *SQLRepository) getJob(ctx context.Context, tx Transaction, uuid string)
 		return nil, err
 	}
 	video.Events = taskEvents
+	status, statusMessage, _ := S.getVideoStatus(ctx, tx, video.Id.String())
+
+	video.Status = status
+	video.StatusMessage = statusMessage
+
 	return &video, nil
 }
 
 func (S *SQLRepository) getJobs(ctx context.Context, tx Transaction) (*[]model.Video, error) {
-	rows, err := tx.QueryContext(ctx, "select id from videos")
+	rows, err := tx.QueryContext(ctx, "SELECT id FROM videos")
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +247,7 @@ func (S *SQLRepository) getJobs(ctx context.Context, tx Transaction) (*[]model.V
 }
 
 func (S *SQLRepository) getTaskEvents(ctx context.Context, tx Transaction, uuid string) ([]*model.TaskEvent, error) {
-	rows, err := tx.QueryContext(ctx, "select * from video_events where video_id=$1 order by event_time asc", uuid)
+	rows, err := tx.QueryContext(ctx, "SELECT video_id, video_event_id, worker_name, event_time, event_type, notification_type, status, message FROM video_events WHERE video_id=$1 order by event_time asc", uuid)
 	if err != nil {
 		log.Errorf("no video events founds by uuid: %s", uuid)
 		return nil, err
@@ -257,9 +262,26 @@ func (S *SQLRepository) getTaskEvents(ctx context.Context, tx Transaction, uuid 
 	log.Debugf("task events: %+v", taskEvents)
 	return taskEvents, nil
 }
+
+func (S *SQLRepository) getVideoStatus(ctx context.Context, tx Transaction, uuid string) (string, string, error) {
+	var status string
+	var message string
+
+	rows, err := tx.QueryContext(ctx, "SELECT status, message FROM video_status WHERE video_id=$1", uuid)
+	if err != nil {
+		return status, message, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		rows.Scan(&status, &message)
+	}
+	return status, message, nil
+}
+
 func (S *SQLRepository) getJobByPath(ctx context.Context, tx Transaction, path string) (*model.Video, error) {
 	log.Debugf("get video by path: %s", path)
-	rows, err := tx.QueryContext(ctx, "select * from videos where source_path=$1", path)
+	rows, err := tx.QueryContext(ctx, "SELECT * FROM videos WHERE source_path=$1", path)
 	if err != nil {
 		log.Errorf("no video founds by path: %s", path)
 		return nil, err
@@ -315,7 +337,7 @@ func (S *SQLRepository) AddNewTaskEvent(ctx context.Context, event *model.TaskEv
 }
 
 func (S *SQLRepository) addNewTaskEvent(ctx context.Context, tx Transaction, event *model.TaskEvent) error {
-	rows, err := tx.QueryContext(ctx, "select max(video_event_id) from video_events where video_id=$1", event.Id.String())
+	rows, err := tx.QueryContext(ctx, "SELECT max(video_event_id) FROM video_events WHERE video_id=$1", event.Id.String())
 	if err != nil {
 		return err
 	}
@@ -351,9 +373,9 @@ func (S *SQLRepository) getTimeoutJobs(ctx context.Context, tx Transaction, time
 	timeoutDate := time.Now().Add(-timeout)
 	timeoutDate.Format(time.RFC3339)
 
-	rows, err := tx.QueryContext(ctx, "select v.* from video_events v right join "+
-		"(select video_id,max(video_event_id) as video_event_id  from video_events where notification_type='Job'  group by video_id) as m "+
-		"on m.video_id=v.video_id and m.video_event_id=v.video_event_id where status='started' and v.event_time < $1::timestamptz", timeoutDate)
+	rows, err := tx.QueryContext(ctx, "SELECT v.* FROM video_events v right join "+
+		"(SELECT video_id,max(video_event_id) as video_event_id  FROM video_events WHERE notification_type='Job'  group by video_id) as m "+
+		"on m.video_id=v.video_id and m.video_event_id=v.video_event_id WHERE status='started' and v.event_time < $1::timestamptz", timeoutDate)
 
 	//2020-05-17 20:50:41.428531 +00:00
 	if err != nil {

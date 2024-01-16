@@ -31,7 +31,7 @@ for attempt in $(seq 1 $MAX_ATTEMPTS); do
   echo "Attempt $attempt to get job status"
 
   id=$(curl -s "${JOBS_URL}" | jq -r '.[0].id')
-  status=$(curl -s "${JOBS_URL}&uuid=${id}" | jq -r '.events[-1].status')
+  status=$(curl -s "${JOBS_URL}&uuid=${id}" | jq -r '.status')
 
   if [ "${status}" = "completed" ]; then
       echo "OK"

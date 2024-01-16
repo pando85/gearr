@@ -47,6 +47,8 @@ type Video struct {
 	DestinationPath string     `json:"destinationPath"`
 	Id              uuid.UUID  `json:"id"`
 	Events          TaskEvents `json:"events"`
+	Status          string     `json:"status"`
+	StatusMessage   string     `json:"status_message"`
 }
 
 type JobEventQueue struct {
@@ -113,13 +115,13 @@ func (V TaskPGS) getUUID() uuid.UUID {
 
 type TaskEvent struct {
 	Id               uuid.UUID          `json:"id"`
-	EventID          int                `json:"eventID"`
-	EventType        EventType          `json:"eventType"`
-	WorkerName       string             `json:"workerName"`
-	WorkerQueue      string             `json:"workerQueue"`
-	EventTime        time.Time          `json:"eventTime"`
+	EventID          int                `json:"event_id"`
+	EventType        EventType          `json:"event_type"`
+	WorkerName       string             `json:"worker_name"`
+	WorkerQueue      string             `json:"worker_queue"`
+	EventTime        time.Time          `json:"event_time"`
 	IP               string             `json:"ip"`
-	NotificationType NotificationType   `json:"notificationType"`
+	NotificationType NotificationType   `json:"notification_type"`
 	Status           NotificationStatus `json:"status"`
 	Message          string             `json:"message"`
 }
