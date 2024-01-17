@@ -28,6 +28,7 @@ FROM debian:trixie-20240110-slim as base
 
 RUN apt-get update \
     && apt-get install -y \
+        ca-certificates \
         mkvtoolnix \
         libva-drm2 \
     && rm -rf /var/lib/apt/lists/*

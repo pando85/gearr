@@ -22,9 +22,10 @@
       2,
       "always",
       [
-        "server",
         "ci",
+	"docker",
         "radarr",
+        "server",
         "worker"
       ]
     ],
