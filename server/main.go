@@ -51,7 +51,14 @@ func init() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath(".")
+
+	configFilePath := os.Getenv("CONFIG_PATH")
+
+	if configFilePath == "" {
+		configFilePath = "/app/config.yaml"
+	}
+
+	viper.SetConfigFile(configFilePath)
 
 	err := viper.ReadInConfig()
 	if err != nil {
