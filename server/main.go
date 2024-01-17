@@ -28,7 +28,7 @@ import (
 type CmdLineOpts struct {
 	Broker    broker.Config              `mapstructure:"broker"`
 	Database  repository.SQLServerConfig `mapstructure:"database"`
-	LogLevel  string                     `mapstructure:"loglevel"`
+	LogLevel  string                     `mapstructure:"log-level"`
 	Scheduler scheduler.SchedulerConfig  `mapstructure:"scheduler"`
 	Web       web.WebServerConfig        `mapstructure:"web"`
 }

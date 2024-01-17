@@ -23,7 +23,7 @@ import (
 type CmdLineOpts struct {
 	Broker   broker.Config `mapstructure:"broker"`
 	Worker   task.Config   `mapstructure:"worker"`
-	LogLevel string        `mapstructure:"loglevel"`
+	LogLevel string        `mapstructure:"log-level"`
 }
 
 var (
