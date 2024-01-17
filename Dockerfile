@@ -19,7 +19,10 @@ RUN curl -sLO \
     chmod 755 ./build-ffmpeg && \
     SKIPINSTALL=yes ./build-ffmpeg \
         --build \
-        --enable-gpl-and-non-free
+        --enable-gpl-and-non-free && \
+    rm -rf packages && \
+    find workspace -mindepth 1 -maxdepth 1 -type d ! -name 'bin' -exec rm -rf {} \; && \
+    find workspace/bin -mindepth 1 -maxdepth 1 -type f ! -name 'ff*' -exec rm -f {} \;
 
 FROM debian:trixie-20240110-slim as base
 
@@ -29,14 +32,12 @@ RUN apt-get update \
         libva-drm2 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=build /app/workspace/bin/ffmpeg /usr/bin/ffmpeg
-COPY --from=build /app/workspace/bin/ffprobe /usr/bin/ffprobe
-COPY --from=build /app/workspace/bin/ffplay /usr/bin/ffplay
+COPY --from=build /app/workspace/bin/ff* /usr/bin/
 
 # Check shared library
-RUN ldd /usr/bin/ffmpeg
-RUN ldd /usr/bin/ffprobe
-RUN ldd /usr/bin/ffplay
+RUN ldd /usr/bin/ffmpeg && \
+    ldd /usr/bin/ffprobe && \
+    ldd /usr/bin/ffplay
 
 FROM base as server
 COPY ./dist/transcoder-server /app/transcoder-server
