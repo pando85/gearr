@@ -62,12 +62,7 @@ func init() {
 
 	err := viper.ReadInConfig()
 	if err != nil {
-		switch err.(type) {
-		case viper.ConfigFileNotFoundError:
-			log.Warnf("no config file found")
-		default:
-			log.Panic(err)
-		}
+		log.Warnf("no config file found")
 	}
 
 	pflag.Parse()
