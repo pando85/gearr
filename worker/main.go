@@ -21,14 +21,14 @@ import (
 )
 
 type CmdLineOpts struct {
-	Broker broker.Config `mapstructure:"broker"`
-	Worker task.Config   `mapstructure:"worker"`
+	Broker   broker.Config `mapstructure:"broker"`
+	Worker   task.Config   `mapstructure:"worker"`
+	LogLevel string        `mapstructure:"loglevel"`
 }
 
 var (
 	opts                CmdLineOpts
 	ApplicationFileName string
-	logLevel            string
 )
 
 func init() {
@@ -39,7 +39,7 @@ func init() {
 	}
 
 	cmd.BrokerFlags()
-	pflag.StringVarP(&logLevel, "log-level", "l", "info", "Set the log level (debug, info, warning, error)")
+	cmd.LogLevelFlags()
 	pflag.String("worker.temporalPath", os.TempDir(), "Path used for temporal data")
 	pflag.String("worker.name", hostname, "Worker Name used for statistics")
 	pflag.Int("worker.threads", runtime.NumCPU(), "Worker Threads")
@@ -63,7 +63,7 @@ func init() {
 	configFilePath := os.Getenv("CONFIG_PATH")
 
 	if configFilePath == "" {
-		configFilePath = "/app/config.yaml"
+		configFilePath = "/app/config-worker.yaml"
 	}
 
 	viper.SetConfigFile(configFilePath)
@@ -100,7 +100,7 @@ func usage() {
 }
 
 func main() {
-	helper.SetLogLevel(logLevel)
+	helper.SetLogLevel(opts.LogLevel)
 	wg := &sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
 	sigs := make(chan os.Signal, 1)

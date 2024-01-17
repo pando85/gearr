@@ -27,7 +27,7 @@ func DatabaseFlags() {
 }
 
 func LogLevelFlags() {
-	pflag.String("loglevel", "info", "Set the log level (debug, info, warning, error, fatal)")
+	pflag.String("log-level", "info", "Set the log level (debug, info, warning, error, fatal)")
 }
 
 func SchedulerFlags() {

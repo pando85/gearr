@@ -38,7 +38,7 @@ for attempt in $(seq 1 $MAX_ATTEMPTS); do
       exit 0
   else
       echo "Status is not completed yet. Waiting..."
-      sleep 10
+      sleep 1
   fi
 done
 
