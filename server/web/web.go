@@ -2,7 +2,6 @@ package web
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -12,154 +11,130 @@ import (
 	"sync"
 	"transcoder/model"
 	"transcoder/server/scheduler"
+	"transcoder/server/web/ui"
 
-	"github.com/gorilla/mux"
+	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )
 
 type WebServer struct {
 	WebServerConfig
 	scheduler scheduler.Scheduler
-	srv       http.Server
+	router    *gin.Engine
 	ctx       context.Context
 }
 
-func (ws *WebServer) healthCheck(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, "OK")
-}
-
-func (W *WebServer) cancelJob(writer http.ResponseWriter, request *http.Request) {
-	defer request.Body.Close()
-	values := request.URL.Query()
-	uuid := values.Get("uuid")
+func (w *WebServer) cancelJob(c *gin.Context) {
+	uuid := c.Query("uuid")
 	if uuid == "" {
-		webError(writer, fmt.Errorf("UUID get parameter not found"), 404)
+		webError(c, fmt.Errorf("UUID query parameter not found"), 404)
+		return
 	}
-	var err error
-	err = W.scheduler.CancelJob(request.Context(), uuid)
 
+	err := w.scheduler.CancelJob(c.Request.Context(), uuid)
 	if err != nil {
 		if errors.Is(err, scheduler.ErrorJobNotFound) {
-			webError(writer, err, 404)
+			webError(c, err, 404)
 		} else {
-			webError(writer, err, 500)
+			webError(c, err, 500)
 		}
 		return
 	}
+
+	c.Status(http.StatusOK)
 }
 
-func (W *WebServer) addJobs(writer http.ResponseWriter, request *http.Request) {
-	defer request.Body.Close()
-	jobRequest := &model.JobRequest{}
-	err := json.NewDecoder(request.Body).Decode(jobRequest)
-	if err != nil {
-		webError(writer, err, 500)
+func (w *WebServer) addJobs(c *gin.Context) {
+	var jobRequest model.JobRequest
+	if err := c.ShouldBindJSON(&jobRequest); err != nil {
+		webError(c, err, 500)
 		return
 	}
 
-	scheduleJobResults, err := W.scheduler.ScheduleJobRequests(W.ctx, jobRequest)
-	if webError(writer, err, 500) {
+	scheduleJobResults, err := w.scheduler.ScheduleJobRequests(w.ctx, &jobRequest)
+	if webError(c, err, 500) {
 		return
 	}
 
-	if webError(writer, err, 500) {
-		return
-	}
-	b, err := json.MarshalIndent(scheduleJobResults, "", "\t")
-	if err != nil {
-		if webError(writer, err, 500) {
-			return
-		}
-	}
-	writer.WriteHeader(200)
-	writer.Write(b)
+	c.JSON(http.StatusOK, scheduleJobResults)
 }
 
-func (W *WebServer) handleJobsResponse(writer http.ResponseWriter, jobs interface{}, err error) {
+func (w *WebServer) getAllJobs(c *gin.Context) {
+	videos, err := w.scheduler.GetJobs(w.ctx)
 	if err != nil {
-		webError(writer, err, 500)
+		webError(c, err, http.StatusInternalServerError)
 		return
 	}
 
-	b, err := json.MarshalIndent(jobs, "", "\t")
-	if err != nil {
-		if webError(writer, err, 500) {
-			return
-		}
-	}
-
-	writer.WriteHeader(http.StatusOK)
-	writer.Write(b)
+	c.JSON(http.StatusOK, videos)
 }
 
-func (W *WebServer) getAllJobs(writer http.ResponseWriter, request *http.Request) {
-	videos, err := W.scheduler.GetJobs(W.ctx)
-	W.handleJobsResponse(writer, videos, err)
-}
-
-func (W *WebServer) getJobs(writer http.ResponseWriter, request *http.Request) {
-	values := request.URL.Query()
-	uuid := values.Get("uuid")
-	defer request.Body.Close()
+func (w *WebServer) getJobs(c *gin.Context) {
+	uuid := c.Query("uuid")
 
 	if uuid == "" {
-		W.getAllJobs(writer, request)
+		w.getAllJobs(c)
 	} else {
-		video, err := W.scheduler.GetJob(W.ctx, uuid)
-		W.handleJobsResponse(writer, video, err)
+		video, err := w.scheduler.GetJob(w.ctx, uuid)
+		if err != nil {
+			webError(c, err, http.StatusInternalServerError)
+			return
+		}
+
+		c.JSON(http.StatusOK, video)
 	}
 }
 
-func (W *WebServer) jobs(writer http.ResponseWriter, request *http.Request) {
-	log.Debugf("method: %s", request.Method)
-	switch request.Method {
+func (w *WebServer) jobs(c *gin.Context) {
+	log.Debugf("method: %s", c.Request.Method)
+	switch c.Request.Method {
 	case http.MethodGet:
-		W.getJobs(writer, request)
+		w.getJobs(c)
 	case http.MethodPost:
-		W.addJobs(writer, request)
+		w.addJobs(c)
 	default:
-		http.Error(writer, "Method not allowed", http.StatusMethodNotAllowed)
+		c.String(http.StatusMethodNotAllowed, "Method not allowed")
 	}
 }
 
-func (W *WebServer) upload(writer http.ResponseWriter, request *http.Request) {
-	values := request.URL.Query()
-	uuid := values.Get("uuid")
+func (w *WebServer) upload(c *gin.Context) {
+	uuid := c.Query("uuid")
 	if uuid == "" {
-		webError(writer, fmt.Errorf("UUID get parameter not found"), 404)
+		webError(c, fmt.Errorf("UUID query parameter not found"), 404)
+		return
 	}
-	uploadStream, err := W.scheduler.GetUploadJobWriter(request.Context(), uuid)
+
+	uploadStream, err := w.scheduler.GetUploadJobWriter(c.Request.Context(), uuid)
 	if errors.Is(err, scheduler.ErrorStreamNotAllowed) {
-		webError(writer, err, 403)
+		webError(c, err, 403)
 		return
 	} else if errors.Is(err, scheduler.ErrorJobNotFound) {
-		webError(writer, err, 404)
+		webError(c, err, 404)
 		return
-	} else if webError(writer, err, 500) {
+	} else if webError(c, err, 500) {
 		return
 	}
 	defer uploadStream.Close(false)
 
-	size, err := strconv.ParseUint(request.Header.Get("Content-Length"), 10, 64)
-	checksum := request.Header.Get("checksum")
+	size, err := strconv.ParseUint(c.GetHeader("Content-Length"), 10, 64)
+	checksum := c.GetHeader("checksum")
 	if checksum == "" {
-		webError(writer, fmt.Errorf("checksum is mandatory in the headers"), 403)
+		webError(c, fmt.Errorf("checksum is mandatory in the headers"), 403)
 		return
 	}
 
 	b := make([]byte, 131072)
-	reader := request.Body
+	reader := c.Request.Body
 	var readed uint64
 loop:
 	for {
 		select {
-		case <-request.Context().Done():
+		case <-c.Request.Context().Done():
 			return
 		default:
 			readedBytes, err := reader.Read(b)
 			readed += uint64(readedBytes)
-			uploadStream.Write(b[0:readedBytes])
+			uploadStream.Write(b[:readedBytes])
 			//TODO check error here?
 			if err == io.EOF {
 				break loop
@@ -168,48 +143,50 @@ loop:
 	}
 	if size != readed {
 		defer uploadStream.Clean()
-		webError(writer, fmt.Errorf("invalid size, expected %d, received %d", size, readed), 400)
+		webError(c, fmt.Errorf("invalid size, expected %d, received %d", size, readed), 400)
 		return
 	}
 	checksumUpload := uploadStream.GetHash()
 	if checksumUpload != checksum {
 		defer uploadStream.Clean()
-		webError(writer, fmt.Errorf("invalid checksum, received %s, calculated %s", checksum, checksumUpload), 400)
+		webError(c, fmt.Errorf("invalid checksum, received %s, calculated %s", checksum, checksumUpload), 400)
 		return
 	}
-	writer.WriteHeader(201)
+	c.Status(http.StatusCreated)
 }
 
-func (W *WebServer) download(writer http.ResponseWriter, request *http.Request) {
-	values := request.URL.Query()
-	uuid := values.Get("uuid")
+func (w *WebServer) download(c *gin.Context) {
+	uuid := c.Query("uuid")
 	if uuid == "" {
-		webError(writer, fmt.Errorf("UUID get parameter not found"), 404)
+		webError(c, fmt.Errorf("UUID query parameter not found"), 404)
+		return
 	}
-	downloadStream, err := W.scheduler.GetDownloadJobWriter(request.Context(), uuid)
+
+	downloadStream, err := w.scheduler.GetDownloadJobWriter(c.Request.Context(), uuid)
 	if errors.Is(err, scheduler.ErrorStreamNotAllowed) {
-		webError(writer, err, 403)
+		webError(c, err, 403)
 		return
 	} else if errors.Is(err, scheduler.ErrorJobNotFound) {
-		webError(writer, err, 404)
+		webError(c, err, 404)
 		return
-	} else if webError(writer, err, 500) {
+	} else if webError(c, err, 500) {
 		return
 	}
 	defer downloadStream.Close(true)
 
-	writer.Header().Set("Content-Length", strconv.FormatInt(downloadStream.Size(), 10))
-	writer.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", url.QueryEscape(downloadStream.Name())))
-	writer.WriteHeader(200)
+	c.Header("Content-Length", strconv.FormatInt(downloadStream.Size(), 10))
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", url.QueryEscape(downloadStream.Name())))
+	c.Status(http.StatusOK)
+
 	b := make([]byte, 131072)
 loop:
 	for {
 		select {
-		case <-request.Context().Done():
+		case <-c.Request.Context().Done():
 			return
 		default:
 			readedBytes, err := downloadStream.Read(b)
-			writer.Write(b[0:readedBytes])
+			c.Writer.Write(b[:readedBytes])
 			if err == io.EOF {
 				break loop
 			}
@@ -217,21 +194,19 @@ loop:
 	}
 }
 
-func (W *WebServer) checksum(writer http.ResponseWriter, request *http.Request) {
-	values := request.URL.Query()
-	uuid := values.Get("uuid")
+func (w *WebServer) checksum(c *gin.Context) {
+	uuid := c.Query("uuid")
 	if uuid == "" {
-		webError(writer, fmt.Errorf("UUID get parameter not found"), 404)
+		webError(c, fmt.Errorf("UUID query parameter not found"), 404)
 		return
 	}
-	checksum, err := W.scheduler.GetChecksum(request.Context(), uuid)
-	if webError(writer, err, 404) {
+	checksum, err := w.scheduler.GetChecksum(c.Request.Context(), uuid)
+	if webError(c, err, 404) {
 		return
 	}
-	writer.Header().Set("Content-Length", strconv.Itoa(len(checksum)))
-	writer.Header().Set("Content-Type", "text/plain")
-	writer.WriteHeader(200)
-	writer.Write([]byte(checksum))
+	c.Header("Content-Length", strconv.Itoa(len(checksum)))
+	c.Header("Content-Type", "text/plain")
+	c.String(http.StatusOK, checksum)
 }
 
 type WebServerConfig struct {
@@ -240,71 +215,80 @@ type WebServerConfig struct {
 }
 
 func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler) *WebServer {
-	rtr := mux.NewRouter()
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+
 	webServer := &WebServer{
 		WebServerConfig: config,
 		scheduler:       scheduler,
-		srv: http.Server{
-			Addr:    ":" + strconv.Itoa(config.Port),
-			Handler: rtr,
-		},
+		router:          r,
 	}
 
-	rtr.HandleFunc("/-/healthy", webServer.healthCheck).Methods("GET")
-	rtr.Handle("/api/v1/job/", webServer.AuthFunc(webServer.jobs)).Methods("GET", "POST")
-	rtr.HandleFunc("/api/v1/job/cancel", webServer.cancelJob).Methods("GET")
-	rtr.HandleFunc("/api/v1/download", webServer.download).Methods("GET")
-	rtr.HandleFunc("/api/v1/checksum", webServer.checksum).Methods("GET")
-	rtr.HandleFunc("/api/v1/upload", webServer.upload).Methods("POST", "PUT")
+	r.GET("/-/healthy", func(c *gin.Context) {
+		c.String(http.StatusOK, "OK")
+	})
+	r.HEAD("/-/healthy", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	api := r.Group("/api/v1")
+	api.GET("/job/", webServer.AuthFunc(webServer.jobs))
+	api.POST("/job/", webServer.AuthFunc(webServer.jobs))
+	api.GET("/job/cancel", webServer.cancelJob)
+	api.GET("/download", webServer.download)
+	api.GET("/checksum", webServer.checksum)
+	api.POST("/upload", webServer.upload)
+
+	ui.AddRoutes(r)
+
 	return webServer
 }
 
-func (W *WebServer) Run(wg *sync.WaitGroup, ctx context.Context) {
-	W.ctx = ctx
+func (w *WebServer) Run(wg *sync.WaitGroup, ctx context.Context) {
+	w.ctx = ctx
 	log.Info("starting webserver")
-	W.start()
+	w.start()
 	log.Info("started webserver")
 	wg.Add(1)
 	go func() {
 		<-ctx.Done()
 		log.Info("stopping webserver")
-		W.stop(ctx)
+		w.stop(ctx)
 		wg.Done()
 	}()
 }
 
-func (W *WebServer) start() {
+func (w *WebServer) start() {
 	go func() {
-		err := W.srv.ListenAndServe()
+		err := w.router.Run(":" + strconv.Itoa(w.Port))
 		if err != nil {
 			log.Panic(err)
 		}
 	}()
 }
 
-func (W *WebServer) stop(ctx context.Context) {
-	if err := W.srv.Shutdown(ctx); err != nil {
+func (w *WebServer) stop(ctx context.Context) {
+	server := &http.Server{Addr: ":" + strconv.Itoa(w.Port), Handler: w.router}
+	if err := server.Shutdown(ctx); err != nil {
 		log.Panic(err)
 	}
 }
 
-func (S *WebServer) AuthFunc(handler http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		t := r.URL.Query().Get("token")
+func (w *WebServer) AuthFunc(handler gin.HandlerFunc) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		t := c.Query("token")
 
-		if t != S.Token {
-			w.WriteHeader(401)
-			w.Write([]byte("Unauthorised.\n"))
+		if t != w.Token {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			return
 		}
-		handler(w, r)
+		handler(c)
 	}
 }
 
-func webError(writer http.ResponseWriter, err error, code int) bool {
+func webError(c *gin.Context, err error, code int) bool {
 	if err != nil {
-		writer.WriteHeader(code)
-		writer.Write([]byte(err.Error()))
+		c.AbortWithStatusJSON(code, gin.H{"error": err.Error()})
 		return true
 	}
 	return false

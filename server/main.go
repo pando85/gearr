@@ -48,8 +48,7 @@ func init() {
 	pflag.Usage = usage
 
 	viper.AutomaticEnv()
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	viper.SetConfigType("yaml")
 
 	configFilePath := os.Getenv("CONFIG_PATH")

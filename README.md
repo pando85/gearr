@@ -1,3 +1,5 @@
+<img src="https://raw.githubusercontent.com/pando85/transcoder/master/server/web/ui/public/log.svg" width="20%" height="auto" />
+
 # Transcoder
 
 Transcoder is a program designed to operate on a server with two distinct types of agents for video
@@ -198,12 +200,14 @@ Feel free to customize the parameters based on your Radarr and Transcoder setup.
 ## Update movies in Radarr
 
 In your radarr server:
+
 ```bash
 MOVIDES_DIR=/movies
 find ${MOVIES_DIR} -name '*_encoded.mkv'
 ```
 
 Then execute:
+
 ```
 go run ./radarr/update/main.go --api-key XXXXXX --url https://radarr.example.com "${FIND_OUTPUT}"
 ```

@@ -31,6 +31,10 @@ worker:		## build worker binary
 .PHONY: build-%
 build-%:
 	@echo "Building dist/transcoder-$*"
+	@if [ "$*" = "server" ]; then \
+		cd server/web/ui && npm run build; \
+		cd -; \
+	fi
 	@CGO_ENABLED=0 go build -o dist/transcoder-$* $*/main.go
 
 .PHONY: images
