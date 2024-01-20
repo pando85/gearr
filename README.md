@@ -187,10 +187,25 @@ docker run -it -d --restart unless-stopped \
 **Warning:** The PGS agent must be started in advance if PGS is detected. It should run before
 detection to create the RabbitMQ queue.
 
-## Add Movies from Radarr
+## Add movies from Radarr
 
 ```bash
-go run ./radarr/main.go --api-key XXXXXX --url https://radarr.example.com --movies 5 --transcoder-url 'https://transcoder.example.com' --transcoder-token XXXXXX
+go run ./radarr/add/main.go --api-key XXXXXX --url https://radarr.example.com --movies 5 --transcoder-url 'https://transcoder.example.com' --transcoder-token XXXXXX
 ```
 
 Feel free to customize the parameters based on your Radarr and Transcoder setup.
+
+## Update movies in Radarr
+
+In your radarr server:
+```bash
+MOVIDES_DIR=/movies
+find ${MOVIES_DIR} -name '*_encoded.mkv'
+```
+
+Then execute:
+```
+go run ./radarr/update/main.go --api-key XXXXXX --url https://radarr.example.com "${FIND_OUTPUT}"
+```
+
+Then you can go to Radarr: `Edit Movies -> Select All -> Rename Files`
