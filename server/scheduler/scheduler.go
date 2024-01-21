@@ -31,7 +31,7 @@ type Scheduler interface {
 	Run(wg *sync.WaitGroup, ctx context.Context)
 	ScheduleJobRequests(ctx context.Context, jobRequest *model.JobRequest) (*ScheduleJobRequestResult, error)
 	GetJob(ctx context.Context, uuid string) (videos *model.Video, err error)
-	GetJobs(ctx context.Context) (*[]model.Video, error)
+	GetJobs(ctx context.Context, page int, pageSize int) (*[]model.Video, error)
 	GetUploadJobWriter(ctx context.Context, uuid string) (*UploadJobStream, error)
 	GetDownloadJobWriter(ctx context.Context, uuid string) (*DownloadJobStream, error)
 	GetChecksum(ctx context.Context, uuid string) (string, error)
@@ -334,8 +334,8 @@ func (R *RuntimeScheduler) GetJob(ctx context.Context, uuid string) (videos *mod
 	return R.repo.GetJob(ctx, uuid)
 }
 
-func (R *RuntimeScheduler) GetJobs(ctx context.Context) (videos *[]model.Video, err error) {
-	return R.repo.GetJobs(ctx)
+func (R *RuntimeScheduler) GetJobs(ctx context.Context, page int, pageSize int) (videos *[]model.Video, err error) {
+	return R.repo.GetJobs(ctx, page, pageSize)
 }
 
 func (R *RuntimeScheduler) CancelJob(ctx context.Context, uuid string) error {

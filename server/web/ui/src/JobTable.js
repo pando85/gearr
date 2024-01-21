@@ -21,10 +21,7 @@ const JobTable = ({ token, setShowJobTable }) => {
           params: { token, page },
         });
 
-        // Set new page of jobs only if there are no jobs loaded yet
-        setJobs((prevJobs) =>
-          prevJobs.length === 0 ? response.data : prevJobs
-        );
+        setJobs((prevJobs) => [...prevJobs, ...response.data]);
       } catch (error) {
         console.error('Error fetching jobs:', error);
         setShowJobTable(false);
@@ -94,7 +91,7 @@ const JobTable = ({ token, setShowJobTable }) => {
       case 'failed':
         return 'red';
       default:
-        return 'inherit';
+        return 'grey';
     }
   };
 
