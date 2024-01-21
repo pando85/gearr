@@ -223,8 +223,11 @@ func (S *SQLRepository) getJob(ctx context.Context, tx Transaction, uuid string)
 		return nil, err
 	}
 	video.Events = taskEvents
-	status, statusMessage, _ := S.getVideoStatus(ctx, tx, video.Id.String())
+	last_update, status, statusMessage, _ := S.getVideoStatus(ctx, tx, video.Id.String())
 
+	if last_update != nil {
+		video.LastUpdate = last_update
+	}
 	video.Status = status
 	video.StatusMessage = statusMessage
 
@@ -268,20 +271,21 @@ func (S *SQLRepository) getTaskEvents(ctx context.Context, tx Transaction, uuid 
 	return taskEvents, nil
 }
 
-func (S *SQLRepository) getVideoStatus(ctx context.Context, tx Transaction, uuid string) (string, string, error) {
+func (S *SQLRepository) getVideoStatus(ctx context.Context, tx Transaction, uuid string) (*time.Time, string, string, error) {
+	var last_update time.Time
 	var status string
 	var message string
 
-	rows, err := tx.QueryContext(ctx, "SELECT status, message FROM video_status WHERE video_id=$1", uuid)
+	rows, err := tx.QueryContext(ctx, "SELECT event_time, status, message FROM video_status WHERE video_id=$1", uuid)
 	if err != nil {
-		return status, message, err
+		return &last_update, status, message, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		rows.Scan(&status, &message)
+		rows.Scan(&last_update, &status, &message)
 	}
-	return status, message, nil
+	return &last_update, status, message, nil
 }
 
 func (S *SQLRepository) getJobByPath(ctx context.Context, tx Transaction, path string) (*model.Video, error) {

@@ -43,12 +43,13 @@ type Identity interface {
 	getUUID() uuid.UUID
 }
 type Video struct {
-	SourcePath      string     `json:"sourcePath"`
-	DestinationPath string     `json:"destinationPath"`
+	SourcePath      string     `json:"sourcePath,omitempty"`
+	DestinationPath string     `json:"destinationPath,omitempty"`
 	Id              uuid.UUID  `json:"id"`
-	Events          TaskEvents `json:"events"`
-	Status          string     `json:"status"`
-	StatusMessage   string     `json:"status_message"`
+	Events          TaskEvents `json:"events,omitempty"`
+	Status          string     `json:"status,omitempty"`
+	StatusMessage   string     `json:"status_message,omitempty"`
+	LastUpdate      *time.Time `json:"last_update,omitempty"`
 }
 
 type JobEventQueue struct {

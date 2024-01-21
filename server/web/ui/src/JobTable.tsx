@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Table, TableBody, TableCell, TableHead, TableRow, CircularProgress, Typography, Button } from '@mui/material';
-import { Info, QuestionMark, Task, VideoSettings } from '@mui/icons-material';
+import { CalendarMonth, Info, QuestionMark, Task, VideoSettings } from '@mui/icons-material';
 
 import './JobTable.css';
 
@@ -12,11 +12,39 @@ interface Job {
   destinationPath: string;
   status: string;
   status_message: string;
+  last_update: Date;
 }
 
 interface JobTableProps {
   token: string;
   setShowJobTable: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+const formatDate = (date: Date, options: Intl.DateTimeFormatOptions): string => {
+  if (date == null) {
+    return '';
+  }
+
+  try {
+    return new Intl.DateTimeFormat(navigator.language, options).format(date);
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return '';
+  }
+};
+
+const formatDateDetailed = (date: Date): string => {
+  const options: Intl.DateTimeFormatOptions = {
+    timeStyle: "long",
+  };
+  return formatDate(date, options)
+}
+
+const formatDateShort = (date: Date): string => {
+  const options: Intl.DateTimeFormatOptions = {
+    dateStyle: "short",
+  };
+  return formatDate(date, options)
 }
 
 const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
@@ -77,6 +105,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
               destinationPath: response.data.destinationPath,
               status: response.data.status,
               status_message: response.data.status_message,
+              last_update: new Date(response.data.last_update),
             };
 
             setJobs((prevJobs) =>
@@ -116,10 +145,11 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
       <Table className="jobTable">
         <TableHead>
           <TableRow>
-            <TableCell className=""> <span title="Source"><Task /></span></TableCell>
+            <TableCell > <span title="Source"><Task /></span></TableCell>
             <TableCell className="d-none d-sm-table-cell"><span title="Destionation"><VideoSettings /></span></TableCell>
-            <TableCell className=""><span title="Status"><QuestionMark /></span></TableCell>
+            <TableCell ><span title="Status"><QuestionMark /></span></TableCell>
             <TableCell className="d-none d-sm-table-cell"><span title="Message"><Info /></span></TableCell>
+            <TableCell ><span title="LastUpdate"><CalendarMonth /></span></TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -129,9 +159,9 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
               onClick={() => handleRowClick(job.id)}
               className="tableRow"
             >
-              <TableCell className="">{job.sourcePath}</TableCell>
+              <TableCell >{job.sourcePath}</TableCell>
               <TableCell className="d-none d-sm-table-cell">{job.destinationPath}</TableCell>
-              <TableCell className="">
+              <TableCell >
                 <Button
                   variant="contained"
                   style={{
@@ -142,6 +172,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
                 </Button>
               </TableCell>
               <TableCell className="d-none d-sm-table-cell">{job.status_message}</TableCell>
+              <TableCell title={formatDateDetailed(job.last_update)}>{formatDateShort(job.last_update)}</TableCell>
             </TableRow>
           ))}
         </TableBody>
