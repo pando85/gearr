@@ -2,15 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Table, TableBody, TableCell, TableHead, TableRow, CircularProgress, Typography, Button } from '@mui/material';
-
-import TaskIcon from '@mui/icons-material/Task';
-import VideoSettingsIcon from '@mui/icons-material/VideoSettings';
-import QuestionMarkIcon from '@mui/icons-material/QuestionMark';
-import InfoIcon from '@mui/icons-material/Info';
+import { Info, QuestionMark, Task, VideoSettings } from '@mui/icons-material';
 
 import './JobTable.css';
 
-const JobTable = ({ token }) => {
+const JobTable = ({ token, setShowJobTable }) => {
   const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
   const [page, setPage] = useState(1);
@@ -31,13 +27,14 @@ const JobTable = ({ token }) => {
         );
       } catch (error) {
         console.error('Error fetching jobs:', error);
+        setShowJobTable(false);
       } finally {
         setLoading(false);
       }
     };
 
     fetchJobs();
-  }, [token, page]);
+  }, [token, page, setShowJobTable]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -106,10 +103,10 @@ const JobTable = ({ token }) => {
       <Table className="jobTable">
         <TableHead>
           <TableRow>
-            <TableCell className="tableHeader"> <span title="Source"><TaskIcon/></span></TableCell>
-            <TableCell className="tableHeader"><span title="Destionation"><VideoSettingsIcon/></span></TableCell>
-            <TableCell className="tableHeader"><span title="Status"><QuestionMarkIcon/></span></TableCell>
-            <TableCell className="tableHeader"><span title="Message"><InfoIcon/></span></TableCell>
+            <TableCell className="tableHeader"> <span title="Source"><Task/></span></TableCell>
+            <TableCell className="tableHeader"><span title="Destionation"><VideoSettings/></span></TableCell>
+            <TableCell className="tableHeader"><span title="Status"><QuestionMark/></span></TableCell>
+            <TableCell className="tableHeader"><span title="Message"><Info/></span></TableCell>
           </TableRow>
         </TableHead>
         <TableBody>

@@ -31,7 +31,7 @@ const App = () => {
   const Jobs = () => (
     <div className="contentContainer">
       {showJobTable && (
-        <JobTable token={token} />
+        <JobTable token={token} setShowJobTable={setShowJobTable}/>
       )}
     </div>
   );
