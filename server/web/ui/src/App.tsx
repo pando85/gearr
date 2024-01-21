@@ -1,10 +1,15 @@
 // App.tsx
 
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate, Link } from 'react-router-dom';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
 import JobTable from './JobTable';
-import './App.css';
+import useMedia from './hooks/useMedia';
+import Navigation from './Navbar';
+
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { ThemeContext, themeName, themeSetting } from './contexts/ThemeContext';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
+import { useLocalStorage } from './hooks/useLocalStorage';
+import { Theme, themeLocalStorageKey } from './Theme';
 
 const App: React.FC = () => {
   const [token, setToken] = useState<string>('');
@@ -32,60 +37,60 @@ const App: React.FC = () => {
     </div>
   );
 
-  return (
-    <Router>
-      <div className="tableContainer">
-        <header className="header">
-          <div className="logoContainer">
-            <div className="linkContainer">
-              <Link to="/" className="link">
-                <img src="/logo.svg" alt="Transcoder" className="logo" />
-                <div className="appNameContainer">
-                  <h1 className="appName">Transcoder</h1>
-                </div>
-              </Link>
-            </div>
-          </div>
-          <div className="navBar">
-            <nav className="navItems">
-              <Link to="/jobs" className="navItem">
-                Jobs
-              </Link>
-            </nav>
-          </div>
-        </header>
+  const [userTheme, setUserTheme] = useLocalStorage<themeSetting>(themeLocalStorageKey, 'auto');
+  const browserHasThemes = useMedia('(prefers-color-scheme)');
+  const browserWantsDarkTheme = useMedia('(prefers-color-scheme: dark)');
 
-        <div className="contentContainer">
-          {!showJobTable && (
-            <div className="centeredContainer">
-              <form className="modal" onSubmit={handleTokenSubmit}>
-                <p>Please enter your token:</p>
-                <div className="passwordInputContainer">
-                  <input
-                    className="passwordInput"
-                    type={showToken ? 'text' : 'password'}
-                    value={token}
-                    onChange={handleTokenInput}
-                  />
-                  <div className="passwordInputSuffix">
-                    {showToken ? (
-                      <VisibilityOff className="eyeIcon" onClick={handleToggleShowToken} />
-                    ) : (
-                      <Visibility className="eyeIcon" onClick={handleToggleShowToken} />
-                    )}
-                  </div>
+  let theme: themeName;
+  if (userTheme !== 'auto') {
+    theme = userTheme;
+  } else {
+    theme = browserHasThemes ? (browserWantsDarkTheme ? 'dark' : 'light') : 'light';
+  }
+
+  return (
+    <ThemeContext.Provider
+      value={{ theme: theme, userPreference: userTheme, setTheme: (t: themeSetting) => setUserTheme(t) }}
+    >
+      <Theme />
+      <Router>
+        <div className="tableContainer">
+          <Navigation/>
+            {!showJobTable && (
+              <div className="centeredContainer">
+                <div className="auth-form">
+                  <form className="tokenInput" onSubmit={handleTokenSubmit}>
+                    <div className="field">
+                      <label className="is-label">Token</label>
+                      <div className="passwordInputContainer">
+                        <input
+                          className="passwordInput"
+                          type={showToken ? 'text' : 'password'}
+                          value={token}
+                          onChange={handleTokenInput}
+                        />
+                        <div className="passwordInputSuffix">
+                          {showToken ? (
+                            <VisibilityOff className="eyeIcon" onClick={handleToggleShowToken} />
+                          ) : (
+                            <Visibility className="eyeIcon" onClick={handleToggleShowToken} />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <button className="btn btn-primary is-label" type="submit">Sign In</button>
+                  </form>
                 </div>
-                <button type="submit">Submit</button>
-              </form>
-            </div>
-          )}
-          <Routes>
-            <Route path="/" element={<Navigate to="/jobs" replace />} />
-            <Route path="/jobs" element={<Jobs />} />
-          </Routes>
-        </div>
-      </div>
-    </Router>
+              </div>
+            )}
+            <Routes>
+              <Route path="/" element={<Navigate to="/jobs" replace />} />
+              <Route path="/jobs" element={<Jobs />} />
+            </Routes>
+          </div>
+      </Router>
+    </ThemeContext.Provider >
+
   );
 };
 

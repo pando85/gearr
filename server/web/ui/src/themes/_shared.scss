@@ -1,0 +1,206 @@
+/* This file contains styles shared by both light & dark themes.
+   Style rules can be customised using SCSS variables set in dark.scss & light.sccs.
+   How to add a rule that uses different values for each theme.
+
+   1. Add a variable in light.scss & dark.scss files, it needs to be set before
+      "@import ./shared" statement.
+      Example:
+
+      $foo = '#000';
+
+   2. Add a style rule in _shared.scss (this file) that uses new variable.
+      Example:
+
+      .my-class { background-color: $foo; }
+
+   Instead of setting custom variables you can re-use any of bootstrap SCSS variables
+   as they are all imported and ready.
+   Resources:
+   - https://getbootstrap.com/docs/4.6/getting-started/theming/
+   - https://github.com/twbs/bootstrap/blob/v4.6.0/scss/_variables.scss
+*/
+
+body {
+  min-height: 100vh;
+  padding: 20px;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+.link {
+  text-decoration: none;
+  align-items: center;
+  line-height: inherit;
+  margin-right: 0.5rem;
+  white-space: nowrap;
+}
+
+.navbar-brand {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.logo {
+  padding-right: 0.75rem;
+  height: 3rem;
+  width: auto;
+}
+
+.appNameContainer {
+  margin-left: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.appName {
+  font-size: 20px;
+  text-decoration: none;
+  margin-top: 4px;
+}
+
+.navBar {
+  justify-content: space-between;
+  display: flex !important;
+  flex-basis: auto;
+  align-items: center;
+  flex-basis: 100%;
+  flex-grow: 1;
+}
+
+.navItems {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin-bottom: 0;
+  padding-left: 0;
+  margin-left: 0 !important;
+}
+
+.navItem {
+  margin-right: 20px;
+  font-size: 18px;
+  text-decoration: none;
+}
+
+.navItem:hover {
+  filter: brightness(1.1);
+}
+
+.appContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.contentContainer {
+  width: 100%;
+  padding-top: 80px;
+}
+
+.centeredContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.auth-form {
+  background-color: $body-bg;
+  border-radius: 0;
+  color: $border-color;
+  display: block;
+  padding: 1.25rem;
+}
+
+.tokenInput {
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.field:not(:last-child) {
+  margin-bottom: 1.5rem;
+}
+
+.is-label {
+  color: $label-color;
+  display: inline-block;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.is-label:not(:last-child),
+.is-label:not(:last-child) {
+  margin-bottom: .25rem;
+}
+
+.passwordInputContainer {
+  display: flex;
+  width: 100%;
+  border-radius: 2px;
+  padding: 0px 0px;
+  background: white;
+  font-size: 1rem;
+  color: #ccccdc;
+  position: relative;
+  z-index: 0;
+}
+
+.passwordInput {
+  position: relative;
+  -moz-box-flex: 1;
+  flex-grow: 1;
+  z-index: 1;
+}
+
+.passwordInputSuffix {
+  position: absolute;
+  top: 0px;
+  z-index: 1;
+  display: flex;
+  -moz-box-align: center;
+  align-items: center;
+  -moz-box-pack: center;
+  justify-content: center;
+  -moz-box-flex: 0;
+  flex-grow: 0;
+  flex-shrink: 0;
+  font-size: 14px;
+  height: 100%;
+  min-width: 28px;
+  color: #a0a0acA6;
+  padding-left: 8px;
+  padding-right: 8px;
+  margin-bottom: -2px;
+  border-left: medium;
+  border-top-left-radius: 0px;
+  border-bottom-left-radius: 0px;
+  right: 0px;
+}
+
+.eyeIcon {
+  display: inline-block;
+  line-height: 0;
+}
+
+.MuiTableCell-body {
+  color: $body-color !important;
+}
+
+.MuiTableCell-head {
+  color: $body-color !important;
+}
+
+button {
+  color: $button-color;
+}

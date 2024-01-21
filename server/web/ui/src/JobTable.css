@@ -21,10 +21,6 @@
     margin-bottom: 20px;
 }
 
-.tableHeader {
-    padding: 12px;
-}
-
 .tableRow {
     cursor: pointer;
     transition: background-color 0.3s;

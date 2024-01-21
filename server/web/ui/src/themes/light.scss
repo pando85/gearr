@@ -1,0 +1,12 @@
+@import 'bootstrap_light';
+
+@import '~bootstrap/scss/functions';
+@import '~bootstrap/scss/variables';
+
+$label-color: #1f2124;
+$border-color: #cfd4db;
+$button-color: $gray-200;
+
+.bootstrap {
+  @import './shared';
+}

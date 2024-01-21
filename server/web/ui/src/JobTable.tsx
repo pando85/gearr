@@ -33,8 +33,8 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
         const response = await axios.get('/api/v1/job/', {
           params: { token, page },
         });
-
-        setJobs((prevJobs) => [...prevJobs, ...response.data]);
+        const newJobs: Job[] = response.data;
+        setJobs((prevJobs) => [...prevJobs, ...newJobs]);
       } catch (error) {
         console.error('Error fetching jobs:', error);
         setShowJobTable(false);
@@ -67,9 +67,9 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
           const response = await axios.get(`/api/v1/job/`, {
             params: { token, uuid: jobId },
           });
-  
+
           const foundJob = jobs.find((job) => job.id === jobId);
-  
+
           if (foundJob) {
             const enrichedJob: Job = {
               ...foundJob,
@@ -78,19 +78,19 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
               status: response.data.status,
               status_message: response.data.status_message,
             };
-  
+
             setJobs((prevJobs) =>
               prevJobs.map((job) => (job.id === jobId ? enrichedJob : job))
             );
           }
-  
+
           setFetchedDetails((prevSet) => new Set(prevSet.add(jobId)));
         } catch (error) {
           console.error(`Error fetching details for job ${jobId}:`, error);
         }
       }
     };
-  
+
 
     // Fetch details for each job when they are rendered in the table
     jobs.forEach((job) => fetchJobDetails(job.id));
@@ -112,14 +112,14 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
   };
 
   return (
-    <div className="jobTableContainer">
+    <div className="float-center">
       <Table className="jobTable">
         <TableHead>
           <TableRow>
-            <TableCell className="tableHeader"> <span title="Source"><Task/></span></TableCell>
-            <TableCell className="tableHeader"><span title="Destionation"><VideoSettings/></span></TableCell>
-            <TableCell className="tableHeader"><span title="Status"><QuestionMark/></span></TableCell>
-            <TableCell className="tableHeader"><span title="Message"><Info/></span></TableCell>
+            <TableCell className=""> <span title="Source"><Task /></span></TableCell>
+            <TableCell className="d-none d-sm-table-cell"><span title="Destionation"><VideoSettings /></span></TableCell>
+            <TableCell className=""><span title="Status"><QuestionMark /></span></TableCell>
+            <TableCell className="d-none d-sm-table-cell"><span title="Message"><Info /></span></TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -129,20 +129,19 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
               onClick={() => handleRowClick(job.id)}
               className="tableRow"
             >
-              <TableCell>{job.sourcePath}</TableCell>
-              <TableCell>{job.destinationPath}</TableCell>
-              <TableCell>
+              <TableCell className="">{job.sourcePath}</TableCell>
+              <TableCell className="d-none d-sm-table-cell">{job.destinationPath}</TableCell>
+              <TableCell className="">
                 <Button
                   variant="contained"
                   style={{
                     backgroundColor: getStatusColor(job.status),
-                    color: '#282c34',
                   }}
                 >
                   {job.status}
                 </Button>
               </TableCell>
-              <TableCell>{job.status_message}</TableCell>
+              <TableCell className="d-none d-sm-table-cell">{job.status_message}</TableCell>
             </TableRow>
           ))}
         </TableBody>
