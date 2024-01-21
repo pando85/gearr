@@ -1,6 +1,11 @@
-<img src="https://raw.githubusercontent.com/pando85/transcoder/master/server/web/ui/public/log.svg" width="20%" height="auto" />
-
-# Transcoder
+<h1 align="center">
+  <br>
+  <img src="https://raw.githubusercontent.com/pando85/transcoder/master/server/web/ui/public/logo.svg" alt="logo" width="200">
+  <br>
+  Transcoder
+  <br>
+  <br>
+</h1>
 
 Transcoder is a program designed to operate on a server with two distinct types of agents for video
 transcoding tasks, specifically converting a video library to the x265 format using ffmpeg. The
