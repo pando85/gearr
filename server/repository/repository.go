@@ -237,7 +237,7 @@ func (S *SQLRepository) getJobs(ctx context.Context, tx Transaction) (*[]model.V
 		return nil, err
 	}
 	videos := []model.Video{}
-	if rows.Next() {
+	for rows.Next() {
 		video := model.Video{}
 		rows.Scan(&video.Id)
 		videos = append(videos, video)

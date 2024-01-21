@@ -25,6 +25,7 @@ echo "Upload job"
 curl -s --location --request POST "${JOBS_URL}" \
   --header 'Content-Type: text/plain' \
   --data "$data"
+echo -e '\n'
 
 MAX_ATTEMPTS=50
 for attempt in $(seq 1 $MAX_ATTEMPTS); do
