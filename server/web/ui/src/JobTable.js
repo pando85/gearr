@@ -1,7 +1,12 @@
 // JobTable.js
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Table, TableBody, TableCell, TableHead, TableRow, CircularProgress, Typography, Button } from '@material-ui/core';
+import { Table, TableBody, TableCell, TableHead, TableRow, CircularProgress, Typography, Button } from '@mui/material';
+
+import TaskIcon from '@mui/icons-material/Task';
+import VideoSettingsIcon from '@mui/icons-material/VideoSettings';
+import QuestionMarkIcon from '@mui/icons-material/QuestionMark';
+import InfoIcon from '@mui/icons-material/Info';
 
 import './JobTable.css';
 
@@ -101,19 +106,10 @@ const JobTable = ({ token }) => {
       <Table className="jobTable">
         <TableHead>
           <TableRow>
-            <TableCell className="tableHeader"> <span class="material-symbols-outlined" title="Source">
-              draft
-            </span>
-            </TableCell>
-            <TableCell className="tableHeader"><span class="material-symbols-outlined" title="Destination">
-              settings_video_camera
-            </span></TableCell>
-            <TableCell className="tableHeader"><span class="material-symbols-outlined" title="Status">
-              question_mark
-            </span></TableCell>
-            <TableCell className="tableHeader"><span class="material-symbols-outlined" title="Status message">
-              info
-            </span></TableCell>
+            <TableCell className="tableHeader"> <span title="Source"><TaskIcon/></span></TableCell>
+            <TableCell className="tableHeader"><span title="Destionation"><VideoSettingsIcon/></span></TableCell>
+            <TableCell className="tableHeader"><span title="Status"><QuestionMarkIcon/></span></TableCell>
+            <TableCell className="tableHeader"><span title="Message"><InfoIcon/></span></TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
