@@ -1,4 +1,4 @@
-// JobTable.js
+// JobTable.tsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Table, TableBody, TableCell, TableHead, TableRow, CircularProgress, Typography, Button } from '@mui/material';
@@ -6,12 +6,25 @@ import { Info, QuestionMark, Task, VideoSettings } from '@mui/icons-material';
 
 import './JobTable.css';
 
-const JobTable = ({ token, setShowJobTable }) => {
-  const [jobs, setJobs] = useState([]);
-  const [selectedJob, setSelectedJob] = useState(null);
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [fetchedDetails, setFetchedDetails] = useState(new Set());
+interface Job {
+  id: string;
+  sourcePath: string;
+  destinationPath: string;
+  status: string;
+  status_message: string;
+}
+
+interface JobTableProps {
+  token: string;
+  setShowJobTable: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [page, setPage] = useState<number>(1);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [fetchedDetails, setFetchedDetails] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -35,10 +48,7 @@ const JobTable = ({ token, setShowJobTable }) => {
 
   useEffect(() => {
     const handleScroll = () => {
-      if (
-        window.innerHeight + window.scrollY >=
-        document.body.offsetHeight - 100
-      ) {
+      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) {
         setPage((prevPage) => prevPage + 1);
       }
     };
@@ -51,40 +61,46 @@ const JobTable = ({ token, setShowJobTable }) => {
   }, []);
 
   useEffect(() => {
-    const fetchJobDetails = async (jobId) => {
+    const fetchJobDetails = async (jobId: string) => {
       if (!fetchedDetails.has(jobId)) {
         try {
           const response = await axios.get(`/api/v1/job/`, {
             params: { token, uuid: jobId },
           });
-          const enrichedJob = {
-            ...jobs.find((job) => job.id === jobId),
-            sourcePath: response.data.sourcePath,
-            destinationPath: response.data.destinationPath,
-            status: response.data.status,
-            status_message: response.data.status_message,
-          };
-          setJobs((prevJobs) =>
-            prevJobs.map((job) =>
-              job.id === jobId ? enrichedJob : job
-            )
-          );
+  
+          const foundJob = jobs.find((job) => job.id === jobId);
+  
+          if (foundJob) {
+            const enrichedJob: Job = {
+              ...foundJob,
+              sourcePath: response.data.sourcePath,
+              destinationPath: response.data.destinationPath,
+              status: response.data.status,
+              status_message: response.data.status_message,
+            };
+  
+            setJobs((prevJobs) =>
+              prevJobs.map((job) => (job.id === jobId ? enrichedJob : job))
+            );
+          }
+  
           setFetchedDetails((prevSet) => new Set(prevSet.add(jobId)));
         } catch (error) {
           console.error(`Error fetching details for job ${jobId}:`, error);
         }
       }
     };
+  
 
     // Fetch details for each job when they are rendered in the table
     jobs.forEach((job) => fetchJobDetails(job.id));
   }, [token, jobs, fetchedDetails]);
 
-  const handleRowClick = (jobId) => {
-    setSelectedJob(jobs.find((job) => job.id === jobId));
+  const handleRowClick = (jobId: string) => {
+    setSelectedJob(jobs.find((job) => job.id === jobId) || null);
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string): string => {
     switch (status) {
       case 'completed':
         return 'green';
