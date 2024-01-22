@@ -273,9 +273,9 @@ func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *m
 			}
 		}
 
-		downloadURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/download?uuid=%s", R.config.Domain.String(), video.Id.String()))
-		uploadURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/upload?uuid=%s", R.config.Domain.String(), video.Id.String()))
-		checksumURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/checksum?uuid=%s", R.config.Domain.String(), video.Id.String()))
+		downloadURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/download/%s", R.config.Domain.String(), video.Id.String()))
+		uploadURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/upload/%s", R.config.Domain.String(), video.Id.String()))
+		checksumURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/checksum/%s", R.config.Domain.String(), video.Id.String()))
 		task := &model.TaskEncode{
 			Id:          video.Id,
 			DownloadURL: downloadURL.String(),

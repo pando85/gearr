@@ -2,7 +2,8 @@
 set -e
 
 TOKEN=super-secret-token
-JOBS_URL="http://localhost:8080/api/v1/job/?token=${TOKEN}"
+JOBS_URL="http://localhost:8080/api/v1/job/"
+AUTH_HEADER="Authorization: Bearer ${TOKEN}"
 
 payload() {
   cat <<EOF
@@ -23,16 +24,18 @@ data=$(payload "${url}")
 echo "Upload job"
 
 curl -s --location --request POST "${JOBS_URL}" \
+  --header "${AUTH_HEADER}" \
   --header 'Content-Type: text/plain' \
   --data "$data"
+
 echo -e '\n'
 
 MAX_ATTEMPTS=50
 for attempt in $(seq 1 $MAX_ATTEMPTS); do
   echo "Attempt $attempt to get job status"
 
-  id=$(curl -s "${JOBS_URL}" | jq -r '.[0].id')
-  status=$(curl -s "${JOBS_URL}&uuid=${id}" | jq -r '.status')
+  id=$(curl -s "${JOBS_URL}" --header "${AUTH_HEADER}" | jq -r '.[0].id')
+  status=$(curl -s "${JOBS_URL}${id}" --header "${AUTH_HEADER}" | jq -r '.status')
 
   if [ "${status}" = "completed" ]; then
       echo "OK"

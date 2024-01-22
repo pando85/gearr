@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"transcoder/model"
 	"transcoder/server/scheduler"
@@ -25,13 +26,13 @@ type WebServer struct {
 }
 
 func (w *WebServer) cancelJob(c *gin.Context) {
-	uuid := c.Query("uuid")
-	if uuid == "" {
-		webError(c, fmt.Errorf("UUID query parameter not found"), 404)
+	id := c.Param("id")
+	if id == "" {
+		webError(c, fmt.Errorf("Job ID parameter not found"), 404)
 		return
 	}
 
-	err := w.scheduler.CancelJob(c.Request.Context(), uuid)
+	err := w.scheduler.CancelJob(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, scheduler.ErrorJobNotFound) {
 			webError(c, err, 404)
@@ -59,7 +60,13 @@ func (w *WebServer) addJobs(c *gin.Context) {
 	c.JSON(http.StatusOK, scheduleJobResults)
 }
 
-func (w *WebServer) getAllJobs(c *gin.Context) {
+func getPageParams(c *gin.Context) (int, int) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "20"))
+	return page, pageSize
+}
+
+func (w *WebServer) getJobs(c *gin.Context) {
 	page, pageSize := getPageParams(c)
 
 	videos, err := w.scheduler.GetJobs(w.ctx, page, pageSize)
@@ -71,26 +78,20 @@ func (w *WebServer) getAllJobs(c *gin.Context) {
 	c.JSON(http.StatusOK, videos)
 }
 
-func getPageParams(c *gin.Context) (int, int) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "20"))
-	return page, pageSize
-}
-
-func (w *WebServer) getJobs(c *gin.Context) {
-	uuid := c.Query("uuid")
-
-	if uuid == "" {
-		w.getAllJobs(c)
-	} else {
-		video, err := w.scheduler.GetJob(w.ctx, uuid)
-		if err != nil {
-			webError(c, err, http.StatusInternalServerError)
-			return
-		}
-
-		c.JSON(http.StatusOK, video)
+func (w *WebServer) getJobByID(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		webError(c, fmt.Errorf("Job ID parameter not found"), 404)
+		return
 	}
+
+	video, err := w.scheduler.GetJob(w.ctx, id)
+	if err != nil {
+		webError(c, err, http.StatusInternalServerError)
+		return
+	}
+
+	c.JSON(http.StatusOK, video)
 }
 
 func (w *WebServer) jobs(c *gin.Context) {
@@ -106,13 +107,13 @@ func (w *WebServer) jobs(c *gin.Context) {
 }
 
 func (w *WebServer) upload(c *gin.Context) {
-	uuid := c.Query("uuid")
-	if uuid == "" {
-		webError(c, fmt.Errorf("UUID query parameter not found"), 404)
+	id := c.Param("id")
+	if id == "" {
+		webError(c, fmt.Errorf("Job ID parameter not found"), 404)
 		return
 	}
 
-	uploadStream, err := w.scheduler.GetUploadJobWriter(c.Request.Context(), uuid)
+	uploadStream, err := w.scheduler.GetUploadJobWriter(c.Request.Context(), id)
 	if errors.Is(err, scheduler.ErrorStreamNotAllowed) {
 		webError(c, err, 403)
 		return
@@ -164,13 +165,13 @@ loop:
 }
 
 func (w *WebServer) download(c *gin.Context) {
-	uuid := c.Query("uuid")
-	if uuid == "" {
-		webError(c, fmt.Errorf("UUID query parameter not found"), 404)
+	id := c.Param("id")
+	if id == "" {
+		webError(c, fmt.Errorf("Job ID parameter not found"), 404)
 		return
 	}
 
-	downloadStream, err := w.scheduler.GetDownloadJobWriter(c.Request.Context(), uuid)
+	downloadStream, err := w.scheduler.GetDownloadJobWriter(c.Request.Context(), id)
 	if errors.Is(err, scheduler.ErrorStreamNotAllowed) {
 		webError(c, err, 403)
 		return
@@ -203,12 +204,13 @@ loop:
 }
 
 func (w *WebServer) checksum(c *gin.Context) {
-	uuid := c.Query("uuid")
-	if uuid == "" {
-		webError(c, fmt.Errorf("UUID query parameter not found"), 404)
+	id := c.Param("id")
+	if id == "" {
+		webError(c, fmt.Errorf("Job ID parameter not found"), 404)
 		return
 	}
-	checksum, err := w.scheduler.GetChecksum(c.Request.Context(), uuid)
+
+	checksum, err := w.scheduler.GetChecksum(c.Request.Context(), id)
 	if webError(c, err, 404) {
 		return
 	}
@@ -242,10 +244,12 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler) *WebSer
 	api := r.Group("/api/v1")
 	api.GET("/job/", webServer.AuthFunc(webServer.jobs))
 	api.POST("/job/", webServer.AuthFunc(webServer.jobs))
-	api.GET("/job/cancel", webServer.cancelJob)
-	api.GET("/download", webServer.download)
-	api.GET("/checksum", webServer.checksum)
-	api.POST("/upload", webServer.upload)
+	api.GET("/job/:id", webServer.AuthFunc(webServer.getJobByID))
+	api.PUT("/job/cancel/:id", webServer.AuthFunc(webServer.cancelJob))
+	api.POST("/job/cancel/:id", webServer.AuthFunc(webServer.cancelJob))
+	api.GET("/download/:id", webServer.download)
+	api.GET("/checksum/:id", webServer.checksum)
+	api.POST("/upload/:id", webServer.upload)
 
 	ui.AddRoutes(r)
 
@@ -284,12 +288,25 @@ func (w *WebServer) stop(ctx context.Context) {
 
 func (w *WebServer) AuthFunc(handler gin.HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		t := c.Query("token")
-
-		if t != w.Token {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: Missing Authorization header"})
 			return
 		}
+
+		const bearerPrefix = "Bearer "
+		if !strings.HasPrefix(authHeader, bearerPrefix) {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: Invalid Authorization header format"})
+			return
+		}
+
+		t := strings.TrimPrefix(authHeader, bearerPrefix)
+
+		if t != w.Token {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: Invalid token"})
+			return
+		}
+
 		handler(c)
 	}
 }

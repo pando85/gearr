@@ -59,7 +59,10 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
       try {
         setLoading(true);
         const response = await axios.get('/api/v1/job/', {
-          params: { token, page },
+          params: { page },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
         const newJobs: Job[] = response.data;
         setJobs((prevJobs) => [...prevJobs, ...newJobs]);
@@ -92,8 +95,10 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
     const fetchJobDetails = async (jobId: string) => {
       if (!fetchedDetails.has(jobId)) {
         try {
-          const response = await axios.get(`/api/v1/job/`, {
-            params: { token, uuid: jobId },
+          const response = await axios.get(`/api/v1/job/${jobId}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
           });
 
           const foundJob = jobs.find((job) => job.id === jobId);
