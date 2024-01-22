@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 	"transcoder/model"
 
@@ -361,7 +362,7 @@ func (S *SQLRepository) addNewTaskEvent(ctx context.Context, tx Transaction, eve
 	}
 
 	_, err = tx.ExecContext(ctx, "INSERT INTO video_events (video_id, video_event_id,worker_name,event_time,event_type,notification_type,status,message)"+
-		" VALUES ($1,$2,$3,$4,$5,$6,$7,$8)", event.Id.String(), event.EventID, event.WorkerName, time.Now(), event.EventType, event.NotificationType, event.Status, event.Message)
+		" VALUES ($1,$2,$3,$4,$5,$6,$7,$8)", event.Id.String(), event.EventID, event.WorkerName, time.Now(), event.EventType, event.NotificationType, event.Status, strings.TrimSpace(event.Message))
 	return err
 }
 func (S *SQLRepository) AddVideo(ctx context.Context, video *model.Video) error {
