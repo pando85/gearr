@@ -430,6 +430,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
                   {job.status_message}
                 </TableCell>
                 <TableCell title={formatDateDetailed(job.last_update)}>
+                  <div className="row-menu">
                   {formatDateShort(job.last_update)}
                   <Button
                     className="simple-menu"
@@ -487,6 +488,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
                       <Typography>Message: {job.status_message}</Typography>
                     </MenuItem>
                   </Menu>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
