@@ -35,6 +35,7 @@ import './JobTable.css';
 
 interface Job {
   id: string;
+  renderedSourcePath: string;
   sourcePath: string;
   destinationPath: string;
   status: string;
@@ -104,6 +105,15 @@ const getDateFromFilterOption = (filterOption: string) => {
   }
 }
 
+const renderPath = (isSmallScreen: boolean, path: string) => {
+  if (isSmallScreen) {
+    const shortPath = path.split('/').pop();
+    return shortPath ? shortPath : path;
+  } else {
+    return path;
+  }
+};
+
 const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
@@ -114,9 +124,23 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
   const [fetchedDetails, setFetchedDetails] = useState<Set<string>>(new Set());
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null); // For menu anchor
   const [nameFilter, setNameFilter] = useState<string>(''); // State for name filter
-  const [selectedStatus, setSelectedStatus] = useState<string | string[]>([]);
+  const [selectedStatusFilter, setSelectedStatus] = useState<string | string[]>([]);
   const [selectedDateFilter, setSelectedDateFilter] = useState<string>('');
   const [detailsMenuAnchor, setDetailsMenuAnchor] = useState<null | HTMLElement>(null);
+
+  const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsSmallScreen(window.innerWidth <= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   const reload = () => {
     setJobs([]);
@@ -179,6 +203,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
           if (foundJob) {
             const enrichedJob: Job = {
               ...foundJob,
+              renderedSourcePath: renderPath(isSmallScreen, response.data.sourcePath),
               sourcePath: response.data.sourcePath,
               destinationPath: response.data.destinationPath,
               status: response.data.status,
@@ -198,10 +223,9 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
       }
     };
 
-    // Fetch details for each job when they are rendered in the table
     jobs.forEach((job) => fetchJobDetails(job.id));
-    const statusFilteredJobs = selectedStatus.length > 0
-      ? jobs.filter((job) => selectedStatus.includes(job.status))
+    const statusFilteredJobs = selectedStatusFilter.length > 0
+      ? jobs.filter((job) => selectedStatusFilter.includes(job.status))
       : jobs;
 
     const dateFilteredJobs = selectedDateFilter ? statusFilteredJobs.filter(
@@ -212,7 +236,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
       ? dateFilteredJobs.filter((job) => job.sourcePath.includes(nameFilter))
       : dateFilteredJobs;
     setFilteredJobs(filteredJobs);
-  }, [token, jobs, fetchedDetails, selectedStatus, selectedDateFilter, nameFilter]);
+  }, [token, jobs, fetchedDetails, selectedStatusFilter, selectedDateFilter, nameFilter, isSmallScreen]);
 
   const deleteJobDetail = (jobId: string) => {
     setFetchedDetails((prevSet) => {
@@ -248,7 +272,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
           },
         });
       const newJobs: Job[] = response.data.scheduled;
-      console.log(newJobs);
+
       setJobs((prevJobs) => [...prevJobs, ...newJobs]);
     } catch (error) {
       console.error(`Error creating job with path ${path}:`, error);
@@ -283,8 +307,8 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
     setNameFilter(event.target.value);
   };
 
-  const handleDetailedViewClick = (event: React.MouseEvent<HTMLElement>, jobId: string) => {
-    setSelectedJob(jobs.find((job) => job.id === jobId) || null);
+  const handleDetailedViewClick = (event: React.MouseEvent<HTMLElement>) => {
+    event.stopPropagation();
     setDetailsMenuAnchor(event.currentTarget);
   };
 
@@ -340,7 +364,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
             <Select
               multiple
               labelId="filter-status-select-label"
-              value={selectedStatus}
+              value={selectedStatusFilter}
               onChange={(event) => setSelectedStatus(event.target.value)}
               displayEmpty
               renderValue={(selected) => Array.isArray(selected) ? selected.join(', ') : selected}
@@ -348,7 +372,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
               {statusFilterOptions.map((option) => (
                 <MenuItem value={option}>
                   <ListItemIcon>
-                    <Checkbox checked={selectedStatus.includes(option)} />
+                    <Checkbox checked={selectedStatusFilter.includes(option)} />
                   </ListItemIcon>
                   {option}
                 </MenuItem>
@@ -411,7 +435,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
                 className="table-row"
               >
                 <TableCell>
-                  {job.sourcePath}
+                  {job.renderedSourcePath}
                 </TableCell>
                 <TableCell className="d-none d-sm-table-cell">
                   {job.destinationPath}
@@ -431,63 +455,65 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
                 </TableCell>
                 <TableCell title={formatDateDetailed(job.last_update)}>
                   <div className="row-menu">
-                  {formatDateShort(job.last_update)}
-                  <Button
-                    className="simple-menu"
-                    aria-controls="simple-menu"
-                    aria-haspopup="true"
-                    onClick={handleClick}
-                    size="small"
-                  >
-                    <MoreVert />
-                  </Button>
-                  <Menu
-                    id="simple-menu"
-                    className="simple-menu"
-                    anchorEl={anchorEl}
-                    keepMounted
-                    open={Boolean(anchorEl)}
-                    onClose={handleClose}
-                  >
-                    <MenuItem title="Details" onClick={(event) => handleDetailedViewClick(event, job.id)}>
-                      <Feed />
-                    </MenuItem>
-                    <MenuItem title="Delete" onClick={() => handleMenuOptionClick(selectedJob, 'delete')}>
-                      <Delete />
-                    </MenuItem>
-                    <MenuItem title="Recreate" onClick={() => handleMenuOptionClick(selectedJob, 'recreate')}>
-                      <Replay />
-                    </MenuItem>
-                  </Menu>
-                  <Menu
-                    id="details-menu"
-                    className="details-menu"
-                    anchorEl={detailsMenuAnchor}
-                    keepMounted
-                    open={Boolean(detailsMenuAnchor)}
-                    onClose={() => setDetailsMenuAnchor(null)}
-                  >
-                    <MenuItem>
-                      <Typography variant="h5" gutterBottom>
-                        Job Details
-                      </Typography>
-                    </MenuItem>
-                    <MenuItem>
-                      <Typography>ID: {job.id}</Typography>
-                    </MenuItem>
-                    <MenuItem>
-                      <Typography>Source: {job.sourcePath}</Typography>
-                    </MenuItem>
-                    <MenuItem>
-                      <Typography>Destination: {job.destinationPath}</Typography>
-                    </MenuItem>
-                    <MenuItem>
-                      <Typography>Status: {job.status}</Typography>
-                    </MenuItem>
-                    <MenuItem>
-                      <Typography>Message: {job.status_message}</Typography>
-                    </MenuItem>
-                  </Menu>
+                    {formatDateShort(job.last_update)}
+                    <Button
+                      className="simple-menu"
+                      aria-controls="simple-menu"
+                      aria-haspopup="true"
+                      onClick={handleClick}
+                      size="small"
+                    >
+                      <MoreVert />
+                    </Button>
+                    <Menu
+                      id="simple-menu"
+                      className="simple-menu"
+                      anchorEl={anchorEl}
+                      keepMounted
+                      open={Boolean(anchorEl)}
+                      onClose={handleClose}
+                    >
+                      <MenuItem title="Details" onClick={(event) => handleDetailedViewClick(event)}>
+                        <Feed />
+                      </MenuItem>
+                      <MenuItem title="Delete" onClick={() => handleMenuOptionClick(selectedJob, 'delete')}>
+                        <Delete />
+                      </MenuItem>
+                      <MenuItem title="Recreate" onClick={() => handleMenuOptionClick(selectedJob, 'recreate')}>
+                        <Replay />
+                      </MenuItem>
+                    </Menu>
+                    <Menu
+                      id="details-menu"
+                      className="details-menu"
+                      anchorEl={detailsMenuAnchor}
+                      keepMounted
+                      open={Boolean(detailsMenuAnchor)}
+                      onClose={() => setDetailsMenuAnchor(null)}
+                    >
+                      {selectedJob && [
+                        <MenuItem key="job-details">
+                          <Typography variant="h5" gutterBottom>
+                            Job Details
+                          </Typography>
+                        </MenuItem>,
+                        <MenuItem key="job-id">
+                          <Typography>ID: {selectedJob.id}</Typography>
+                        </MenuItem>,
+                        <MenuItem key="job-source">
+                          <Typography>Source: {selectedJob.sourcePath}</Typography>
+                        </MenuItem>,
+                        <MenuItem key="job-destination">
+                          <Typography>Destination: {selectedJob.destinationPath}</Typography>
+                        </MenuItem>,
+                        <MenuItem key="job-status">
+                          <Typography>Status: {selectedJob.status}</Typography>
+                        </MenuItem>,
+                        <MenuItem key="job-message">
+                          <Typography>Message: {selectedJob.status_message}</Typography>
+                        </MenuItem>,
+                      ]}
+                    </Menu>
                   </div>
                 </TableCell>
               </TableRow>
