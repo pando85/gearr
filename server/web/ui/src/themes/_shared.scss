@@ -214,7 +214,10 @@ code {
 }
 
 .MuiPaper-rounded {
-  box-shadow: 0 0 0.4rem rgba($box-shadow-color, .05);
+  box-shadow: none;
+  border-width: 1px !important;
+  border-radius: .5rem;
+  border: 0 solid rgba($box-shadow-color, 0.20);
 }
 
 .row-menu {
