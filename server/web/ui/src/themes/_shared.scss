@@ -207,7 +207,6 @@ code {
   padding: 10px;
 }
 
-
 .app-container {
   display: flex;
   flex-direction: column;
@@ -216,6 +215,10 @@ code {
 
 .MuiPaper-rounded {
   box-shadow: 0 0 0.4rem rgba($box-shadow-color, .05);
+}
+
+.simple-menu {
+  position: fixed;
 }
 
 .centered-container {

@@ -429,9 +429,10 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
                 <TableCell className="d-none d-sm-table-cell">
                   {job.status_message}
                 </TableCell>
-                <TableCell className="d-flex" title={formatDateDetailed(job.last_update)}>
+                <TableCell title={formatDateDetailed(job.last_update)}>
                   {formatDateShort(job.last_update)}
                   <Button
+                    className="simple-menu"
                     aria-controls="simple-menu"
                     aria-haspopup="true"
                     onClick={handleClick}
