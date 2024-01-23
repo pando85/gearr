@@ -31,11 +31,11 @@ type Scheduler interface {
 	Run(wg *sync.WaitGroup, ctx context.Context)
 	ScheduleJobRequests(ctx context.Context, jobRequest *model.JobRequest) (*ScheduleJobRequestResult, error)
 	GetJob(ctx context.Context, uuid string) (videos *model.Video, err error)
+	DeleteJob(ctx context.Context, uuid string) error
 	GetJobs(ctx context.Context, page int, pageSize int) (*[]model.Video, error)
 	GetUploadJobWriter(ctx context.Context, uuid string) (*UploadJobStream, error)
 	GetDownloadJobWriter(ctx context.Context, uuid string) (*DownloadJobStream, error)
 	GetChecksum(ctx context.Context, uuid string) (string, error)
-	CancelJob(ctx context.Context, uuid string) error
 }
 
 type SchedulerConfig struct {
@@ -273,9 +273,9 @@ func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *m
 			}
 		}
 
-		downloadURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/download/%s", R.config.Domain.String(), video.Id.String()))
-		uploadURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/upload/%s", R.config.Domain.String(), video.Id.String()))
-		checksumURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/checksum/%s", R.config.Domain.String(), video.Id.String()))
+		downloadURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/job/%s/download", R.config.Domain.String(), video.Id.String()))
+		uploadURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/job/%s/upload", R.config.Domain.String(), video.Id.String()))
+		checksumURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/job/%s/checksum", R.config.Domain.String(), video.Id.String()))
 		task := &model.TaskEncode{
 			Id:          video.Id,
 			DownloadURL: downloadURL.String(),
@@ -330,42 +330,16 @@ func (R *RuntimeScheduler) ScheduleJobRequests(ctx context.Context, jobRequest *
 	return result, returnError
 }
 
-func (R *RuntimeScheduler) GetJob(ctx context.Context, uuid string) (videos *model.Video, err error) {
+func (R *RuntimeScheduler) GetJob(ctx context.Context, uuid string) (*model.Video, error) {
 	return R.repo.GetJob(ctx, uuid)
 }
 
-func (R *RuntimeScheduler) GetJobs(ctx context.Context, page int, pageSize int) (videos *[]model.Video, err error) {
-	return R.repo.GetJobs(ctx, page, pageSize)
+func (R *RuntimeScheduler) DeleteJob(ctx context.Context, uuid string) error {
+	return R.repo.DeleteJob(ctx, uuid)
 }
 
-func (R *RuntimeScheduler) CancelJob(ctx context.Context, uuid string) error {
-	video, err := R.repo.GetJob(ctx, uuid)
-	if err != nil {
-		if errors.Is(err, repository.ElementNotFound) {
-			return ErrorJobNotFound
-		}
-		return err
-	}
-	lastEvent := video.Events.GetLatestPerNotificationType(model.JobNotification)
-	status := lastEvent.Status
-	if status == model.StartedNotificationStatus {
-		jobAction := &model.JobEvent{
-			Id:     video.Id,
-			Action: model.CancelJob,
-		}
-
-		worker, err := R.repo.GetWorker(ctx, lastEvent.WorkerName)
-		if err != nil {
-			if errors.Is(err, repository.ElementNotFound) {
-				return ErrorJobNotFound
-			}
-			return err
-		}
-		R.queue.PublishJobEvent(jobAction, worker.QueueName)
-	} else {
-		return fmt.Errorf("%w: job in status %s", ErrorInvalidStatus, status)
-	}
-	return nil
+func (R *RuntimeScheduler) GetJobs(ctx context.Context, page int, pageSize int) (*[]model.Video, error) {
+	return R.repo.GetJobs(ctx, page, pageSize)
 }
 
 func (R *RuntimeScheduler) isValidStremeableJob(ctx context.Context, uuid string) (*model.Video, error) {

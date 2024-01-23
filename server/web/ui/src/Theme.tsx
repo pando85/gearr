@@ -21,7 +21,7 @@ export const ThemeToggle: React.FC = () => {
   const { userPreference, setTheme } = useTheme();
 
   return (
-    <Form className="ml-auto">
+    <Form className="ml-auto mt-0">
       <ButtonGroup size="sm">
         <Button
           color="secondary"

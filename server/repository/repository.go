@@ -25,6 +25,7 @@ type Repository interface {
 	PingServerUpdate(ctx context.Context, name string, ip string, queueName string) error
 	GetTimeoutJobs(ctx context.Context, timeout time.Duration) ([]*model.TaskEvent, error)
 	GetJob(ctx context.Context, uuid string) (*model.Video, error)
+	DeleteJob(ctx context.Context, uuid string) error
 	GetJobs(ctx context.Context, page int, pageSize int) (*[]model.Video, error)
 	GetJobByPath(ctx context.Context, path string) (*model.Video, error)
 	AddNewTaskEvent(ctx context.Context, event *model.TaskEvent) error
@@ -134,6 +135,7 @@ func (S *SQLRepository) prepareDatabase(ctx context.Context) (returnError error)
 		if err != nil {
 			return err
 		}
+		log.Debug("prepare database")
 		_, err = con.ExecContext(ctx, databaseScript)
 		return err
 	})
@@ -180,6 +182,15 @@ func (S *SQLRepository) GetJob(ctx context.Context, uuid string) (video *model.V
 	}
 	video, err = S.getJob(ctx, db, uuid)
 	return video, err
+}
+
+func (S *SQLRepository) DeleteJob(ctx context.Context, uuid string) error {
+	db, err := S.getConnection(ctx)
+	if err != nil {
+		return err
+	}
+	err = S.deleteJob(db, uuid)
+	return err
 }
 
 func (S *SQLRepository) GetJobs(ctx context.Context, page int, pageSize int) (videos *[]model.Video, returnError error) {
@@ -233,6 +244,15 @@ func (S *SQLRepository) getJob(ctx context.Context, tx Transaction, uuid string)
 	video.StatusMessage = statusMessage
 
 	return &video, nil
+}
+
+func (S *SQLRepository) deleteJob(tx Transaction, uuid string) error {
+	sqlResult, err := tx.Exec("DELETE FROM videos WHERE id=$1", uuid)
+	log.Debugf("query result: +%v", sqlResult)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (S *SQLRepository) getJobs(ctx context.Context, tx Transaction, page int, pageSize int) (*[]model.Video, error) {

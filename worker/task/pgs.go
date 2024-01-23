@@ -152,7 +152,6 @@ func (P *PGSWorker) Clean() error {
 func (P *PGSWorker) Cancel() {
 	log.Warnf("[%s] canceling job %s", P.GetID(), P.task.Id.String())
 	P.cancelContext()
-	//TODO hauriem de esperar de alguna manera a asegurar que el Execute() ha sortit..
 }
 
 func (P PGSWorker) GetID() string {

@@ -32,7 +32,7 @@ const App: React.FC = () => {
   };
 
   const Jobs: React.FC = () => (
-    <div className="contentContainer">
+    <div className="content-container">
       {showJobTable && <JobTable token={token} setShowJobTable={setShowJobTable} />}
     </div>
   );
@@ -54,26 +54,26 @@ const App: React.FC = () => {
     >
       <Theme />
       <Router>
-        <div className="tableContainer">
+        <div className="page">
           <Navigation/>
             {!showJobTable && (
-              <div className="centeredContainer">
+              <div className="centered-container">
                 <div className="auth-form">
-                  <form className="tokenInput" onSubmit={handleTokenSubmit}>
+                  <form className="token-input" onSubmit={handleTokenSubmit}>
                     <div className="field">
                       <label className="is-label">Token</label>
-                      <div className="passwordInputContainer">
+                      <div className="password-input-container">
                         <input
-                          className="passwordInput"
+                          className="password-input"
                           type={showToken ? 'text' : 'password'}
                           value={token}
                           onChange={handleTokenInput}
                         />
-                        <div className="passwordInputSuffix">
+                        <div className="password-input-suffix">
                           {showToken ? (
-                            <VisibilityOff className="eyeIcon" onClick={handleToggleShowToken} />
+                            <VisibilityOff className="eye-icon" onClick={handleToggleShowToken} />
                           ) : (
-                            <Visibility className="eyeIcon" onClick={handleToggleShowToken} />
+                            <Visibility className="eye-icon" onClick={handleToggleShowToken} />
                           )}
                         </div>
                       </div>

@@ -1,99 +1,121 @@
-CREATE TABLE IF NOT EXISTS videos
-(
-    id varchar(255)  primary key,
-    source_path    text not null,
-    destination_path text not null
+-- Define videos table
+CREATE TABLE IF NOT EXISTS videos (
+    id varchar(255) PRIMARY KEY,
+    source_path text NOT NULL,
+    destination_path text NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS video_events(
-    video_id varchar(255)  not null,
-    video_event_id int not null,
-    worker_name varchar(255) not null,
-    event_time timestamp  not null,
-    event_type varchar(50) not null,
-    notification_type varchar(50) not null,
-    status  varchar(20) not null,
+-- Define video_events table
+CREATE TABLE IF NOT EXISTS video_events (
+    video_id varchar(255) NOT NULL,
+    video_event_id int NOT NULL,
+    worker_name varchar(255) NOT NULL,
+    event_time timestamp NOT NULL,
+    event_type varchar(50) NOT NULL,
+    notification_type varchar(50) NOT NULL,
+    status varchar(20) NOT NULL,
     message text,
-    primary key (video_id,video_event_id),
-    foreign KEY (video_id) REFERENCES videos(id)
+    PRIMARY KEY (video_id, video_event_id),
+    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS workers
-(
-   name varchar(100) primary key not null,
-   ip varchar(100) not null,
-   queue_name varchar(255) not null,
-   last_seen timestamp not null
+-- Define workers table
+CREATE TABLE IF NOT EXISTS workers (
+    name varchar(100) PRIMARY KEY NOT NULL,
+    ip varchar(100) NOT NULL,
+    queue_name varchar(255) NOT NULL,
+    last_seen timestamp NOT NULL
 );
 
+-- Define video_status table
 CREATE TABLE IF NOT EXISTS video_status (
-                                video_id          varchar(255) not null,
-                                video_event_id    integer      not null,
-                                video_path        text not null,
-                                worker_name       varchar(255) not null,
-                                event_time        timestamp    not null,
-                                event_type        varchar(50)  not null,
-                                notification_type varchar(50)  not null,
-                                status            varchar(20)  not null,
-                                message           text,
-                                constraint video_status_pkey
-                                    primary key (video_id)
+    video_id varchar(255) NOT NULL,
+    video_event_id integer NOT NULL,
+    video_path text NOT NULL,
+    worker_name varchar(255) NOT NULL,
+    event_time timestamp NOT NULL,
+    event_type varchar(50) NOT NULL,
+    notification_type varchar(50) NOT NULL,
+    status varchar(20) NOT NULL,
+    message text,
+    CONSTRAINT video_status_pkey PRIMARY KEY (video_id),
+    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
 );
 
---Function to insert update on video_status
-create or replace function fn_video_status_update(p_video_id varchar, p_video_event_id integer,
-                                                  p_worker_name varchar, p_event_time timestamp, p_event_type varchar, p_notification_type varchar, p_status varchar, p_message text) returns void
-    security definer
-    language plpgsql as $$
-declare
+-- Function to insert or update video_status
+CREATE OR REPLACE FUNCTION fn_video_status_update(
+    p_video_id varchar,
+    p_video_event_id integer,
+    p_worker_name varchar,
+    p_event_time timestamp,
+    p_event_type varchar,
+    p_notification_type varchar,
+    p_status varchar,
+    p_message text
+) RETURNS VOID SECURITY DEFINER LANGUAGE plpgsql AS $$
+DECLARE
     p_video_path varchar;
-begin
-    select v.source_path into p_video_path from videos v where v.id=p_video_id;
-    insert into video_status(video_id, video_event_id, video_path,worker_name, event_time, event_type, notification_type, status, message)
-    values (p_video_id, p_video_event_id,p_video_path, p_worker_name, p_event_time, p_event_type, p_notification_type,
-            p_status, p_message)
-    on conflict on constraint video_status_pkey
-        do update set video_event_id=p_video_event_id, video_path=p_video_path,worker_name=p_worker_name,
-                      event_time=p_event_time, event_type=p_event_type,
-                      notification_type=p_notification_type, status=p_status, message=p_message;
-end;
+BEGIN
+    SELECT v.source_path INTO p_video_path
+    FROM videos v
+    WHERE v.id = p_video_id;
+
+    INSERT INTO video_status (
+        video_id,
+        video_event_id,
+        video_path,
+        worker_name,
+        event_time,
+        event_type,
+        notification_type,
+        status,
+        message
+    )
+    VALUES (
+        p_video_id,
+        p_video_event_id,
+        p_video_path,
+        p_worker_name,
+        p_event_time,
+        p_event_type,
+        p_notification_type,
+        p_status,
+        p_message
+    )
+    ON CONFLICT ON CONSTRAINT video_status_pkey DO UPDATE SET
+        video_event_id = p_video_event_id,
+        video_path = p_video_path,
+        worker_name = p_worker_name,
+        event_time = p_event_time,
+        event_type = p_event_type,
+        notification_type = p_notification_type,
+        status = p_status,
+        message = p_message;
+END;
 $$;
 
---trigger function for video_status_update
-create or replace function fn_trigger_video_status_update() returns trigger
-    security definer
-    language plpgsql
-as $$
-begin
-    perform fn_video_status_update(new.video_id, new.video_event_id,
-                                   new.worker_name,new.event_time,new.event_type,new.notification_type,
-                                   new.status,new.message);
-    return new;
-end;
+-- Trigger function for video_status_update
+CREATE OR REPLACE FUNCTION fn_trigger_video_status_update() RETURNS TRIGGER SECURITY DEFINER LANGUAGE plpgsql AS $$
+BEGIN
+    PERFORM fn_video_status_update(
+        NEW.video_id,
+        NEW.video_event_id,
+        NEW.worker_name,
+        NEW.event_time,
+        NEW.event_type,
+        NEW.notification_type,
+        NEW.status,
+        NEW.message
+    );
+    RETURN NEW;
+END;
 $$;
---trigger video_events
-drop trigger if exists event_insert_video_status_update on video_events;
-create trigger event_insert_video_status_update after insert on video_events
-    for each row
-execute procedure fn_trigger_video_status_update();
 
+-- Drop existing trigger if it exists
+DROP TRIGGER IF EXISTS event_insert_video_status_update ON video_events;
 
---To Reload Everything!!
---do language plpgsql $$
---    declare
---        e record;
---        i integer:=1;
---    begin
---        for e in (select * from video_events order by event_time asc) loop
---                perform fn_video_status_update(e.video_id, e.video_event_id,
---                                               e.worker_name,e.event_time,e.event_type,e.notification_type,
---                                               e.status,e.message);
---                i:=i+1;
---                IF MOD(i, 200) = 0 THEN
---                    COMMIT;
---                END IF;
---            end loop;
---    end;
---$$;
-
-
+-- Create trigger for video_events
+CREATE TRIGGER event_insert_video_status_update
+AFTER INSERT ON video_events
+FOR EACH ROW
+EXECUTE PROCEDURE fn_trigger_video_status_update();

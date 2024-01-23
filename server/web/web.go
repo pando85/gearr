@@ -25,26 +25,6 @@ type WebServer struct {
 	ctx       context.Context
 }
 
-func (w *WebServer) cancelJob(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		webError(c, fmt.Errorf("Job ID parameter not found"), 404)
-		return
-	}
-
-	err := w.scheduler.CancelJob(c.Request.Context(), id)
-	if err != nil {
-		if errors.Is(err, scheduler.ErrorJobNotFound) {
-			webError(c, err, 404)
-		} else {
-			webError(c, err, 500)
-		}
-		return
-	}
-
-	c.Status(http.StatusOK)
-}
-
 func (w *WebServer) addJobs(c *gin.Context) {
 	var jobRequest model.JobRequest
 	if err := c.ShouldBindJSON(&jobRequest); err != nil {
@@ -94,16 +74,20 @@ func (w *WebServer) getJobByID(c *gin.Context) {
 	c.JSON(http.StatusOK, video)
 }
 
-func (w *WebServer) jobs(c *gin.Context) {
-	log.Debugf("method: %s", c.Request.Method)
-	switch c.Request.Method {
-	case http.MethodGet:
-		w.getJobs(c)
-	case http.MethodPost:
-		w.addJobs(c)
-	default:
-		c.String(http.StatusMethodNotAllowed, "Method not allowed")
+func (w *WebServer) deleteJob(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		webError(c, fmt.Errorf("Job ID parameter not found"), 404)
+		return
 	}
+
+	err := w.scheduler.DeleteJob(w.ctx, id)
+	if err != nil {
+		webError(c, err, http.StatusInternalServerError)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
 }
 
 func (w *WebServer) upload(c *gin.Context) {
@@ -242,14 +226,13 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler) *WebSer
 	})
 
 	api := r.Group("/api/v1")
-	api.GET("/job/", webServer.AuthFunc(webServer.jobs))
-	api.POST("/job/", webServer.AuthFunc(webServer.jobs))
+	api.GET("/job/", webServer.AuthFunc(webServer.getJobs))
+	api.POST("/job/", webServer.AuthFunc(webServer.addJobs))
 	api.GET("/job/:id", webServer.AuthFunc(webServer.getJobByID))
-	api.PUT("/job/cancel/:id", webServer.AuthFunc(webServer.cancelJob))
-	api.POST("/job/cancel/:id", webServer.AuthFunc(webServer.cancelJob))
-	api.GET("/download/:id", webServer.download)
-	api.GET("/checksum/:id", webServer.checksum)
-	api.POST("/upload/:id", webServer.upload)
+	api.DELETE("/job/:id", webServer.AuthFunc(webServer.deleteJob))
+	api.GET("/job/:id/download", webServer.download)
+	api.GET("/job/:id/checksum", webServer.checksum)
+	api.POST("/job/:id/upload", webServer.upload)
 
 	ui.AddRoutes(r)
 

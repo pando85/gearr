@@ -34,9 +34,8 @@ const (
 	CanceledNotificationStatus  NotificationStatus = "canceled"
 	FailedNotificationStatus    NotificationStatus = "failed"
 
-	CancelJob       JobAction = "cancel"
-	EncodeJobType   JobType   = "encode"
-	PGSToSrtJobType JobType   = "pgstosrt"
+	EncodeJobType   JobType = "encode"
+	PGSToSrtJobType JobType = "pgstosrt"
 )
 
 type Identity interface {

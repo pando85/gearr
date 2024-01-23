@@ -20,6 +20,9 @@
    - https://github.com/twbs/bootstrap/blob/v4.6.0/scss/_variables.scss
 */
 
+$nav-bar-height: 50px;
+$flex-top-bar-height: 40px;
+
 body {
   min-height: 100vh;
   padding: 20px;
@@ -36,12 +39,26 @@ code {
     monospace;
 }
 
+.page {
+  display: block;
+  padding-top: $nav-bar-height;
+}
+
+.top-bar {
+  background-color: $dropdown-divider-bg;
+  background-image: none;
+  width: 100%;
+  height: $nav-bar-height;
+  z-index: 2;
+}
+
 .link {
   text-decoration: none;
   align-items: center;
   line-height: inherit;
   margin-right: 0.5rem;
   white-space: nowrap;
+  padding-bottom: 4px !important;
 }
 
 .navbar-brand {
@@ -52,62 +69,156 @@ code {
 
 .logo {
   padding-right: 0.75rem;
-  height: 3rem;
+  margin-left: 0;
+  height: 2rem;
   width: auto;
 }
 
-.appNameContainer {
-  margin-left: 10px;
+.navbar-collapse {
+  background-color: $gray-800;
+  margin-left: -2px !important;
+}
+
+@media (min-width: 768px) {
+  #large {
+    display: none !important;
+    flex-basis: auto;
+  }
+}
+
+.row {
+	max-width: 100%;
+	margin-right: auto;
+	margin-left: auto;
+	display: flex;
+	flex-flow: row wrap;
+}
+
+.flex-top-bar {
+  background-color: $gray-800;
+	position: fixed;
+	right: 0;
+  left: 0;
+  width: 100%;
+	z-index: 5;
+	padding: 0 15px;
+	align-items: center;
+	flex-wrap: wrap;
+  line-height: $flex-top-bar-height;
+}
+
+.actions {
+	display: flex;
+	align-items: center;
+	line-height: $flex-top-bar-height;
+  height: $flex-top-bar-height;
+  margin: 0 auto;
+  padding: 0;
+  box-sizing: inherit;
+}
+
+.tools {
+	display: flex;
+	flex-grow: 1;
+	align-items: center;
+  margin: 0 auto;
+  padding: 0;
+}
+
+.select {
+	position: relative;
+  display: inline-block;
+}
+
+.search-wrapper {
+  line-height: normal;
+  margin: 8px auto;
   display: flex;
-  flex-direction: column;
+	position: relative;
 }
 
-.appName {
-  font-size: 20px;
-  text-decoration: none;
-  margin-top: 4px;
+.job-list {
+  padding: 1em;
+  position: relative;
 }
 
-.navBar {
-  justify-content: space-between;
-  display: flex !important;
-  flex-basis: auto;
-  align-items: center;
-  flex-basis: 100%;
-  flex-grow: 1;
+.search {
+	background-color: $gray-900;
+	border-color: currentcolor;
+  border: 1px solid;
+  min-width: 60px;
+	border-radius: 7px;
+	position: relative;
+	padding: 0 10px;
+	height: 33px;
+	display: flex;
+	align-items: center;
+	transition: width 200ms;
 }
 
-.navItems {
+.search-input {
+  background-color: transparent;
+  border: none;
+  color: $gray-500;
+}
+
+.MuiSelect-select {
+  min-width: 50px;
+}
+
+.MuiFormLabel-root {
+  color: $gray-200 !important;
+}
+
+.status-select {
+  margin-left: 15px;
+  position: relative;
   display: flex;
-  flex-direction: column;
-  list-style: none;
-  margin-bottom: 0;
-  padding-left: 0;
-  margin-left: 0 !important;
+  height: 56px;
 }
 
-.navItem {
-  margin-right: 20px;
-  font-size: 18px;
-  text-decoration: none;
+.status-select span {
+  height: auto;
+  line-height: 1.4375em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  padding: 16.5px 14px;
 }
 
-.navItem:hover {
-  filter: brightness(1.1);
+.MuiInputBase-root {
+  color: $gray-200;
 }
 
-.appContainer {
+.MuiPaper-root {
+  background-color: $body-bg;
+  color: $body-color;
+}
+
+.padder {
+	height: 50px;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  z-index: 1 !important;
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px;
+}
+
+
+.app-container {
   display: flex;
   flex-direction: column;
   height: 100vh;
 }
 
-.contentContainer {
-  width: 100%;
-  padding-top: 80px;
+.MuiPaper-rounded {
+  box-shadow: 0 0 0.4rem rgba($box-shadow-color, .05);
 }
 
-.centeredContainer {
+.centered-container {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -123,7 +234,7 @@ code {
   padding: 1.25rem;
 }
 
-.tokenInput {
+.token-input {
   padding: 20px;
   border-radius: 8px;
 }
@@ -144,7 +255,7 @@ code {
   margin-bottom: .25rem;
 }
 
-.passwordInputContainer {
+.password-input-container {
   display: flex;
   width: 100%;
   border-radius: 2px;
@@ -156,14 +267,14 @@ code {
   z-index: 0;
 }
 
-.passwordInput {
+.password-input {
   position: relative;
   -moz-box-flex: 1;
   flex-grow: 1;
   z-index: 1;
 }
 
-.passwordInputSuffix {
+.password-input-suffix {
   position: absolute;
   top: 0px;
   z-index: 1;
@@ -188,7 +299,7 @@ code {
   right: 0px;
 }
 
-.eyeIcon {
+.eye-icon {
   display: inline-block;
   line-height: 0;
 }
@@ -199,6 +310,15 @@ code {
 
 .MuiTableCell-head {
   color: $body-color !important;
+}
+
+ul {
+  margin-bottom: 0 !important;
+}
+
+.MuiMenuItem-root {
+  padding-left: 8px;
+  padding-right: 8px;
 }
 
 button {
