@@ -26,6 +26,11 @@ const CollapseNav: React.FC<CollapseNavProps> = ({ isOpen, className, id }) => (
         </NavLink>
       </NavItem>
       <NavItem>
+        <NavLink tag={Link} to="/workers">
+          Workers
+        </NavLink>
+      </NavItem>
+      <NavItem>
         <NavLink href="https://github.com/pando85/transcoder" title="GitHub">
           <GitHubIcon />
         </NavLink>

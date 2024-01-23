@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import JobTable from './JobTable';
+import WorkerTable from './WorkerTable';
 import useMedia from './hooks/useMedia';
 import Navigation from './Navbar';
 
@@ -34,6 +35,12 @@ const App: React.FC = () => {
   const Jobs: React.FC = () => (
     <div className="content-container">
       {showJobTable && <JobTable token={token} setShowJobTable={setShowJobTable} />}
+    </div>
+  );
+
+  const Workers: React.FC = () => (
+    <div className="content-container">
+      {showJobTable && <WorkerTable token={token} setShowJobTable={setShowJobTable} />}
     </div>
   );
 
@@ -86,6 +93,7 @@ const App: React.FC = () => {
             <Routes>
               <Route path="/" element={<Navigate to="/jobs" replace />} />
               <Route path="/jobs" element={<Jobs />} />
+              <Route path="/workers" element={<Workers />} />
             </Routes>
           </div>
       </Router>

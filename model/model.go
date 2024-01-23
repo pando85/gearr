@@ -56,10 +56,10 @@ type JobEventQueue struct {
 	JobEvent *JobEvent
 }
 type Worker struct {
-	Name      string
-	Ip        string
-	QueueName string
-	LastSeen  time.Time
+	Name      string    `json:"name"`
+	Ip        string    `json:"id"`
+	QueueName string    `json:"queue_name"`
+	LastSeen  time.Time `json:"last_seen"`
 }
 
 type ControlEvent struct {

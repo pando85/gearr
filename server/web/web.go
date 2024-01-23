@@ -187,6 +187,16 @@ loop:
 	}
 }
 
+func (w *WebServer) getWorkers(c *gin.Context) {
+	workers, err := w.scheduler.GetWorkers(w.ctx)
+	if err != nil {
+		webError(c, err, http.StatusInternalServerError)
+		return
+	}
+
+	c.JSON(http.StatusOK, workers)
+}
+
 func (w *WebServer) checksum(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
@@ -233,6 +243,8 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler) *WebSer
 	api.GET("/job/:id/download", webServer.download)
 	api.GET("/job/:id/checksum", webServer.checksum)
 	api.POST("/job/:id/upload", webServer.upload)
+
+	api.GET("/workers/", webServer.AuthFunc(webServer.getWorkers))
 
 	ui.AddRoutes(r)
 

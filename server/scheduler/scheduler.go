@@ -36,6 +36,7 @@ type Scheduler interface {
 	GetUploadJobWriter(ctx context.Context, uuid string) (*UploadJobStream, error)
 	GetDownloadJobWriter(ctx context.Context, uuid string) (*DownloadJobStream, error)
 	GetChecksum(ctx context.Context, uuid string) (string, error)
+	GetWorkers(ctx context.Context) (*[]model.Worker, error)
 }
 
 type SchedulerConfig struct {
@@ -422,6 +423,10 @@ func (R *RuntimeScheduler) GetChecksum(ctx context.Context, uuid string) (string
 		return "", fmt.Errorf("%w: Checksum not found for %s", ErrorJobNotFound, filePath)
 	}
 	return checksum, nil
+}
+
+func (R *RuntimeScheduler) GetWorkers(ctx context.Context) (*[]model.Worker, error) {
+	return R.repo.GetWorkers(ctx)
 }
 
 func (S *RuntimeScheduler) stop() {

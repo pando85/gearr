@@ -32,6 +32,7 @@ type Repository interface {
 	AddVideo(ctx context.Context, video *model.Video) error
 	WithTransaction(ctx context.Context, transactionFunc func(ctx context.Context, tx Repository) error) error
 	GetWorker(ctx context.Context, name string) (*model.Worker, error)
+	GetWorkers(ctx context.Context) (*[]model.Worker, error)
 }
 
 type Transaction interface {
@@ -154,9 +155,9 @@ func (S *SQLRepository) GetWorker(ctx context.Context, name string) (worker *mod
 	if err != nil {
 		return nil, err
 	}
-	worker, err = S.getWorker(ctx, db, name)
-	return worker, err
+	return S.getWorker(ctx, db, name)
 }
+
 func (S *SQLRepository) getWorker(ctx context.Context, db Transaction, name string) (*model.Worker, error) {
 	rows, err := db.QueryContext(ctx, "SELECT * FROM workers WHERE name=$1", name)
 	if err != nil {
@@ -173,6 +174,31 @@ func (S *SQLRepository) getWorker(ctx context.Context, db Transaction, name stri
 		return nil, fmt.Errorf("%w, %s", ElementNotFound, name)
 	}
 	return &worker, err
+}
+
+func (S *SQLRepository) GetWorkers(ctx context.Context) (*[]model.Worker, error) {
+	db, err := S.getConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return S.getWorkers(ctx, db)
+}
+
+func (S *SQLRepository) getWorkers(ctx context.Context, db Transaction) (*[]model.Worker, error) {
+	rows, err := db.QueryContext(ctx, "SELECT name, ip, queue_name, last_seen FROM workers")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	workers := []model.Worker{}
+	for rows.Next() {
+		worker := model.Worker{}
+		rows.Scan(&worker.Name, &worker.Ip, &worker.QueueName, &worker.LastSeen)
+		workers = append(workers, worker)
+	}
+
+	return &workers, nil
 }
 
 func (S *SQLRepository) GetJob(ctx context.Context, uuid string) (video *model.Video, returnError error) {
