@@ -218,7 +218,8 @@ code {
 }
 
 .simple-menu {
-  position: fixed;
+  position: absolute;
+  margin-left: -5px;
 }
 
 .centered-container {
