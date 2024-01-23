@@ -80,11 +80,8 @@ func (f *fallbackFileSystem) Open(path string) (http.File, error) {
 }
 
 func (f *fallbackFileSystem) Exists(prefix string, path string) bool {
-	// Exclude paths starting with "/api/"
 	if strings.HasPrefix(path, "/api/") {
 		return false
 	}
-
-	// Delegate to staticFileSystem for other paths
-	return f.staticFileSystem.Exists(prefix, path)
+	return true
 }
