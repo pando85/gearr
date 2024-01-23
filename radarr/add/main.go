@@ -92,7 +92,7 @@ func PrintTranscoderResponse(jsonStr []byte) error {
 	return nil
 }
 
-func AddMovieToTranscoderQueue(path string, url string) error {
+func AddMovieToTranscoderQueue(path string, url string, token string) error {
 	payload := map[string]string{
 		"SourcePath": path,
 	}
@@ -107,7 +107,9 @@ func AddMovieToTranscoderQueue(path string, url string) error {
 		return err
 	}
 
+	authHeader := fmt.Sprintf("Bearer %s", token)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", authHeader)
 
 	client := http.Client{}
 
@@ -150,7 +152,7 @@ func main() {
 		return
 	}
 
-	transcoderPostURL := fmt.Sprintf("%s/api/v1/job/?token=%s", *transcoderURL, *transcoderToken)
+	transcoderPostURL := fmt.Sprintf("%s/api/v1/job/", *transcoderURL)
 
 	c := starr.New(*apiKey, *radarrURL, 0)
 	r := radarr.New(c)
@@ -186,7 +188,7 @@ func main() {
 			fmt.Printf("Full Path: %s\n\n", m.MovieFile.Path)
 
 			if !*dryRun {
-				err := AddMovieToTranscoderQueue(m.MovieFile.Path, transcoderPostURL)
+				err := AddMovieToTranscoderQueue(m.MovieFile.Path, transcoderPostURL, *transcoderToken)
 				if err != nil {
 					fmt.Println("error:", err)
 					os.Exit(1)
