@@ -223,19 +223,23 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
       }
     };
 
-    jobs.forEach((job) => fetchJobDetails(job.id));
-    const statusFilteredJobs = selectedStatusFilter.length > 0
-      ? jobs.filter((job) => selectedStatusFilter.includes(job.status))
-      : jobs;
+    const filterJobs = async () => {
+      await jobs.forEach((job) => fetchJobDetails(job.id));
+      const statusFilteredJobs = selectedStatusFilter.length > 0
+        ? jobs.filter((job) => selectedStatusFilter.includes(job.status))
+        : jobs;
 
-    const dateFilteredJobs = selectedDateFilter ? statusFilteredJobs.filter(
-      (job) => job.last_update >= getDateFromFilterOption(selectedDateFilter))
-      : statusFilteredJobs
+      const dateFilteredJobs = selectedDateFilter ? statusFilteredJobs.filter(
+        (job) => job.last_update >= getDateFromFilterOption(selectedDateFilter))
+        : statusFilteredJobs
 
-    const filteredJobs = nameFilter
-      ? dateFilteredJobs.filter((job) => job.sourcePath.includes(nameFilter))
-      : dateFilteredJobs;
-    setFilteredJobs(filteredJobs);
+      const filteredJobs = nameFilter
+        ? dateFilteredJobs.filter((job) => job.sourcePath ? job.sourcePath.toLowerCase().includes(nameFilter.toLowerCase()) : false)
+        : dateFilteredJobs;
+      setFilteredJobs(filteredJobs);
+    };
+
+    filterJobs();
   }, [token, jobs, fetchedDetails, selectedStatusFilter, selectedDateFilter, nameFilter, isSmallScreen]);
 
   const deleteJobDetail = (jobId: string) => {
