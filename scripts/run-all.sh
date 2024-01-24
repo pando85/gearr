@@ -43,4 +43,8 @@ while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
     ((ATTEMPT++))
 done
 
+if [ -n "$NOT_RUN_FRONT" ]; then
+    exit 0
+fi
+
 cd $WORKDIR/../server/web/ui && npm start

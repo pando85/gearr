@@ -85,6 +85,7 @@ image-% push-image-%: build-%
 
 .PHONY: run-all
 run-all: images
+run-all: export NOT_RUN_FRONT=true
 run-all:	## run all services in local using docker-compose
 run-all:
 	@scripts/run-all.sh
