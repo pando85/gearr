@@ -57,7 +57,7 @@ services:
       - encode
       - --worker.pgsJobs
       - "1"
-      - --worker.maxprefetchjobs
+      - --worker.maxPrefetchJobs
       - "3"
     depends_on:
       - rabbitmq

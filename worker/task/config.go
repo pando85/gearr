@@ -59,7 +59,7 @@ type Config struct {
 	TemporalPath      string         `mapstructure:"temporalPath"`
 	Name              string         `mapstructure:"name"`
 	Threads           int            `mapstructure:"threads"`
-	MaxPrefetchJobs   int            `mapstructure:"maxprefetchjobs`
+	MaxPrefetchJobs   int            `mapstructure:"maxPrefetchJobs"`
 	Jobs              AcceptedJobs   `mapstructure:"acceptedJobs"`
 	EncodeJobs        int            `mapstructure:"encodeJobs"`
 	PgsJobs           int            `mapstructure:"pgsJobs"`

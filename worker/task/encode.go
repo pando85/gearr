@@ -274,7 +274,7 @@ func (J *EncodeWorker) calculateChecksum(checksumURL string) (string, error) {
 		retry.Attempts(10),
 		retry.LastErrorOnly(true),
 		retry.OnRetry(func(n uint, err error) {
-			J.terminal.Error("error %d on calculate checksum of downloaded job %s", err.Error())
+			J.terminal.Error("error %s on calculate checksum of downloaded job %s", err.Error(), checksumURL)
 		}),
 		retry.RetryIf(func(err error) bool {
 			return !errors.Is(err, context.Canceled)

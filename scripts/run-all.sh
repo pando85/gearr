@@ -2,6 +2,7 @@
 
 MAX_ATTEMPTS=20
 
+WORKDIR=$(dirname $(realpath $0))
 
 docker-compose up -d postgres rabbitmq
 ATTEMPT=1
@@ -42,3 +43,4 @@ while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
     ((ATTEMPT++))
 done
 
+cd $WORKDIR/../server/web/ui && npm start

@@ -28,7 +28,7 @@ type JobWorker struct {
 	encodeWorker *EncodeWorker
 }
 
-func (w JobWorker) GetPGSByID(pgsid int) *TaskPGSJobControl {
+func (w *JobWorker) GetPGSByID(pgsid int) *TaskPGSJobControl {
 	for obj := range w.pgs.Iter() {
 		taskPGSJobControl := obj.Value.(*TaskPGSJobControl)
 		if taskPGSJobControl.task.PGSID == pgsid {
