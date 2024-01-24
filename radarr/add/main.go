@@ -63,7 +63,7 @@ type FailedItem struct {
 	ForceCompleted  bool   `json:"forceCompleted"`
 	ForceFailed     bool   `json:"forceFailed"`
 	ForceExecuting  bool   `json:"forceExecuting"`
-	ForceAdded      bool   `json:"forceAdded"`
+	ForceQueued     bool   `json:"forceQueued"`
 	Priority        int    `json:"priority"`
 	Error           string `json:"error"`
 }
@@ -82,11 +82,11 @@ func PrintTranscoderResponse(jsonStr []byte) error {
 
 	switch {
 	case len(response.Scheduled) > 0:
-		fmt.Println("Movie successfully added.")
+		fmt.Println("Movie successfully queued.")
 	case len(response.Failed) > 0:
-		fmt.Println("Movie was not added.")
+		fmt.Println("Movie was not queued.")
 	default:
-		return errors.New("Movie was neither added nor failed.")
+		return errors.New("Movie was neither queued nor failed.")
 	}
 
 	return nil

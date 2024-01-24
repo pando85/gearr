@@ -71,7 +71,7 @@ func NewScheduler(config SchedulerConfig, repo repository.Repository, queue queu
 func (R *RuntimeScheduler) Run(wg *sync.WaitGroup, ctx context.Context) {
 	log.Info("starting scheduler")
 	R.start(ctx)
-	log.Info("started scheduler")
+	log.Info("progressing scheduler")
 	wg.Add(1)
 	go func() {
 		<-ctx.Done()
@@ -122,7 +122,7 @@ func (R *RuntimeScheduler) schedule(ctx context.Context) {
 				log.Error(err)
 			}
 			for _, taskEvent := range taskEvents {
-				if taskEvent.Status == model.StartedNotificationStatus {
+				if taskEvent.Status == model.ProgressingNotificationStatus {
 					log.Infof("rescheduling %s after job timeout", taskEvent.Id.String())
 					video, err := R.repo.GetJob(ctx, taskEvent.Id.String())
 					if err != nil {
@@ -187,7 +187,7 @@ func (R *RuntimeScheduler) createNewJobRequestByJobRequestDirectory(ctx context.
 					ForceCompleted:  parentJobRequest.ForceCompleted,
 					ForceFailed:     parentJobRequest.ForceFailed,
 					ForceExecuting:  parentJobRequest.ForceExecuting,
-					ForceAdded:      parentJobRequest.ForceAdded,
+					ForceQueued:     parentJobRequest.ForceQueued,
 					Priority:        parentJobRequest.Priority,
 				},
 				errors: jobRequestErrors,
@@ -222,23 +222,23 @@ func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *m
 			if err != nil {
 				return err
 			}
-			startEvent := video.AddEvent(model.NotificationEvent, model.JobNotification, model.AddedNotificationStatus)
+			startEvent := video.AddEvent(model.NotificationEvent, model.JobNotification, model.QueuedNotificationStatus)
 			eventsToAdd = append(eventsToAdd, startEvent)
 		} else {
 			//If video exist we check if we can retry the job
 			lastEvent := video.Events.GetLatestPerNotificationType(model.JobNotification)
 			status := video.Events.GetStatus()
-			if jobRequest.ForceExecuting && status == model.StartedNotificationStatus {
+			if jobRequest.ForceExecuting && status == model.ProgressingNotificationStatus {
 				cancelEvent := video.AddEvent(model.NotificationEvent, model.JobNotification, model.CanceledNotificationStatus)
 				eventsToAdd = append(eventsToAdd, cancelEvent)
 			}
 			if (jobRequest.ForceCompleted && status == model.CompletedNotificationStatus) ||
 				(jobRequest.ForceFailed && (status == model.FailedNotificationStatus || status == model.CanceledNotificationStatus)) ||
-				(jobRequest.ForceAdded && (status == model.AddedNotificationStatus || status == model.ReAddedNotificationStatus)) ||
-				(jobRequest.ForceExecuting && status == model.StartedNotificationStatus) {
-				requeueEvent := video.AddEvent(model.NotificationEvent, model.JobNotification, model.ReAddedNotificationStatus)
+				(jobRequest.ForceQueued && (status == model.QueuedNotificationStatus || status == model.ReQueuedNotificationStatus)) ||
+				(jobRequest.ForceExecuting && status == model.ProgressingNotificationStatus) {
+				requeueEvent := video.AddEvent(model.NotificationEvent, model.JobNotification, model.ReQueuedNotificationStatus)
 				eventsToAdd = append(eventsToAdd, requeueEvent)
-			} else if !(jobRequest.ForceExecuting && status == model.StartedNotificationStatus) {
+			} else if !(jobRequest.ForceExecuting && status == model.ProgressingNotificationStatus) {
 				return fmt.Errorf("%s (%s) job is in %s state by %s, can not be rescheduled", video.Id.String(), jobRequest.SourcePath, lastEvent.Status, lastEvent.WorkerName)
 			}
 		}
@@ -348,7 +348,7 @@ func (R *RuntimeScheduler) isValidStremeableJob(ctx context.Context, uuid string
 		return nil, err
 	}
 	status := video.Events.GetLatestPerNotificationType(model.JobNotification).Status
-	if status != model.StartedNotificationStatus {
+	if status != model.ProgressingNotificationStatus {
 		return nil, fmt.Errorf("%w: job is in status %s", ErrorStreamNotAllowed, status)
 	}
 	return video, nil

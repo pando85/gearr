@@ -27,12 +27,12 @@ const (
 	PGSNotification        NotificationType = "PGS"
 	FFMPEGSNotification    NotificationType = "FFMPEG"
 
-	AddedNotificationStatus     NotificationStatus = "added"
-	ReAddedNotificationStatus   NotificationStatus = "readded"
-	StartedNotificationStatus   NotificationStatus = "started"
-	CompletedNotificationStatus NotificationStatus = "completed"
-	CanceledNotificationStatus  NotificationStatus = "canceled"
-	FailedNotificationStatus    NotificationStatus = "failed"
+	QueuedNotificationStatus      NotificationStatus = "queued"
+	ReQueuedNotificationStatus    NotificationStatus = "requeued"
+	ProgressingNotificationStatus NotificationStatus = "progressing"
+	CompletedNotificationStatus   NotificationStatus = "completed"
+	CanceledNotificationStatus    NotificationStatus = "canceled"
+	FailedNotificationStatus      NotificationStatus = "failed"
 
 	EncodeJobType   JobType = "encode"
 	PGSToSrtJobType JobType = "pgstosrt"
@@ -135,11 +135,11 @@ func (e TaskEvent) IsDownloading() bool {
 	if e.EventType != NotificationEvent {
 		return false
 	}
-	if e.NotificationType == DownloadNotification && e.Status == StartedNotificationStatus {
+	if e.NotificationType == DownloadNotification && e.Status == ProgressingNotificationStatus {
 		return true
 	}
 
-	if e.NotificationType == JobNotification && (e.Status == StartedNotificationStatus) {
+	if e.NotificationType == JobNotification && (e.Status == ProgressingNotificationStatus) {
 		return true
 	}
 	return false
@@ -153,16 +153,16 @@ func (e TaskEvent) IsEncoding() bool {
 		return true
 	}
 
-	if e.NotificationType == MKVExtractNotification && (e.Status == StartedNotificationStatus || e.Status == CompletedNotificationStatus) {
+	if e.NotificationType == MKVExtractNotification && (e.Status == ProgressingNotificationStatus || e.Status == CompletedNotificationStatus) {
 		return true
 	}
-	if e.NotificationType == FFProbeNotification && (e.Status == StartedNotificationStatus || e.Status == CompletedNotificationStatus) {
+	if e.NotificationType == FFProbeNotification && (e.Status == ProgressingNotificationStatus || e.Status == CompletedNotificationStatus) {
 		return true
 	}
-	if e.NotificationType == PGSNotification && (e.Status == StartedNotificationStatus || e.Status == CompletedNotificationStatus) {
+	if e.NotificationType == PGSNotification && (e.Status == ProgressingNotificationStatus || e.Status == CompletedNotificationStatus) {
 		return true
 	}
-	if e.NotificationType == FFMPEGSNotification && e.Status == StartedNotificationStatus {
+	if e.NotificationType == FFMPEGSNotification && e.Status == ProgressingNotificationStatus {
 		return true
 	}
 
@@ -177,7 +177,7 @@ func (e TaskEvent) IsUploading() bool {
 		return true
 	}
 
-	if e.NotificationType == UploadNotification && e.Status == StartedNotificationStatus {
+	if e.NotificationType == UploadNotification && e.Status == ProgressingNotificationStatus {
 		return true
 	}
 
@@ -230,7 +230,7 @@ type JobRequest struct {
 	ForceCompleted  bool   `json:"forceCompleted"`
 	ForceFailed     bool   `json:"forceFailed"`
 	ForceExecuting  bool   `json:"forceExecuting"`
-	ForceAdded      bool   `json:"forceAdded"`
+	ForceQueued     bool   `json:"forceQueued"`
 	Priority        int    `json:"priority"`
 }
 

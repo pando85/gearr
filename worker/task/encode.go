@@ -511,7 +511,7 @@ func (P *ProgressTrackReader) SumSha() []byte {
 }
 
 func (J *EncodeWorker) UploadJob(task *model.WorkTaskEncode, track *TaskTracks) error {
-	J.updateTaskStatus(task, model.UploadNotification, model.StartedNotificationStatus, "")
+	J.updateTaskStatus(task, model.UploadNotification, model.ProgressingNotificationStatus, "")
 	err := retry.Do(func() error {
 		track.UpdateValue(0)
 		encodedFile, err := os.Open(task.TargetFilePath)
@@ -600,7 +600,7 @@ func (J *EncodeWorker) Execute(workData []byte) error {
 	}
 	os.MkdirAll(workDir, os.ModePerm)
 
-	J.updateTaskStatus(workTaskEncode, model.JobNotification, model.StartedNotificationStatus, "")
+	J.updateTaskStatus(workTaskEncode, model.JobNotification, model.ProgressingNotificationStatus, "")
 	J.AddDownloadJob(workTaskEncode)
 	return nil
 }
@@ -681,7 +681,7 @@ func (J *EncodeWorker) PGSMkvExtractDetectAndConvert(taskEncode *model.WorkTaskE
 		}
 	}
 	if len(PGSTOSrt) > 0 {
-		J.updateTaskStatus(taskEncode, model.MKVExtractNotification, model.StartedNotificationStatus, "")
+		J.updateTaskStatus(taskEncode, model.MKVExtractNotification, model.ProgressingNotificationStatus, "")
 		track.Message(string(model.MKVExtractNotification))
 		track.SetTotal(0)
 		err := J.MKVExtract(PGSTOSrt, taskEncode)
@@ -692,7 +692,7 @@ func (J *EncodeWorker) PGSMkvExtractDetectAndConvert(taskEncode *model.WorkTaskE
 		J.updateTaskStatus(taskEncode, model.MKVExtractNotification, model.CompletedNotificationStatus, "")
 
 		log.Debug("is going to start PGS task?")
-		J.updateTaskStatus(taskEncode, model.PGSNotification, model.StartedNotificationStatus, "")
+		J.updateTaskStatus(taskEncode, model.PGSNotification, model.ProgressingNotificationStatus, "")
 		track.Message(string(model.PGSNotification))
 		log.Debugf("converting PGS to SRT: %+v", PGSTOSrt)
 		err = J.convertPGSToSrt(taskEncode, container, PGSTOSrt)
@@ -808,7 +808,7 @@ func (J *EncodeWorker) downloadQueue() {
 
 			taskTrack := J.terminal.AddTask(job.TaskEncode.Id.String(), DownloadJobStepType)
 
-			J.updateTaskStatus(job, model.DownloadNotification, model.StartedNotificationStatus, "")
+			J.updateTaskStatus(job, model.DownloadNotification, model.ProgressingNotificationStatus, "")
 			err := J.downloadFile(job, taskTrack)
 			if err != nil {
 				J.updateTaskStatus(job, model.DownloadNotification, model.FailedNotificationStatus, err.Error())
@@ -884,7 +884,7 @@ func (J *EncodeWorker) encodeQueue() {
 }
 
 func (J *EncodeWorker) encodeVideo(job *model.WorkTaskEncode, track *TaskTracks) error {
-	J.updateTaskStatus(job, model.FFProbeNotification, model.StartedNotificationStatus, "")
+	J.updateTaskStatus(job, model.FFProbeNotification, model.ProgressingNotificationStatus, "")
 	track.Message(string(model.FFProbeNotification))
 	sourceVideoParams, sourceVideoSize, err := J.getVideoParameters(job.SourceFilePath)
 	if err != nil {
@@ -901,7 +901,7 @@ func (J *EncodeWorker) encodeVideo(job *model.WorkTaskEncode, track *TaskTracks)
 	if err = J.PGSMkvExtractDetectAndConvert(job, track, videoContainer); err != nil {
 		return err
 	}
-	J.updateTaskStatus(job, model.FFMPEGSNotification, model.StartedNotificationStatus, "")
+	J.updateTaskStatus(job, model.FFMPEGSNotification, model.ProgressingNotificationStatus, "")
 	track.ResetMessage()
 	track.SetTotal(int64(videoContainer.Video.Duration.Seconds()) * int64(videoContainer.Video.FrameRate))
 	FFMPEGProgressChan := make(chan FFMPEGProgress)
@@ -924,7 +924,7 @@ func (J *EncodeWorker) encodeVideo(job *model.WorkTaskEncode, track *TaskTracks)
 				track.Increment(encodeFramesIncrement)
 
 				if FFMPEGProgress.percent-lastProgressEvent > 10 {
-					J.updateTaskStatus(job, model.FFMPEGSNotification, model.StartedNotificationStatus, fmt.Sprintf("{\"progress\":\"%.2f\"}", track.PercentDone()))
+					J.updateTaskStatus(job, model.FFMPEGSNotification, model.ProgressingNotificationStatus, fmt.Sprintf("{\"progress\":\"%.2f\"}", track.PercentDone()))
 					lastProgressEvent = FFMPEGProgress.percent
 				}
 			}

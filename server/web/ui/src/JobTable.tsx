@@ -317,8 +317,8 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
   };
 
   const statusFilterOptions = [
-    'started',
-    'added',
+    'progressing',
+    'queued',
     'completed',
     'failed',
   ];
@@ -346,7 +346,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
   };
 
   const renderStatusCellContent = (job: Job) => {
-    if (job.status === 'started') {
+    if (job.status === 'progressing') {
       return job.status_message ? (
         (() => {
           try {
