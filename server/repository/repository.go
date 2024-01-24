@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	ElementNotFound = fmt.Errorf("element not found")
+	ErrElementNotFound = fmt.Errorf("element not found")
 )
 
 type Repository interface {
@@ -171,7 +171,7 @@ func (S *SQLRepository) getWorker(ctx context.Context, db Transaction, name stri
 		found = true
 	}
 	if !found {
-		return nil, fmt.Errorf("%w, %s", ElementNotFound, name)
+		return nil, fmt.Errorf("%w, %s", ErrElementNotFound, name)
 	}
 	return &worker, err
 }
@@ -253,7 +253,7 @@ func (S *SQLRepository) getJob(ctx context.Context, tx Transaction, uuid string)
 	}
 	rows.Close()
 	if !found {
-		return nil, fmt.Errorf("%w, %s", ElementNotFound, uuid)
+		return nil, fmt.Errorf("%w, %s", ErrElementNotFound, uuid)
 	}
 
 	taskEvents, err := S.getTaskEvents(ctx, tx, video.Id.String())
@@ -427,7 +427,6 @@ func (S *SQLRepository) addVideo(ctx context.Context, tx Transaction, video *mod
 
 func (S *SQLRepository) getTimeoutJobs(ctx context.Context, tx Transaction, timeout time.Duration) ([]*model.TaskEvent, error) {
 	timeoutDate := time.Now().Add(-timeout)
-	timeoutDate.Format(time.RFC3339)
 
 	rows, err := tx.QueryContext(ctx, "SELECT v.* FROM video_events v right join "+
 		"(SELECT video_id,max(video_event_id) as video_event_id  FROM video_events WHERE notification_type='Job'  group by video_id) as m "+

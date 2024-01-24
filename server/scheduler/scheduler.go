@@ -46,7 +46,6 @@ type SchedulerConfig struct {
 	UploadPath   string        `mapstructure:"uploadPath"`
 	Domain       *url.URL
 	MinFileSize  int64 `mapstructure:"minFileSize"`
-	checksums    map[string][]byte
 }
 
 type RuntimeScheduler struct {
@@ -136,7 +135,7 @@ func (R *RuntimeScheduler) schedule(ctx context.Context) {
 						ForceExecuting:  true,
 						Priority:        9,
 					}
-					video, err = R.scheduleJobRequest(ctx, jobRequest)
+					_, err = R.scheduleJobRequest(ctx, jobRequest)
 					if err != nil {
 						log.Error(err)
 					}
@@ -180,7 +179,7 @@ func (R *RuntimeScheduler) createNewJobRequestByJobRequestDirectory(ctx context.
 				ext := filepath.Ext(relativePathTarget)
 				relativePathTarget = strings.Replace(relativePathTarget, ext, "_encoded.mkv", 1)
 			}
-			pathFile = filepath.ToSlash(pathFile)
+
 			searchJobRequestChan <- &JobRequestResult{
 				jobRequest: &model.JobRequest{
 					SourcePath:      relativePathSource,
@@ -240,7 +239,7 @@ func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *m
 				requeueEvent := video.AddEvent(model.NotificationEvent, model.JobNotification, model.ReAddedNotificationStatus)
 				eventsToAdd = append(eventsToAdd, requeueEvent)
 			} else if !(jobRequest.ForceExecuting && status == model.StartedNotificationStatus) {
-				return errors.New(fmt.Sprintf("%s (%s) job is in %s state by %s, can not be rescheduled", video.Id.String(), jobRequest.SourcePath, lastEvent.Status, lastEvent.WorkerName))
+				return fmt.Errorf("%s (%s) job is in %s state by %s, can not be rescheduled", video.Id.String(), jobRequest.SourcePath, lastEvent.Status, lastEvent.WorkerName)
 			}
 		}
 		if len(eventsToAdd) > 0 {
@@ -409,7 +408,7 @@ func (R *RuntimeScheduler) GetUploadJobWriter(ctx context.Context, uuid string) 
 			path:         filePath,
 			temporalPath: temporalPath,
 		},
-	}, nil
+	}, err
 }
 
 func (R *RuntimeScheduler) GetChecksum(ctx context.Context, uuid string) (string, error) {

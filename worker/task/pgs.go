@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -97,7 +97,7 @@ func (P *PGSWorker) Execute() (err error) {
 		P.Manager.ResponsePGSJob(pgsTaskResponse)
 	}()
 
-	err = ioutil.WriteFile(inputFilePath, P.task.PGSdata, os.ModePerm)
+	err = os.WriteFile(inputFilePath, P.task.PGSdata, os.ModePerm)
 	if err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func (P *PGSWorker) Execute() (err error) {
 		return err
 	}
 	defer f.Close()
-	outputBytes, err = ioutil.ReadAll(f)
+	outputBytes, err = io.ReadAll(f)
 	log.Infof("converted PGS to SRT for job %s stream %d", P.task.Id.String(), P.task.PGSID)
 	return err
 }

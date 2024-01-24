@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"os"
@@ -23,7 +22,6 @@ var (
 	ApplicationFileName  string
 	ValidVideoExtensions = []string{"mp4", "mpg", "m4a", "m4v", "f4v", "f4a", "m4b", "m4r", "f4b", "mov ", "ogg", "oga", "ogv", "ogx ", "wmv", "wma", "asf ", "webm", "avi", "flv", "vob ", "mkv"}
 	STUNServers          = []string{"https://api.ipify.org?format=text", "https://ifconfig.me", "https://ident.me/", "https://myexternalip.com/raw"}
-	updateURL            = "https://github.com/pando85/transcoder-server/releases/download/master/%s"
 	workingDirectory     = filepath.Join(os.TempDir(), "transcoder")
 	ffmpegPath           = "ffmpeg"
 	mkvExtractPath       = "mkvextract"
@@ -52,7 +50,7 @@ func GetPublicIP() (publicIP string) {
 			return err
 		}
 		defer resp.Body.Close()
-		publicIPBytes, err := ioutil.ReadAll(resp.Body)
+		publicIPBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return err
 		}
@@ -115,7 +113,6 @@ func DisembedFile(embedFS http.FileSystem, statikPath string, targetFilePath str
 	defer embededFile.Close()
 	if st, _ := embededFile.Stat(); st.IsDir() {
 		err := fs.Walk(embedFS, statikPath, func(path string, info os.FileInfo, err error) error {
-			//I Dont have time for recurisve
 			if info.IsDir() {
 				return nil
 			}

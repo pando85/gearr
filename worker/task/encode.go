@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"hash"
 	"io"
-	"io/ioutil"
 	"mime"
 	"net/http"
 	"os"
@@ -264,7 +263,7 @@ func (J *EncodeWorker) calculateChecksum(checksumURL string) (string, error) {
 			return fmt.Errorf("non 200 response in sha265 code %d", respSha256.StatusCode)
 		}
 
-		bodyBytes, err := ioutil.ReadAll(respSha256.Body)
+		bodyBytes, err := io.ReadAll(respSha256.Body)
 		if err != nil {
 			return err
 		}
@@ -541,7 +540,7 @@ func (J *EncodeWorker) UploadJob(task *model.WorkTaskEncode, track *TaskTracks) 
 		req.ContentLength = fileSize
 		req.Body = reader
 		req.GetBody = func() (io.ReadCloser, error) {
-			return ioutil.NopCloser(reader), nil
+			return io.NopCloser(reader), nil
 		}
 
 		req.Header.Add("checksum", checksum)
@@ -717,7 +716,7 @@ func (J *EncodeWorker) convertPGSToSrt(taskEncode *model.WorkTaskEncode, contain
 		if err != nil {
 			return err
 		}
-		outputBytes, err := ioutil.ReadAll(subFile)
+		outputBytes, err := io.ReadAll(subFile)
 		if err != nil {
 			return err
 		}
@@ -757,7 +756,7 @@ func (J *EncodeWorker) convertPGSToSrt(taskEncode *model.WorkTaskEncode, contain
 				return fmt.Errorf("error on process PGS %d: %s", response.PGSID, response.Err)
 			}
 			subtFilePath := filepath.Join(taskEncode.WorkDir, fmt.Sprintf("%d.srt", response.PGSID))
-			err := ioutil.WriteFile(subtFilePath, response.Srt, os.ModePerm)
+			err := os.WriteFile(subtFilePath, response.Srt, os.ModePerm)
 			if err != nil {
 				return err
 			}
