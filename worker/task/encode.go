@@ -895,7 +895,7 @@ func (J *EncodeWorker) encodeVideo(job *model.WorkTaskEncode, track *TaskTracks)
 
 	videoContainer, err := J.clearData(sourceVideoParams)
 	if err != nil {
-		J.terminal.Warn("error in clear data", J.GetID())
+		J.terminal.Warn("error in clear data. Id: %s", J.GetID())
 		return err
 	}
 	if err = J.PGSMkvExtractDetectAndConvert(job, track, videoContainer); err != nil {
@@ -918,7 +918,6 @@ func (J *EncodeWorker) encodeVideo(job *model.WorkTaskEncode, track *TaskTracks)
 				if !open {
 					break loop
 				}
-				videoContainer.Video.Duration.Seconds()
 				encodeFramesIncrement := (FFMPEGProgress.duration - lastDuration) * videoContainer.Video.FrameRate
 				lastDuration = FFMPEGProgress.duration
 

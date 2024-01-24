@@ -21,8 +21,8 @@ import {
   Cached,
   CalendarMonth,
   Delete,
+  Error,
   Feed,
-  Info,
   MoreVert,
   QuestionMark,
   Replay,
@@ -345,6 +345,54 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
     }
   };
 
+  const renderStatusCellContent = (job: Job) => {
+    if (job.status === 'started') {
+      return job.status_message ? (
+        (() => {
+          try {
+            const messageObj = JSON.parse(job.status_message);
+            if (messageObj.progress !== undefined) {
+              const progress = parseFloat(messageObj.progress);
+              return (
+                <div className="progress" title={`${progress.toFixed(2)}%`}>
+                  <div
+                    className="progress-bar"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              );
+            }
+          } catch (error) {
+            return (
+              <div className="error-icon" title={job.status_message}>
+                <Error />
+              </div>
+            );
+          }
+        })()
+      ) : (
+        <span />
+      );
+    } else if (job.status === 'failed') {
+      return (
+        <div className="error-icon" title={job.status_message}>
+          <Error />
+        </div>
+      );
+    } else {
+      return (
+        <Button
+          variant="contained"
+          style={{
+            backgroundColor: getStatusColor(job.status),
+          }}
+        >
+          {job.status}
+        </Button>
+      );
+    }
+  };
+
   return (
     <div className="content-wrapper">
       <div className="row flex-top-bar">
@@ -419,11 +467,6 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
                   <QuestionMark />
                 </span>
               </TableCell>
-              <TableCell className="d-none d-sm-table-cell">
-                <span title="Message">
-                  <Info />
-                </span>
-              </TableCell>
               <TableCell>
                 <span title="LastUpdate">
                   <CalendarMonth />
@@ -444,18 +487,8 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
                 <TableCell className="d-none d-sm-table-cell">
                   {job.destinationPath}
                 </TableCell>
-                <TableCell>
-                  <Button
-                    variant="contained"
-                    style={{
-                      backgroundColor: getStatusColor(job.status),
-                    }}
-                  >
-                    {job.status}
-                  </Button>
-                </TableCell>
                 <TableCell className="d-none d-sm-table-cell">
-                  {job.status_message}
+                  {renderStatusCellContent(job)}
                 </TableCell>
                 <TableCell title={formatDateDetailed(job.last_update)}>
                   <div className="row-menu">
