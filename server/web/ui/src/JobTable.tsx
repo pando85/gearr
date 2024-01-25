@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import {
   Button,
   CircularProgress,
@@ -32,16 +31,11 @@ import {
 } from '@mui/icons-material';
 
 import './JobTable.css';
-
-interface Job {
-  id: string;
-  renderedSourcePath: string;
-  sourcePath: string;
-  destinationPath: string;
-  status: string;
-  status_message: string;
-  last_update: Date;
-}
+import { useDispatch, useSelector } from 'react-redux';
+import { Job } from './model';
+import { fetchJobs, deleteJob, createJob } from './api';
+import { RootState } from './store';
+import { resetJobs } from './actions/JobActions';
 
 interface JobTableProps {
   token: string;
@@ -72,7 +66,8 @@ const formatDateShort = (date: Date): string => {
   const options: Intl.DateTimeFormatOptions = {
     dateStyle: 'short',
   };
-  return formatDate(date, options);
+  const formatedDate = formatDate(date, options)
+  return formatedDate;
 };
 
 const getDateFromFilterOption = (filterOption: string) => {
@@ -115,13 +110,8 @@ const renderPath = (isSmallScreen: boolean, path: string) => {
 };
 
 const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
-  const [jobs, setJobs] = useState<Job[]>([]);
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
-  const [forceRender, setForceRender] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [page, setPage] = useState<number>(1);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [fetchedDetails, setFetchedDetails] = useState<Set<string>>(new Set());
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null); // For menu anchor
   const [nameFilter, setNameFilter] = useState<string>(''); // State for name filter
   const [selectedStatusFilter, setSelectedStatus] = useState<string | string[]>([]);
@@ -129,6 +119,30 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
   const [detailsMenuAnchor, setDetailsMenuAnchor] = useState<null | HTMLElement>(null);
 
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth <= 768);
+
+  const dispatch = useDispatch();
+  const jobs: Job[] = useSelector((state: RootState) => state.jobs);
+  // TODO: show sign in on error
+  // setShowJobTable(false)
+  const error = useSelector((state: RootState) => state.error);
+  const loading = useSelector((state: RootState) => state.loading);
+
+  useEffect(() => {
+    dispatch(fetchJobs(token) as any);
+  }, [dispatch]);
+
+  const handleDeleteJob = (jobId: string) => {
+    dispatch(deleteJob(token, jobId) as any);
+  };
+
+  const handleCreateJob = (path: string) => {
+    dispatch(createJob(token, path) as any);
+  };
+
+  const handleReload = () => {
+    dispatch(resetJobs() as any);
+    dispatch(fetchJobs(token) as any);
+  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -142,145 +156,23 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
     };
   }, []);
 
+  useEffect(() => {
+    const statusFilteredJobs = selectedStatusFilter.length > 0
+      ? jobs.filter((job) => selectedStatusFilter.includes(job.status))
+      : jobs;
+
+    const dateFilteredJobs = selectedDateFilter ? statusFilteredJobs.filter(
+      (job) => job.last_update >= getDateFromFilterOption(selectedDateFilter))
+      : statusFilteredJobs
+
+    const filteredJobs = nameFilter
+      ? dateFilteredJobs.filter((job) => job.source_path ? job.source_path.toLowerCase().includes(nameFilter.toLowerCase()) : false)
+      : dateFilteredJobs;
+    setFilteredJobs(filteredJobs);
+  });
+
   const reload = () => {
-    setJobs([]);
-    setFetchedDetails(new Set());
-    setPage(1);
-    setLoading(true);
-    setForceRender((a) => !a);
-  };
-
-  useEffect(() => {
-    const fetchJobs = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.get('/api/v1/job/', {
-          params: { page },
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        const newJobs: Job[] = response.data;
-
-        setJobs((prevJobs) => [...prevJobs, ...newJobs]);
-      } catch (error) {
-        console.error('Error fetching jobs:', error);
-        setShowJobTable(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchJobs();
-  }, [token, page, setShowJobTable, forceRender]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) {
-        setPage((prevPage) => prevPage + 1);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
-
-  useEffect(() => {
-    const fetchJobDetails = async (jobId: string) => {
-      if (!fetchedDetails.has(jobId)) {
-        try {
-          const response = await axios.get(`/api/v1/job/${jobId}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-
-          const foundJob = jobs.find((job) => job.id === jobId);
-
-          if (foundJob) {
-            const enrichedJob: Job = {
-              ...foundJob,
-              renderedSourcePath: renderPath(isSmallScreen, response.data.sourcePath),
-              sourcePath: response.data.sourcePath,
-              destinationPath: response.data.destinationPath,
-              status: response.data.status,
-              status_message: response.data.status_message,
-              last_update: new Date(response.data.last_update),
-            };
-
-            setJobs((prevJobs) =>
-              prevJobs.map((job) => (job.id === jobId ? enrichedJob : job))
-            );
-          }
-
-          setFetchedDetails((prevSet) => new Set(prevSet.add(jobId)));
-        } catch (error) {
-          console.error(`Error fetching details for job ${jobId}:`, error);
-        }
-      }
-    };
-
-    const filterJobs = async () => {
-      await jobs.forEach((job) => fetchJobDetails(job.id));
-      const statusFilteredJobs = selectedStatusFilter.length > 0
-        ? jobs.filter((job) => selectedStatusFilter.includes(job.status))
-        : jobs;
-
-      const dateFilteredJobs = selectedDateFilter ? statusFilteredJobs.filter(
-        (job) => job.last_update >= getDateFromFilterOption(selectedDateFilter))
-        : statusFilteredJobs
-
-      const filteredJobs = nameFilter
-        ? dateFilteredJobs.filter((job) => job.sourcePath ? job.sourcePath.toLowerCase().includes(nameFilter.toLowerCase()) : false)
-        : dateFilteredJobs;
-      setFilteredJobs(filteredJobs);
-    };
-
-    filterJobs();
-  }, [token, jobs, fetchedDetails, selectedStatusFilter, selectedDateFilter, nameFilter, isSmallScreen]);
-
-  const deleteJobDetail = (jobId: string) => {
-    setFetchedDetails((prevSet) => {
-      prevSet.delete(jobId);
-      return new Set(prevSet)
-    });
-  };
-
-  const deleteJob = async (jobId: string) => {
-    try {
-      await axios.delete(`/api/v1/job/${jobId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      deleteJobDetail(jobId);
-      setJobs((prevJobs) => [...prevJobs.filter(job => job.id !== jobId)]);
-    } catch (error) {
-      console.error(`Error deleting job ${jobId}:`, error);
-    }
-  };
-
-  const createJob = async (path: string) => {
-    try {
-
-      const response = await axios.post(`/api/v1/job/`,
-        {
-          SourcePath: path
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-      const newJobs: Job[] = response.data.scheduled;
-
-      setJobs((prevJobs) => [...prevJobs, ...newJobs]);
-    } catch (error) {
-      console.error(`Error creating job with path ${path}:`, error);
-    }
+    handleReload();
   };
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -291,14 +183,14 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
     setAnchorEl(null);
   };
 
-  const handleMenuOptionClick = async (job: Job | null, option: string) => {
+  const handleMenuOptionClick = (job: Job | null, option: string) => {
     if (job !== null) {
       if (['delete', 'recreate'].includes(option)) {
-        await deleteJob(job.id);
+        handleDeleteJob(job.id);
       };
       handleClose();
       if (option === 'recreate') {
-        await createJob(job.sourcePath);
+        handleCreateJob(job.source_path);
       }
     }
   };
@@ -482,10 +374,10 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
                 className="table-row"
               >
                 <TableCell>
-                  {job.renderedSourcePath}
+                  {renderPath(isSmallScreen, job.source_path)}
                 </TableCell>
                 <TableCell className="d-none d-sm-table-cell">
-                  {job.destinationPath}
+                  {job.destination_path}
                 </TableCell>
                 <TableCell className="d-none d-sm-table-cell">
                   {renderStatusCellContent(job)}
@@ -538,10 +430,10 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
                           <Typography>ID: {selectedJob.id}</Typography>
                         </MenuItem>,
                         <MenuItem key="job-source">
-                          <Typography>Source: {selectedJob.sourcePath}</Typography>
+                          <Typography>Source: {selectedJob.source_path}</Typography>
                         </MenuItem>,
                         <MenuItem key="job-destination">
-                          <Typography>Destination: {selectedJob.destinationPath}</Typography>
+                          <Typography>Destination: {selectedJob.destination_path}</Typography>
                         </MenuItem>,
                         <MenuItem key="job-status">
                           <Typography>Status: {selectedJob.status}</Typography>

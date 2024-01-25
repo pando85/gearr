@@ -30,9 +30,9 @@ var (
 type Scheduler interface {
 	Run(wg *sync.WaitGroup, ctx context.Context)
 	ScheduleJobRequests(ctx context.Context, jobRequest *model.JobRequest) (*ScheduleJobRequestResult, error)
-	GetJob(ctx context.Context, uuid string) (videos *model.Video, err error)
+	GetJob(ctx context.Context, uuid string) (*model.Video, error)
 	DeleteJob(ctx context.Context, uuid string) error
-	GetJobs(ctx context.Context, page int, pageSize int) (*[]model.Video, error)
+	GetJobs(ctx context.Context) (*[]model.Video, error)
 	GetUploadJobWriter(ctx context.Context, uuid string) (*UploadJobStream, error)
 	GetDownloadJobWriter(ctx context.Context, uuid string) (*DownloadJobStream, error)
 	GetChecksum(ctx context.Context, uuid string) (string, error)
@@ -338,8 +338,8 @@ func (R *RuntimeScheduler) DeleteJob(ctx context.Context, uuid string) error {
 	return R.repo.DeleteJob(ctx, uuid)
 }
 
-func (R *RuntimeScheduler) GetJobs(ctx context.Context, page int, pageSize int) (*[]model.Video, error) {
-	return R.repo.GetJobs(ctx, page, pageSize)
+func (R *RuntimeScheduler) GetJobs(ctx context.Context) (*[]model.Video, error) {
+	return R.repo.GetJobs(ctx)
 }
 
 func (R *RuntimeScheduler) isValidStremeableJob(ctx context.Context, uuid string) (*model.Video, error) {

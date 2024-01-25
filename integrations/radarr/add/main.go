@@ -51,15 +51,15 @@ func HumanReadableSize(size int64) string {
 }
 
 type ScheduledItem struct {
-	SourcePath      string      `json:"sourcePath"`
-	DestinationPath string      `json:"destinationPath"`
+	SourcePath      string      `json:"source_path"`
+	DestinationPath string      `json:"destination_path"`
 	ID              string      `json:"id"`
 	Events          interface{} `json:"events"`
 }
 
 type FailedItem struct {
-	SourcePath      string `json:"sourcePath"`
-	DestinationPath string `json:"destinationPath"`
+	SourcePath      string `json:"source_path"`
+	DestinationPath string `json:"destination_path"`
 	ForceCompleted  bool   `json:"forceCompleted"`
 	ForceFailed     bool   `json:"forceFailed"`
 	ForceExecuting  bool   `json:"forceExecuting"`

@@ -42,8 +42,8 @@ type Identity interface {
 	getUUID() uuid.UUID
 }
 type Video struct {
-	SourcePath      string     `json:"sourcePath,omitempty"`
-	DestinationPath string     `json:"destinationPath,omitempty"`
+	SourcePath      string     `json:"source_path,omitempty"`
+	DestinationPath string     `json:"destination_path,omitempty"`
 	Id              uuid.UUID  `json:"id"`
 	Events          TaskEvents `json:"events,omitempty"`
 	Status          string     `json:"status,omitempty"`
@@ -225,8 +225,8 @@ type JobRequestError struct {
 	Error string `json:"error"`
 }
 type JobRequest struct {
-	SourcePath      string `json:"sourcePath"`
-	DestinationPath string `json:"destinationPath"`
+	SourcePath      string `json:"source_path"`
+	DestinationPath string `json:"destination_path"`
 	ForceCompleted  bool   `json:"forceCompleted"`
 	ForceFailed     bool   `json:"forceFailed"`
 	ForceExecuting  bool   `json:"forceExecuting"`

@@ -26,7 +26,7 @@ type Repository interface {
 	GetTimeoutJobs(ctx context.Context, timeout time.Duration) ([]*model.TaskEvent, error)
 	GetJob(ctx context.Context, uuid string) (*model.Video, error)
 	DeleteJob(ctx context.Context, uuid string) error
-	GetJobs(ctx context.Context, page int, pageSize int) (*[]model.Video, error)
+	GetJobs(ctx context.Context) (*[]model.Video, error)
 	GetJobByPath(ctx context.Context, path string) (*model.Video, error)
 	AddNewTaskEvent(ctx context.Context, event *model.TaskEvent) error
 	AddVideo(ctx context.Context, video *model.Video) error
@@ -219,12 +219,12 @@ func (S *SQLRepository) DeleteJob(ctx context.Context, uuid string) error {
 	return err
 }
 
-func (S *SQLRepository) GetJobs(ctx context.Context, page int, pageSize int) (videos *[]model.Video, returnError error) {
+func (S *SQLRepository) GetJobs(ctx context.Context) (videos *[]model.Video, returnError error) {
 	db, err := S.getConnection(ctx)
 	if err != nil {
 		return nil, err
 	}
-	videos, err = S.getJobs(ctx, db, page, pageSize)
+	videos, err = S.getJobs(ctx, db)
 	return videos, err
 }
 
@@ -281,10 +281,12 @@ func (S *SQLRepository) deleteJob(tx Transaction, uuid string) error {
 	return nil
 }
 
-func (S *SQLRepository) getJobs(ctx context.Context, tx Transaction, page int, pageSize int) (*[]model.Video, error) {
-	offset := (page - 1) * pageSize
-	query := fmt.Sprintf("SELECT id FROM videos LIMIT %d OFFSET %d", pageSize, offset)
-
+func (S *SQLRepository) getJobs(ctx context.Context, tx Transaction) (*[]model.Video, error) {
+	query := fmt.Sprintf(`
+    SELECT v.id, v.source_path, v.destination_path, vs.event_time, vs.status, vs.message
+    FROM videos v
+    INNER JOIN video_status vs ON v.id = vs.video_id
+`)
 	rows, err := tx.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
@@ -294,7 +296,7 @@ func (S *SQLRepository) getJobs(ctx context.Context, tx Transaction, page int, p
 	videos := []model.Video{}
 	for rows.Next() {
 		video := model.Video{}
-		rows.Scan(&video.Id)
+		rows.Scan(&video.Id, &video.SourcePath, &video.DestinationPath, &video.LastUpdate, &video.Status, &video.StatusMessage)
 		videos = append(videos, video)
 	}
 

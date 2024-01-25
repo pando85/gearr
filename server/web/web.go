@@ -40,16 +40,8 @@ func (w *WebServer) addJobs(c *gin.Context) {
 	c.JSON(http.StatusOK, scheduleJobResults)
 }
 
-func getPageParams(c *gin.Context) (int, int) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "20"))
-	return page, pageSize
-}
-
 func (w *WebServer) getJobs(c *gin.Context) {
-	page, pageSize := getPageParams(c)
-
-	videos, err := w.scheduler.GetJobs(w.ctx, page, pageSize)
+	videos, err := w.scheduler.GetJobs(w.ctx)
 	if err != nil {
 		webError(c, err, http.StatusInternalServerError)
 		return
