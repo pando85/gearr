@@ -1,4 +1,4 @@
-import { applyMiddleware, compose, createStore, Store } from 'redux';
+import { applyMiddleware, createStore, Store } from 'redux';
 import { thunk } from 'redux-thunk';
 import jobReducer, {JobState, initialState} from './jobReducer';
 import {JobActionTypes} from './actions/JobActionsTypes';

@@ -14,7 +14,7 @@ import {
 } from './actions/JobActions';
 import {JobActionTypes} from './actions/JobActionsTypes';
 
-export const fetchJobs = (token: string) => async (dispatch: Dispatch<JobActionTypes>): Promise<void> => {
+export const fetchJobs = (token: string, setShowJobTable: any) => async (dispatch: Dispatch<JobActionTypes>): Promise<void> => {
     dispatch(fetchJobsRequest());
 
     try {
@@ -28,12 +28,13 @@ export const fetchJobs = (token: string) => async (dispatch: Dispatch<JobActionT
         dispatch(fetchJobsSuccess(newJobs));
     } catch (error) {
         console.error('Error fetching jobs:', error);
+        setShowJobTable(false);
         dispatch(fetchJobsFailure('Failed to fetch jobs.'));
     }
 };
 
 
-export const deleteJob = (token: string, jobId: string) => async (dispatch: Dispatch<JobActionTypes>): Promise<void> => {
+export const deleteJob = (token: string, setShowJobTable: any, jobId: string) => async (dispatch: Dispatch<JobActionTypes>): Promise<void> => {
     dispatch(deleteJobRequest());
 
     try {
@@ -46,11 +47,12 @@ export const deleteJob = (token: string, jobId: string) => async (dispatch: Disp
         // setJobs as needed
     } catch (error) {
         console.error(`Error deleting job ${jobId}:`, error);
+        setShowJobTable(false);
         dispatch(deleteJobFailure('Failed to delete job.'));
     }
 };
 
-export const createJob = (token: string, path: string) => async (dispatch: Dispatch<JobActionTypes>): Promise<void> => {
+export const createJob = (token: string, setShowJobTable: any, path: string) => async (dispatch: Dispatch<JobActionTypes>): Promise<void> => {
     dispatch(createJobRequest());
 
     try {
@@ -69,6 +71,7 @@ export const createJob = (token: string, path: string) => async (dispatch: Dispa
         dispatch(createJobSuccess(newJobs));
     } catch (error) {
         console.error(`Error creating job with path ${path}:`, error);
+        setShowJobTable(false);
         dispatch(createJobFailure('Failed to create job.'));
     }
 };

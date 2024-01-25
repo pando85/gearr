@@ -122,26 +122,23 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
 
   const dispatch = useDispatch();
   const jobs: Job[] = useSelector((state: RootState) => state.jobs);
-  // TODO: show sign in on error
-  // setShowJobTable(false)
-  const error = useSelector((state: RootState) => state.error);
   const loading = useSelector((state: RootState) => state.loading);
 
   useEffect(() => {
-    dispatch(fetchJobs(token) as any);
-  }, [dispatch]);
+    dispatch(fetchJobs(token, setShowJobTable) as any);
+  }, [dispatch, token, setShowJobTable]);
 
   const handleDeleteJob = (jobId: string) => {
-    dispatch(deleteJob(token, jobId) as any);
+    dispatch(deleteJob(token, setShowJobTable, jobId) as any);
   };
 
   const handleCreateJob = (path: string) => {
-    dispatch(createJob(token, path) as any);
+    dispatch(createJob(token, setShowJobTable, path) as any);
   };
 
   const handleReload = () => {
     dispatch(resetJobs() as any);
-    dispatch(fetchJobs(token) as any);
+    dispatch(fetchJobs(token, setShowJobTable) as any);
   };
 
   useEffect(() => {
@@ -169,7 +166,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
       ? dateFilteredJobs.filter((job) => job.source_path ? job.source_path.toLowerCase().includes(nameFilter.toLowerCase()) : false)
       : dateFilteredJobs;
     setFilteredJobs(filteredJobs);
-  });
+  }, [selectedStatusFilter, jobs, selectedDateFilter, nameFilter]);
 
   const reload = () => {
     handleReload();

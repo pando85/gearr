@@ -18,13 +18,11 @@ import { Job} from './model';
 interface JobState {
     jobs: Job[];
     loading: boolean;
-    error: string | null,
 }
 
 const initialState: JobState = {
     jobs: [],
     loading: true,
-    error: null,
 };
 
 const jobReducer: Reducer<JobState, JobActionTypes> = (state = initialState, action) => {
