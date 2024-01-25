@@ -93,7 +93,7 @@ run-all:
 .PHONY: down
 down:		## stop all containers from docker-compose
 down:
-	@docker-compose down
+	@docker-compose down --volumes
 
 .PHONY: logs
 logs:	## show logs
