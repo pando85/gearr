@@ -192,8 +192,8 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
     }
   };
 
-  const handleRowClick = (jobId: string) => {
-    setSelectedJob(jobs.find((job) => job.id === jobId) || null);
+  const handleRowClick = (job: Job) => {
+    setSelectedJob(job);
   };
 
   const handleNameFilterChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -367,7 +367,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
             {filteredJobs.map((job) => (
               <TableRow
                 key={job.id}
-                onClick={() => handleRowClick(job.id)}
+                onClick={() => handleRowClick(job)}
                 className="table-row"
               >
                 <TableCell>
