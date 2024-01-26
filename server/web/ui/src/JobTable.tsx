@@ -112,7 +112,7 @@ const renderPath = (isSmallScreen: boolean, path: string) => {
 const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null); // For menu anchor
+  const [buttonsMenu, setButtonsMenu] = useState<null | HTMLElement>(null); // For menu anchor
   const [nameFilter, setNameFilter] = useState<string>(''); // State for name filter
   const [selectedStatusFilter, setSelectedStatus] = useState<string | string[]>([]);
   const [selectedDateFilter, setSelectedDateFilter] = useState<string>('');
@@ -173,12 +173,16 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
   };
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
+    setButtonsMenu(event.currentTarget);
   };
 
   const handleClose = () => {
-    setAnchorEl(null);
+    setButtonsMenu(null);
   };
+
+  const handleCloseDetailsMenu = () => {
+    setDetailsMenuAnchor(null);
+  }
 
   const handleMenuOptionClick = (job: Job | null, option: string) => {
     if (job !== null) {
@@ -383,8 +387,8 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
                   <div className="row-menu">
                     {formatDateShort(job.last_update)}
                     <Button
-                      className="simple-menu"
-                      aria-controls="simple-menu"
+                      className="buttons-menu"
+                      aria-controls="buttons-menu"
                       aria-haspopup="true"
                       onClick={handleClick}
                       size="small"
@@ -392,11 +396,11 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
                       <MoreVert />
                     </Button>
                     <Menu
-                      id="simple-menu"
-                      className="simple-menu"
-                      anchorEl={anchorEl}
+                      id="buttons-menu"
+                      className="buttons-menu"
+                      anchorEl={buttonsMenu}
                       keepMounted
-                      open={Boolean(anchorEl)}
+                      open={Boolean(buttonsMenu)}
                       onClose={handleClose}
                     >
                       <MenuItem title="Details" onClick={(event) => handleDetailedViewClick(event)}>
@@ -415,7 +419,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
                       anchorEl={detailsMenuAnchor}
                       keepMounted
                       open={Boolean(detailsMenuAnchor)}
-                      onClose={() => setDetailsMenuAnchor(null)}
+                      onClose={handleCloseDetailsMenu}
                     >
                       {selectedJob && [
                         <MenuItem key="job-details">
