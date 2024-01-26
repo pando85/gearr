@@ -376,7 +376,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
                 <TableCell className="d-none d-sm-table-cell">
                   {job.destination_path}
                 </TableCell>
-                <TableCell className="d-none d-sm-table-cell">
+                <TableCell>
                   {renderStatusCellContent(job)}
                 </TableCell>
                 <TableCell title={formatDateDetailed(job.last_update)}>
