@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
 )
 
 //go:embed build
@@ -45,14 +46,13 @@ func newStaticFileSystem() *staticFileSystem {
 
 func (s *staticFileSystem) Exists(prefix string, path string) bool {
 	buildpath := fmt.Sprintf("build%s", path)
+	log.Debugf("file system: prefix=%s path=%s", prefix, path)
 
-	// support for folders
 	if strings.HasSuffix(path, "/") {
 		_, err := staticFS.ReadDir(strings.TrimSuffix(buildpath, "/"))
 		return err == nil
 	}
 
-	// support for files
 	f, err := staticFS.Open(buildpath)
 	if f != nil {
 		_ = f.Close()
@@ -80,6 +80,7 @@ func (f *fallbackFileSystem) Open(path string) (http.File, error) {
 }
 
 func (f *fallbackFileSystem) Exists(prefix string, path string) bool {
+	log.Debugf("fallback file system: prefix=%s path=%s", prefix, path)
 	if strings.HasPrefix(path, "/api/") {
 		return false
 	}
