@@ -32,7 +32,9 @@ worker:		## build worker binary
 build-%:
 	@echo "Building dist/transcoder-$*"
 	@if [ "$*" = "server" ]; then \
-		cd server/web/ui && npm install --production && npm run build; \
+		cd server/web/ui && \
+			npm install --production && \
+			npm run build || exit 1; \
 		cd -; \
 	fi
 	@CGO_ENABLED=0 go build -o dist/transcoder-$* $*/main.go
