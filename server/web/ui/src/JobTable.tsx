@@ -1,41 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Button,
-  CircularProgress,
-  Checkbox,
-  FormControl,
-  InputLabel,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Typography,
-} from '@mui/material';
-import {
-  Cached,
-  CalendarMonth,
-  Delete,
-  Error,
-  Feed,
-  MoreVert,
-  QuestionMark,
-  Replay,
-  Search,
-  Task,
-  VideoSettings,
-} from '@mui/icons-material';
-
-import './JobTable.css';
 import { useDispatch, useSelector } from 'react-redux';
 import { Job } from './model';
 import { fetchJobs, deleteJob, createJob } from './api';
 import { RootState } from './store';
 import { resetJobs } from './actions/JobActions';
+
+import { FixedSizeList as List } from 'react-window';
+import AutoSizer from 'react-virtualized-auto-sizer';
+import {
+  Checkbox,
+  FormControl as FormControlMui,
+  Menu,
+  MenuItem,
+  InputLabel,
+  ListItemIcon,
+  Select,
+  Typography,
+} from '@mui/material';
+
+
+import { Button, Spinner, Table } from 'react-bootstrap';
+import { Cached, CalendarMonth, Delete, Error, Feed, MoreVert, QuestionMark, Replay, Search, Task, VideoSettings } from '@mui/icons-material';
+
+import './JobTable.css';
 
 interface JobTableProps {
   token: string;
@@ -286,6 +273,9 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
     }
   };
 
+  const tableRef: React.RefObject<HTMLTableElement> = React.createRef();
+  const tableBodyRef: React.RefObject<HTMLTableSectionElement> = React.createRef();
+
   return (
     <div className="content-wrapper">
       <div className="row flex-top-bar">
@@ -304,7 +294,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
           </div>
         </div>
         <div className="tools">
-          <FormControl>
+          <FormControlMui>
             <InputLabel id="filter-status-select-label">Status</InputLabel>
             <Select
               multiple
@@ -323,7 +313,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
                 </MenuItem>
               ))}
             </Select>
-          </FormControl>
+          </FormControlMui>
           <Select
             value={selectedDateFilter ? selectedDateFilter : 'Last update'}
             onChange={(event) => setSelectedDateFilter(event.target.value)}
@@ -335,63 +325,55 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
               </MenuItem>
             ))}
           </Select>
-          <Button className="float-right" style={{ marginLeft: 'auto' }} onClick={reload}>
+          <Button variant="link" className="float-right" style={{ marginLeft: 'auto' }} onClick={reload}>
             <Cached />
           </Button>
         </div>
       </div>
-      <div className="flex-top-bar padder mb-4 mb-sm-0" />
       <div className="job-list">
-        <Table className="job-table">
-          <TableHead>
-            <TableRow>
-              <TableCell>
+        <Table ref={tableRef} striped hover responsive className="job-table">
+          <thead>
+            <tr>
+              <th>
                 <span title="Source">
                   <Task />
                 </span>
-              </TableCell>
-              <TableCell className="d-none d-sm-table-cell">
+              </th>
+              <th className="d-none d-sm-table-cell">
                 <span title="Destination">
                   <VideoSettings />
                 </span>
-              </TableCell>
-              <TableCell>
+              </th>
+              <th>
                 <span title="Status">
                   <QuestionMark />
                 </span>
-              </TableCell>
-              <TableCell>
+              </th>
+              <th>
                 <span title="LastUpdate">
                   <CalendarMonth />
                 </span>
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredJobs.map((job) => (
-              <TableRow
+              </th>
+            </tr>
+          </thead>
+          <tbody ref={tableBodyRef}>
+            {filteredJobs.map((job, index) => (
+              <tr
                 key={job.id}
                 onClick={() => handleRowClick(job)}
                 className="table-row"
               >
-                <TableCell>
-                  {renderPath(isSmallScreen, job.source_path)}
-                </TableCell>
-                <TableCell className="d-none d-sm-table-cell">
-                  {job.destination_path}
-                </TableCell>
-                <TableCell>
-                  {renderStatusCellContent(job)}
-                </TableCell>
-                <TableCell title={formatDateDetailed(job.last_update)}>
+                <td>{renderPath(isSmallScreen, job.source_path)}</td>
+                <td className="d-none d-sm-table-cell">{job.destination_path}</td>
+                <td style={{wordBreak: "keep-all"}}>{renderStatusCellContent(job)}</td>
+                <td style={{wordBreak: "keep-all"}} title={formatDateDetailed(job.last_update)}>
                   <div className="row-menu">
                     {formatDateShort(job.last_update)}
                     <Button
+                      variant="link"
                       className="buttons-menu"
-                      aria-controls="buttons-menu"
-                      aria-haspopup="true"
                       onClick={handleClick}
-                      size="small"
+                      size="sm"
                     >
                       <MoreVert />
                     </Button>
@@ -445,13 +427,12 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
                       ]}
                     </Menu>
                   </div>
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ))}
-          </TableBody>
+          </tbody>
         </Table>
-
-        {loading && <CircularProgress />}
+        {loading && <Spinner animation="border" />}
       </div>
     </div>
   );
