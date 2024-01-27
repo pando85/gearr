@@ -33,7 +33,7 @@ build-%:
 	@echo "Building dist/transcoder-$*"
 	@if [ "$*" = "server" ]; then \
 		cd server/web/ui && \
-			npm install --production && \
+			npm install && \
 			npm run build || exit 1; \
 		cd -; \
 	fi

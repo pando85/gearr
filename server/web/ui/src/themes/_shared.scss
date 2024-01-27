@@ -50,6 +50,7 @@ code {
   width: 100%;
   height: $nav-bar-height;
   z-index: 2;
+  padding: 0;
 }
 
 .link {
@@ -76,7 +77,8 @@ code {
 
 .navbar-collapse {
   background-color: $gray-800;
-  margin-left: -2px !important;
+  padding-left: 0.75rem;
+  width: 100%;
 }
 
 @media (min-width: 768px) {
@@ -96,7 +98,6 @@ code {
 
 .flex-top-bar {
   background-color: $gray-800;
-	position: fixed;
 	right: 0;
   left: 0;
   width: 100%;
@@ -138,6 +139,8 @@ code {
 }
 
 .job-list {
+  //TODO
+  height: 500px;
   padding: 1em;
   position: relative;
 }
@@ -310,12 +313,17 @@ code {
   line-height: 0;
 }
 
-.MuiTableCell-body {
-  color: $body-color !important;
+table {
+  display: table !important;
+  width: 100%;
+  table-layout: fixed;
 }
 
-.MuiTableCell-head {
+th, td {
   color: $body-color !important;
+  border-top: none !important;
+  border-bottom: 1px solid $table-border-color !important;
+  word-break: break-word;
 }
 
 ul {
@@ -328,5 +336,20 @@ ul {
 }
 
 button {
-  color: $button-color;
+  color: $button-color !important;
+}
+
+button:focus,
+[type="submit"]:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+button:active,
+[type="submit"]:active {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  background-color: rgba($label-color, 0.50) !important;
 }
