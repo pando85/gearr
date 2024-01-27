@@ -45,7 +45,7 @@ const WorkersTable: React.FC<WorkerTableProps> = ({ token, setShowJobTable }) =>
     };
 
     fetchWorkers();
-  }, []);
+  }, [token, setShowJobTable]);
 
   return (
     <div>
