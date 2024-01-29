@@ -13,15 +13,16 @@ interface Worker {
   name: string;
   id: string;
   queue_name: string;
-  last_seen: string; // Assuming 'last_seen' is a string for simplicity
+  last_seen: string;
 }
 
 interface WorkerTableProps {
   token: string;
   setShowJobTable: React.Dispatch<React.SetStateAction<boolean>>;
+  setErrorText: React.Dispatch<React.SetStateAction<string>>;
 }
 
-const WorkersTable: React.FC<WorkerTableProps> = ({ token, setShowJobTable }) => {
+const WorkersTable: React.FC<WorkerTableProps> = ({ token, setShowJobTable, setErrorText }) => {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -39,6 +40,9 @@ const WorkersTable: React.FC<WorkerTableProps> = ({ token, setShowJobTable }) =>
       } catch (error) {
         console.error('Error fetching workers:', error);
         setShowJobTable(false);
+        if (error instanceof Error) {
+          setErrorText(error.message);
+      }
       } finally {
         setLoading(false);
       }

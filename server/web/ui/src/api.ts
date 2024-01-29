@@ -14,7 +14,7 @@ import {
 } from './actions/JobActions';
 import {JobActionTypes} from './actions/JobActionsTypes';
 
-export const fetchJobs = (token: string, setShowJobTable: any) => async (dispatch: Dispatch<JobActionTypes>): Promise<void> => {
+export const fetchJobs = (token: string, setShowJobTable: any, setErrorText: any) => async (dispatch: Dispatch<JobActionTypes>): Promise<void> => {
     dispatch(fetchJobsRequest());
 
     try {
@@ -29,12 +29,16 @@ export const fetchJobs = (token: string, setShowJobTable: any) => async (dispatc
     } catch (error) {
         console.error('Error fetching jobs:', error);
         setShowJobTable(false);
+        console.log(error as string);
+        if (error instanceof Error) {
+            setErrorText(error.message);
+        }
         dispatch(fetchJobsFailure('Failed to fetch jobs.'));
     }
 };
 
 
-export const deleteJob = (token: string, setShowJobTable: any, jobId: string) => async (dispatch: Dispatch<JobActionTypes>): Promise<void> => {
+export const deleteJob = (token: string, setShowJobTable: any, setErrorText: any, jobId: string) => async (dispatch: Dispatch<JobActionTypes>): Promise<void> => {
     dispatch(deleteJobRequest());
 
     try {
@@ -44,15 +48,17 @@ export const deleteJob = (token: string, setShowJobTable: any, jobId: string) =>
             },
         });
         dispatch(deleteJobSuccess(jobId));
-        // setJobs as needed
     } catch (error) {
         console.error(`Error deleting job ${jobId}:`, error);
         setShowJobTable(false);
+        if (error instanceof Error) {
+            setErrorText(error.message);
+        }
         dispatch(deleteJobFailure('Failed to delete job.'));
     }
 };
 
-export const createJob = (token: string, setShowJobTable: any, path: string) => async (dispatch: Dispatch<JobActionTypes>): Promise<void> => {
+export const createJob = (token: string, setShowJobTable: any, setErrorText: any, path: string) => async (dispatch: Dispatch<JobActionTypes>): Promise<void> => {
     dispatch(createJobRequest());
 
     try {
@@ -72,6 +78,9 @@ export const createJob = (token: string, setShowJobTable: any, path: string) => 
     } catch (error) {
         console.error(`Error creating job with path ${path}:`, error);
         setShowJobTable(false);
+        if (error instanceof Error) {
+            setErrorText(error.message);
+        }
         dispatch(createJobFailure('Failed to create job.'));
     }
 };

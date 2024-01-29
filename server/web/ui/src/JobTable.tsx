@@ -17,8 +17,7 @@ import {
   Typography,
 } from '@mui/material';
 
-
-import { Button, Spinner, Table } from 'react-bootstrap';
+import { Button, Table } from 'react-bootstrap';
 import { Cached, CalendarMonth, Delete, Error, Feed, MoreVert, QuestionMark, Replay, Search, Task, VideoSettings } from '@mui/icons-material';
 
 import './JobTable.css';
@@ -26,6 +25,7 @@ import './JobTable.css';
 interface JobTableProps {
   token: string;
   setShowJobTable: React.Dispatch<React.SetStateAction<boolean>>;
+  setErrorText: React.Dispatch<React.SetStateAction<string>>;
 }
 
 const formatDate = (date: Date, options: Intl.DateTimeFormatOptions): string => {
@@ -95,7 +95,7 @@ const renderPath = (isSmallScreen: boolean, path: string) => {
   }
 };
 
-const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
+const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorText }) => {
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [buttonsMenu, setButtonsMenu] = useState<null | HTMLElement>(null); // For menu anchor
@@ -109,23 +109,22 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
 
   const dispatch = useDispatch();
   const jobs: Job[] = useSelector((state: RootState) => state.jobs);
-  const loading = useSelector((state: RootState) => state.loading);
 
   useEffect(() => {
-    dispatch(fetchJobs(token, setShowJobTable) as any);
-  }, [dispatch, token, setShowJobTable]);
+    dispatch(fetchJobs(token, setShowJobTable, setErrorText) as any);
+  }, [dispatch, token, setShowJobTable, setErrorText]);
 
   const handleDeleteJob = (jobId: string) => {
-    dispatch(deleteJob(token, setShowJobTable, jobId) as any);
+    dispatch(deleteJob(token, setShowJobTable, setErrorText, jobId) as any);
   };
 
   const handleCreateJob = (path: string) => {
-    dispatch(createJob(token, setShowJobTable, path) as any);
+    dispatch(createJob(token, setShowJobTable, setErrorText, path) as any);
   };
 
   const handleReload = () => {
     dispatch(resetJobs() as any);
-    dispatch(fetchJobs(token, setShowJobTable) as any);
+    dispatch(fetchJobs(token, setShowJobTable, setErrorText) as any);
   };
 
   useEffect(() => {
@@ -280,7 +279,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
     header: React.ReactNode
   }>({
     top: 0,
-    setTop: (value: number) => { },
+    setTop: (_: number) => { },
     header: <></>,
   });
 
@@ -508,7 +507,6 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
           }
           row={Row}
         />
-        {loading && <Spinner animation="border" />}
       </div>
     </div>
   );
