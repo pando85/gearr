@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Job } from './model';
 import { fetchJobs, deleteJob, createJob } from './api';
 import { RootState } from './store';
 import { resetJobs } from './actions/JobActions';
 
-import { FixedSizeList as List } from 'react-window';
-import AutoSizer from 'react-virtualized-auto-sizer';
+import { FixedSizeList, FixedSizeListProps } from 'react-window';
 import {
   Checkbox,
   FormControl as FormControlMui,
@@ -106,6 +105,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
   const [detailsMenuAnchor, setDetailsMenuAnchor] = useState<null | HTMLElement>(null);
 
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth <= 768);
+  const [height, setHeight] = useState(window.innerHeight);
 
   const dispatch = useDispatch();
   const jobs: Job[] = useSelector((state: RootState) => state.jobs);
@@ -131,6 +131,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
   useEffect(() => {
     const handleResize = () => {
       setIsSmallScreen(window.innerWidth <= 768);
+      setHeight(window.innerHeight);
     };
 
     window.addEventListener('resize', handleResize);
@@ -273,8 +274,151 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
     }
   };
 
-  const tableRef: React.RefObject<HTMLTableElement> = React.createRef();
-  const tableBodyRef: React.RefObject<HTMLTableSectionElement> = React.createRef();
+  const VirtualTableContext = React.createContext<{
+    top: number
+    setTop: (top: number) => void
+    header: React.ReactNode
+  }>({
+    top: 0,
+    setTop: (value: number) => { },
+    header: <></>,
+  });
+
+  function VirtualTable({
+    row,
+    header,
+    ...rest
+  }: {
+    header?: React.ReactNode
+    row: FixedSizeListProps['children']
+  } & Omit<FixedSizeListProps, 'children' | 'innerElementType'>) {
+    const listRef = useRef<FixedSizeList | null>()
+    const [top, setTop] = useState(0)
+
+    return (
+      <VirtualTableContext.Provider value={{ top, setTop, header }}>
+        <FixedSizeList
+          {...rest}
+          innerElementType={Inner}
+          onItemsRendered={props => {
+            const style =
+              listRef.current &&
+              // @ts-ignore private method access
+              listRef.current._getItemStyle(props.overscanStartIndex)
+            setTop((style && style.top) || 0)
+
+            // Call the original callback
+            rest.onItemsRendered && rest.onItemsRendered(props)
+          }}
+          ref={el => (listRef.current = el)}
+        >
+          {row}
+        </FixedSizeList>
+      </VirtualTableContext.Provider>
+    );
+  };
+
+  const Inner = React.forwardRef<HTMLDivElement, React.HTMLProps<HTMLDivElement>>(
+    function Inner({ children, ...rest }, ref) {
+      const { header, top } = useContext(VirtualTableContext)
+      return (
+        <div {...rest} ref={ref}>
+          <Table striped hover responsive style={{ top, position: 'absolute', width: '100%', height: '100%' }}>
+            {header}
+            <tbody>{children}</tbody>
+          </Table>
+        </div>
+      )
+    }
+  );
+
+  const Row = ({ index }: { index: number }) => {
+    const job = filteredJobs[index];
+    if (!job) {
+      return null;
+    }
+    return (
+      <tr
+        key={job.id}
+        onClick={() => handleRowClick(job)}
+        className="table-row"
+      >
+        <td>{renderPath(isSmallScreen, job.source_path)}</td>
+        <td className="d-none d-sm-table-cell">{job.destination_path}</td>
+        <td style={{ wordBreak: "keep-all" }}>{renderStatusCellContent(job)}</td>
+        <td style={{ wordBreak: "keep-all" }} title={formatDateDetailed(job.last_update)}>
+          <div className="row-menu">
+            {formatDateShort(job.last_update)}
+            <Button
+              variant="link"
+              className="buttons-menu"
+              onClick={handleClick}
+              size="sm"
+            >
+              <MoreVert />
+            </Button>
+            <Menu
+              id="buttons-menu"
+              className="buttons-menu"
+              anchorEl={buttonsMenu}
+              keepMounted
+              open={Boolean(buttonsMenu)}
+              onClose={handleClose}
+              anchorOrigin={{
+                vertical: 'bottom',
+                horizontal: 'right',
+              }}
+              transformOrigin={{
+                vertical: 'top',
+                horizontal: 'right',
+              }}
+            >
+              <MenuItem title="Details" onClick={(event) => handleDetailedViewClick(event)}>
+                <Feed />
+              </MenuItem>
+              <MenuItem title="Delete" onClick={() => handleMenuOptionClick(selectedJob, 'delete')}>
+                <Delete />
+              </MenuItem>
+              <MenuItem title="Recreate" onClick={() => handleMenuOptionClick(selectedJob, 'recreate')}>
+                <Replay />
+              </MenuItem>
+            </Menu>
+            <Menu
+              id="details-menu"
+              className="details-menu"
+              anchorEl={detailsMenuAnchor}
+              keepMounted
+              open={Boolean(detailsMenuAnchor)}
+              onClose={handleCloseDetailsMenu}
+            >
+              {selectedJob && [
+                <MenuItem key="job-details">
+                  <Typography variant="h5" gutterBottom>
+                    Job Details
+                  </Typography>
+                </MenuItem>,
+                <MenuItem key="job-id">
+                  <Typography>ID: {selectedJob.id}</Typography>
+                </MenuItem>,
+                <MenuItem key="job-source">
+                  <Typography>Source: {selectedJob.source_path}</Typography>
+                </MenuItem>,
+                <MenuItem key="job-destination">
+                  <Typography>Destination: {selectedJob.destination_path}</Typography>
+                </MenuItem>,
+                <MenuItem key="job-status">
+                  <Typography>Status: {selectedJob.status}</Typography>
+                </MenuItem>,
+                <MenuItem key="job-message">
+                  <Typography>Message: {selectedJob.status_message}</Typography>
+                </MenuItem>,
+              ]}
+            </Menu>
+          </div>
+        </td>
+      </tr>
+    );
+  };
 
   return (
     <div className="content-wrapper">
@@ -331,107 +475,39 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable }) => {
         </div>
       </div>
       <div className="job-list">
-        <Table ref={tableRef} striped hover responsive className="job-table">
-          <thead>
-            <tr>
-              <th>
-                <span title="Source">
-                  <Task />
-                </span>
-              </th>
-              <th className="d-none d-sm-table-cell">
-                <span title="Destination">
-                  <VideoSettings />
-                </span>
-              </th>
-              <th>
-                <span title="Status">
-                  <QuestionMark />
-                </span>
-              </th>
-              <th>
-                <span title="LastUpdate">
-                  <CalendarMonth />
-                </span>
-              </th>
-            </tr>
-          </thead>
-          <tbody ref={tableBodyRef}>
-            {filteredJobs.map((job, index) => (
-              <tr
-                key={job.id}
-                onClick={() => handleRowClick(job)}
-                className="table-row"
-              >
-                <td>{renderPath(isSmallScreen, job.source_path)}</td>
-                <td className="d-none d-sm-table-cell">{job.destination_path}</td>
-                <td style={{wordBreak: "keep-all"}}>{renderStatusCellContent(job)}</td>
-                <td style={{wordBreak: "keep-all"}} title={formatDateDetailed(job.last_update)}>
-                  <div className="row-menu">
-                    {formatDateShort(job.last_update)}
-                    <Button
-                      variant="link"
-                      className="buttons-menu"
-                      onClick={handleClick}
-                      size="sm"
-                    >
-                      <MoreVert />
-                    </Button>
-                    <Menu
-                      id="buttons-menu"
-                      className="buttons-menu"
-                      anchorEl={buttonsMenu}
-                      keepMounted
-                      open={Boolean(buttonsMenu)}
-                      onClose={handleClose}
-                    >
-                      <MenuItem title="Details" onClick={(event) => handleDetailedViewClick(event)}>
-                        <Feed />
-                      </MenuItem>
-                      <MenuItem title="Delete" onClick={() => handleMenuOptionClick(selectedJob, 'delete')}>
-                        <Delete />
-                      </MenuItem>
-                      <MenuItem title="Recreate" onClick={() => handleMenuOptionClick(selectedJob, 'recreate')}>
-                        <Replay />
-                      </MenuItem>
-                    </Menu>
-                    <Menu
-                      id="details-menu"
-                      className="details-menu"
-                      anchorEl={detailsMenuAnchor}
-                      keepMounted
-                      open={Boolean(detailsMenuAnchor)}
-                      onClose={handleCloseDetailsMenu}
-                    >
-                      {selectedJob && [
-                        <MenuItem key="job-details">
-                          <Typography variant="h5" gutterBottom>
-                            Job Details
-                          </Typography>
-                        </MenuItem>,
-                        <MenuItem key="job-id">
-                          <Typography>ID: {selectedJob.id}</Typography>
-                        </MenuItem>,
-                        <MenuItem key="job-source">
-                          <Typography>Source: {selectedJob.source_path}</Typography>
-                        </MenuItem>,
-                        <MenuItem key="job-destination">
-                          <Typography>Destination: {selectedJob.destination_path}</Typography>
-                        </MenuItem>,
-                        <MenuItem key="job-status">
-                          <Typography>Status: {selectedJob.status}</Typography>
-                        </MenuItem>,
-                        <MenuItem key="job-message">
-                          <Typography>Message: {selectedJob.status_message}</Typography>
-                        </MenuItem>,
-                      ]}
-                    </Menu>
-                  </div>
-                </td>
+        <VirtualTable
+          height={height}
+          width="100%"
+          itemCount={filteredJobs.length}
+          itemSize={105}
+          header={
+            <thead>
+              <tr>
+                <th>
+                  <span title="Source">
+                    <Task />
+                  </span>
+                </th>
+                <th className="d-none d-sm-table-cell">
+                  <span title="Destination">
+                    <VideoSettings />
+                  </span>
+                </th>
+                <th>
+                  <span title="Status">
+                    <QuestionMark />
+                  </span>
+                </th>
+                <th>
+                  <span title="LastUpdate">
+                    <CalendarMonth />
+                  </span>
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </Table>
+            </thead>
+          }
+          row={Row}
+        />
         {loading && <Spinner animation="border" />}
       </div>
     </div>
