@@ -49,7 +49,7 @@ const WorkersTable: React.FC<WorkerTableProps> = ({ token, setShowJobTable, setE
     };
 
     fetchWorkers();
-  }, [token, setShowJobTable]);
+  }, [token, setShowJobTable, setErrorText]);
 
   return (
     <div>
