@@ -105,11 +105,13 @@ const App: React.FC = () => {
               </div>
             </div>
           )}
+          {showJobTable && (
           <Routes>
             <Route path="/" element={<Navigate to="/jobs" replace />} />
             <Route path="/jobs" element={<Jobs />} />
             <Route path="/workers" element={<Workers />} />
           </Routes>
+          )}
         </div>
       </Router>
     </ThemeContext.Provider >

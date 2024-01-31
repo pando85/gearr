@@ -133,7 +133,6 @@ func (Q *RabbitMQServer) taskQueue(ctx context.Context) {
 			}
 			message := amqp.Publishing{
 				ContentType: "text/plain",
-				Priority:    uint8(taskEvent.Event.Priority),
 				Body:        b,
 			}
 			if err := taskChannel.Publish("", taskQueue.Name, false, false, message); err != nil {

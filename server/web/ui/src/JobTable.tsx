@@ -1,9 +1,9 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Job } from './model';
+import { Job, JobUpdateNotification, JobUpdateNotificationClass } from './model';
 import { fetchJobs, deleteJob, createJob } from './api';
 import { RootState } from './store';
-import { resetJobs } from './actions/JobActions';
+import { updateJob, resetJobs } from './actions/JobActions';
 
 import { FixedSizeList, FixedSizeListProps } from 'react-window';
 import {
@@ -18,6 +18,7 @@ import {
 } from '@mui/material';
 
 import { Button, Table } from 'react-bootstrap';
+import useWebSocket from 'react-use-websocket';
 import { Cached, CalendarMonth, Delete, Error, Feed, MoreVert, QuestionMark, Replay, Search, Task, VideoSettings } from '@mui/icons-material';
 
 import './JobTable.css';
@@ -98,8 +99,8 @@ const renderPath = (isSmallScreen: boolean, path: string) => {
 const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorText }) => {
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [buttonsMenu, setButtonsMenu] = useState<null | HTMLElement>(null); // For menu anchor
-  const [nameFilter, setNameFilter] = useState<string>(''); // State for name filter
+  const [buttonsMenu, setButtonsMenu] = useState<null | HTMLElement>(null);
+  const [nameFilter, setNameFilter] = useState<string>('');
   const [selectedStatusFilter, setSelectedStatus] = useState<string | string[]>([]);
   const [selectedDateFilter, setSelectedDateFilter] = useState<string>('');
   const [detailsMenuAnchor, setDetailsMenuAnchor] = useState<null | HTMLElement>(null);
@@ -110,16 +111,31 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
   const dispatch = useDispatch();
   const jobs: Job[] = useSelector((state: RootState) => state.jobs);
 
+  const protocol = window.location.protocol === "https" ? "wss" : "ws";
+  const wsURL = `${protocol}://${window.location.hostname}:${window.location.port}/ws/job?token=${token}`;
+
+  // TODO: reconnect when ReadyState.CLOSED
+  const { lastMessage } = useWebSocket(wsURL);
+
+
+  useEffect(() => {
+    if (lastMessage !== null) {
+      const JobUpdateNotification: JobUpdateNotification = new JobUpdateNotificationClass(JSON.parse(lastMessage.data));
+      dispatch(updateJob(JobUpdateNotification) as any)
+    }
+  }, [dispatch, lastMessage]);
+
+
   useEffect(() => {
     dispatch(fetchJobs(token, setShowJobTable, setErrorText) as any);
   }, [dispatch, token, setShowJobTable, setErrorText]);
 
-  const handleDeleteJob = (jobId: string) => {
-    dispatch(deleteJob(token, setShowJobTable, setErrorText, jobId) as any);
+  const handleDeleteJob = async (jobId: string) => {
+    await dispatch(deleteJob(token, setShowJobTable, setErrorText, jobId) as any);
   };
 
-  const handleCreateJob = (path: string) => {
-    dispatch(createJob(token, setShowJobTable, setErrorText, path) as any);
+  const handleCreateJob = async (path: string) => {
+    await dispatch(createJob(token, setShowJobTable, setErrorText, path) as any);
   };
 
   const handleReload = () => {
@@ -171,14 +187,14 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
     setDetailsMenuAnchor(null);
   }
 
-  const handleMenuOptionClick = (job: Job | null, option: string) => {
+  const handleMenuOptionClick = async (job: Job | null, option: string) => {
     if (job !== null) {
       if (['delete', 'recreate'].includes(option)) {
-        handleDeleteJob(job.id);
+        await handleDeleteJob(job.id);
       };
       handleClose();
       if (option === 'recreate') {
-        handleCreateJob(job.source_path);
+        await handleCreateJob(job.source_path);
       }
     }
   };
@@ -363,14 +379,6 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
               keepMounted
               open={Boolean(buttonsMenu)}
               onClose={handleClose}
-              anchorOrigin={{
-                vertical: 'bottom',
-                horizontal: 'right',
-              }}
-              transformOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
             >
               <MenuItem title="Details" onClick={(event) => handleDetailedViewClick(event)}>
                 <Feed />

@@ -6,7 +6,6 @@ import {
   DELETE_JOB_SUCCESS,
   DELETE_JOB_FAILURE,
   CREATE_JOB_REQUEST,
-  CREATE_JOB_SUCCESS,
   CREATE_JOB_FAILURE,
   RELOAD_JOBS as RESET_JOBS,
   FetchJobsRequestAction,
@@ -16,12 +15,13 @@ import {
   DeleteJobSuccessAction,
   DeleteJobFailureAction,
   CreateJobRequestAction,
-  CreateJobSuccessAction,
   CreateJobFailureAction,
   ResetJobsAction,
+  UpdateJobAction,
+  UPDATE_JOB,
 } from './JobActionsTypes';
 
-import { Job } from '../model';
+import { Job, JobUpdateNotification } from '../model';
 
 
 
@@ -57,14 +57,14 @@ export const createJobRequest = (): CreateJobRequestAction => ({
   type: CREATE_JOB_REQUEST,
 });
 
-export const createJobSuccess = (jobs: Job[]): CreateJobSuccessAction => ({
-  type: CREATE_JOB_SUCCESS,
-  payload: jobs,
-});
-
 export const createJobFailure = (error: string): CreateJobFailureAction => ({
   type: CREATE_JOB_FAILURE,
   error,
+});
+
+export const updateJob = (JobUpdateNotification: JobUpdateNotification): UpdateJobAction => ({
+  type: UPDATE_JOB,
+  payload: JobUpdateNotification,
 });
 
 export const resetJobs = (): ResetJobsAction => ({

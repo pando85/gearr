@@ -8,13 +8,13 @@ import {
     DELETE_JOB_SUCCESS,
     DELETE_JOB_FAILURE,
     CREATE_JOB_REQUEST,
-    CREATE_JOB_SUCCESS,
     CREATE_JOB_FAILURE,
+    UPDATE_JOB,
     RELOAD_JOBS,
     JobActionTypes
 } from './actions/JobActionsTypes';
 
-import { Job} from './model';
+import { Job, JobClass } from './model';
 interface JobState {
     jobs: Job[];
     loading: boolean;
@@ -75,29 +75,47 @@ const jobReducer: Reducer<JobState, JobActionTypes> = (state = initialState, act
                 error: null,
             };
 
-        case CREATE_JOB_SUCCESS:
-            return {
-                ...state,
-                loading: false,
-                jobs: [...state.jobs, ...action.payload],
-            };
-
         case CREATE_JOB_FAILURE:
             return {
                 ...state,
                 loading: false,
                 error: action.error,
             };
-        case RELOAD_JOBS:
+        case UPDATE_JOB:
+            const updatedJobIndex = state.jobs.findIndex((job) => job.id === action.payload.id);
+
+            if (updatedJobIndex !== -1) {
+                state.jobs[updatedJobIndex].status = action.payload.status;
+                state.jobs[updatedJobIndex].status_message = action.payload.message;
+                state.jobs[updatedJobIndex].last_update = action.payload.event_time;
+                const updatedJobs = [...state.jobs];
                 return {
                     ...state,
-                    loading: true,
-                    jobs: [],
+                    loading: false,
+                    jobs: updatedJobs,
+                };
+            } else {
+                const newJob: Job = new JobClass({
+                    id: action.payload.id,
+                    source_path: action.payload.source_path,
+                    destination_path: action.payload.destination_path,
+                });
+                return {
+                    ...state,
+                    loading: false,
+                    jobs: [...state.jobs, newJob],
+                };
+            }
+        case RELOAD_JOBS:
+            return {
+                ...state,
+                loading: true,
+                jobs: [],
             };
         default:
             return state;
     }
 };
-export type {JobState};
-export {initialState};
+export type { JobState };
+export { initialState };
 export default jobReducer;

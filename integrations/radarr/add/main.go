@@ -64,7 +64,6 @@ type FailedItem struct {
 	ForceFailed     bool   `json:"forceFailed"`
 	ForceExecuting  bool   `json:"forceExecuting"`
 	ForceQueued     bool   `json:"forceQueued"`
-	Priority        int    `json:"priority"`
 	Error           string `json:"error"`
 }
 

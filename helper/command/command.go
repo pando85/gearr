@@ -105,16 +105,6 @@ func (C *Command) RunWithContext(ctx context.Context, opt ...Option) (exitCode i
 	go C.readerStreamProcessor(ctx, stdout, C.StdoutFunc)
 	go C.readerStreamProcessor(ctx, stderr, C.SterrFunc)
 
-	/*if runtime.GOOS == "windows" {
-		<-time.After(time.Second*30)
-		proc:=exec.Command("wmic","process","where",fmt.Sprintf("ProcessID=\"%d\"",cmd.Process.Pid),"call","setpriority","64")
-		if err:=proc.Start();err!=nil{
-			return -1,err
-		}
-		if err:=proc.Wait();err!=nil{
-			return -1,err
-		}
-	}*/
 	err = cmd.Wait()
 	if err != nil {
 		if msg, ok := err.(*exec.ExitError); ok { // there is error code

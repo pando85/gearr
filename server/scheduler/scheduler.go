@@ -2,8 +2,6 @@ package scheduler
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -19,7 +17,6 @@ import (
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/vansante/go-ffprobe.v2"
 )
 
 var (
@@ -29,7 +26,7 @@ var (
 
 type Scheduler interface {
 	Run(wg *sync.WaitGroup, ctx context.Context)
-	ScheduleJobRequests(ctx context.Context, jobRequest *model.JobRequest) (*ScheduleJobRequestResult, error)
+	ScheduleJobRequest(ctx context.Context, jobRequest *model.JobRequest) (*model.Video, error)
 	GetJob(ctx context.Context, uuid string) (*model.Video, error)
 	DeleteJob(ctx context.Context, uuid string) error
 	GetJobs(ctx context.Context) (*[]model.Video, error)
@@ -37,6 +34,7 @@ type Scheduler interface {
 	GetDownloadJobWriter(ctx context.Context, uuid string) (*DownloadJobStream, error)
 	GetChecksum(ctx context.Context, uuid string) (string, error)
 	GetWorkers(ctx context.Context) (*[]model.Worker, error)
+	GetUpdateJobsChan(ctx context.Context) chan model.JobUpdateNotification
 }
 
 type SchedulerConfig struct {
@@ -53,6 +51,7 @@ type RuntimeScheduler struct {
 	repo            repository.Repository
 	queue           queue.BrokerServer
 	checksumChan    chan PathChecksum
+	updateJobsChan  chan model.JobUpdateNotification
 	pathChecksumMap map[string]string
 }
 
@@ -62,6 +61,7 @@ func NewScheduler(config SchedulerConfig, repo repository.Repository, queue queu
 		repo:            repo,
 		queue:           queue,
 		checksumChan:    make(chan PathChecksum),
+		updateJobsChan:  make(chan model.JobUpdateNotification),
 		pathChecksumMap: make(map[string]string),
 	}
 
@@ -85,6 +85,10 @@ func (R *RuntimeScheduler) start(ctx context.Context) {
 	go R.schedule(ctx)
 }
 
+func (R *RuntimeScheduler) GetUpdateJobsChan(ctx context.Context) chan model.JobUpdateNotification {
+	return R.updateJobsChan
+}
+
 func (R *RuntimeScheduler) schedule(ctx context.Context) {
 	jobEventConsumerChan := R.queue.ReceiveJobEvent()
 	for {
@@ -95,6 +99,17 @@ func (R *RuntimeScheduler) schedule(ctx context.Context) {
 			if !ok {
 				return
 			}
+
+			if jobEvent.EventType != model.PingEvent {
+				jobUpdateNotification := model.JobUpdateNotification{
+					Id:        jobEvent.Id,
+					Status:    jobEvent.Status,
+					Message:   jobEvent.Message,
+					EventTime: jobEvent.EventTime,
+				}
+				R.updateJobsChan <- jobUpdateNotification
+			}
+
 			if jobEvent.EventType == model.NotificationEvent && jobEvent.NotificationType == model.JobNotification && jobEvent.Status == model.CompletedNotificationStatus {
 				video, err := R.repo.GetJob(ctx, jobEvent.Id.String())
 				if err != nil {
@@ -132,8 +147,6 @@ func (R *RuntimeScheduler) schedule(ctx context.Context) {
 					jobRequest := &model.JobRequest{
 						SourcePath:      video.SourcePath,
 						DestinationPath: video.DestinationPath,
-						ForceExecuting:  true,
-						Priority:        9,
 					}
 					_, err = R.scheduleJobRequest(ctx, jobRequest)
 					if err != nil {
@@ -145,131 +158,35 @@ func (R *RuntimeScheduler) schedule(ctx context.Context) {
 	}
 }
 
-type JobRequestResult struct {
-	jobRequest *model.JobRequest
-	errors     []string
-}
-
-func (R *RuntimeScheduler) createNewJobRequestByJobRequestDirectory(ctx context.Context, parentJobRequest *model.JobRequest, searchJobRequestChan chan<- *JobRequestResult) {
-	defer close(searchJobRequestChan)
-	filepath.Walk(filepath.Join(R.config.DownloadPath, parentJobRequest.SourcePath), func(pathFile string, f os.FileInfo, err error) error {
-		var jobRequestErrors []string
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("search for new Jobs canceled")
-		default:
-			if f.IsDir() {
-				return nil
-			}
-			if f.Size() < R.config.MinFileSize {
-				jobRequestErrors = append(jobRequestErrors, fmt.Sprintf("%s File size must be bigger than %d", pathFile, R.config.MinFileSize))
-			}
-			extension := filepath.Ext(f.Name())[1:]
-			if !helper.ValidExtension(extension) {
-				jobRequestErrors = append(jobRequestErrors, fmt.Sprintf("%s Invalid Extension %s", pathFile, extension))
-			}
-
-			relativePathSource, err := filepath.Rel(R.config.DownloadPath, filepath.FromSlash(pathFile))
-			if err != nil {
-				jobRequestErrors = append(jobRequestErrors, err.Error())
-			}
-
-			relativePathTarget := formatTargetName(relativePathSource)
-			if relativePathTarget == relativePathSource {
-				ext := filepath.Ext(relativePathTarget)
-				relativePathTarget = strings.Replace(relativePathTarget, ext, "_encoded.mkv", 1)
-			}
-
-			searchJobRequestChan <- &JobRequestResult{
-				jobRequest: &model.JobRequest{
-					SourcePath:      relativePathSource,
-					DestinationPath: relativePathTarget,
-					ForceCompleted:  parentJobRequest.ForceCompleted,
-					ForceFailed:     parentJobRequest.ForceFailed,
-					ForceExecuting:  parentJobRequest.ForceExecuting,
-					ForceQueued:     parentJobRequest.ForceQueued,
-					Priority:        parentJobRequest.Priority,
-				},
-				errors: jobRequestErrors,
-			}
-		}
-		return nil
-	})
-}
-
-type ScheduleJobRequestResult struct {
-	ScheduledJobs    []*model.Video           `json:"scheduled"`
-	FailedJobRequest []*model.JobRequestError `json:"failed"`
-	SkippedFiles     []*model.JobRequestError `json:"skipped"`
-}
-
 func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *model.JobRequest) (video *model.Video, err error) {
-	priority := jobRequest.Priority
 	err = R.repo.WithTransaction(ctx, func(ctx context.Context, tx repository.Repository) error {
 		video, err = tx.GetJobByPath(ctx, jobRequest.SourcePath)
 		if err != nil {
 			return err
 		}
 		var eventsToAdd []*model.TaskEvent
-		if video == nil {
-			newUUID, _ := uuid.NewUUID()
-			video = &model.Video{
-				SourcePath:      jobRequest.SourcePath,
-				DestinationPath: jobRequest.DestinationPath,
-				Id:              newUUID,
-			}
-			err = tx.AddVideo(ctx, video)
-			if err != nil {
-				return err
-			}
-			startEvent := video.AddEvent(model.NotificationEvent, model.JobNotification, model.QueuedNotificationStatus)
-			eventsToAdd = append(eventsToAdd, startEvent)
-		} else {
-			//If video exist we check if we can retry the job
-			lastEvent := video.Events.GetLatestPerNotificationType(model.JobNotification)
-			status := video.Events.GetStatus()
-			if jobRequest.ForceExecuting && status == model.ProgressingNotificationStatus {
-				cancelEvent := video.AddEvent(model.NotificationEvent, model.JobNotification, model.CanceledNotificationStatus)
-				eventsToAdd = append(eventsToAdd, cancelEvent)
-			}
-			if (jobRequest.ForceCompleted && status == model.CompletedNotificationStatus) ||
-				(jobRequest.ForceFailed && (status == model.FailedNotificationStatus || status == model.CanceledNotificationStatus)) ||
-				(jobRequest.ForceQueued && (status == model.QueuedNotificationStatus || status == model.ReQueuedNotificationStatus)) ||
-				(jobRequest.ForceExecuting && status == model.ProgressingNotificationStatus) {
-				requeueEvent := video.AddEvent(model.NotificationEvent, model.JobNotification, model.ReQueuedNotificationStatus)
-				eventsToAdd = append(eventsToAdd, requeueEvent)
-			} else if !(jobRequest.ForceExecuting && status == model.ProgressingNotificationStatus) {
-				return fmt.Errorf("%s (%s) job is in %s state by %s, can not be rescheduled", video.Id.String(), jobRequest.SourcePath, lastEvent.Status, lastEvent.WorkerName)
-			}
+		if video != nil {
+			errorMessage := fmt.Sprintf("%s job already exists", jobRequest.SourcePath)
+			return &model.CustomError{Message: errorMessage}
 		}
+		newUUID, _ := uuid.NewUUID()
+		video = &model.Video{
+			SourcePath:      jobRequest.SourcePath,
+			DestinationPath: jobRequest.DestinationPath,
+			Id:              newUUID,
+		}
+		err = tx.AddVideo(ctx, video)
+		if err != nil {
+			return err
+		}
+		startEvent := video.AddEvent(model.NotificationEvent, model.JobNotification, model.QueuedNotificationStatus)
+		eventsToAdd = append(eventsToAdd, startEvent)
 		if len(eventsToAdd) > 0 {
 			for _, taskEvent := range eventsToAdd {
 				err = tx.AddNewTaskEvent(ctx, taskEvent)
 				if err != nil {
 					return err
 				}
-			}
-		}
-		if priority == 0 {
-			f, err := os.Open(filepath.Join(R.config.DownloadPath, jobRequest.SourcePath))
-			if err != nil {
-				return err
-			}
-			defer f.Close()
-			data, err := ffprobe.ProbeReader(ctx, f)
-			if err != nil {
-				return err
-			}
-			if data.Format.DurationSeconds < 1800 { //30Min
-				priority = 1
-			} else if data.Format.DurationSeconds < 3600 { //60 Min
-				priority = 2
-			} else if data.Format.DurationSeconds < 7200 { //2h
-				priority = 3
-			} else if data.Format.DurationSeconds < 10800 { //3h
-				priority = 4
-			} else if data.Format.DurationSeconds > 10800 { //+3h
-				priority = 5
 			}
 		}
 
@@ -282,52 +199,64 @@ func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *m
 			UploadURL:   uploadURL.String(),
 			ChecksumURL: checksumURL.String(),
 			EventID:     video.Events.GetLatest().EventID,
-			Priority:    priority,
 		}
 		return R.queue.PublishJobRequest(task)
 	})
 	return video, err
 }
 
-func (R *RuntimeScheduler) ScheduleJobRequests(ctx context.Context, jobRequest *model.JobRequest) (result *ScheduleJobRequestResult, returnError error) {
-	result = &ScheduleJobRequestResult{}
-	searchJobRequestChan := make(chan *JobRequestResult, 10)
-	_, returnError = os.Stat(filepath.Join(R.config.DownloadPath, jobRequest.SourcePath))
-	if os.IsNotExist(returnError) {
-		return nil, returnError
+func (R *RuntimeScheduler) ScheduleJobRequest(ctx context.Context, jobRequest *model.JobRequest) (*model.Video, error) {
+	filePath := filepath.Join(R.config.DownloadPath, jobRequest.SourcePath)
+	fileInfo, err := os.Stat(filePath)
+	if os.IsNotExist(err) {
+		return nil, err
 	}
 
-	go R.createNewJobRequestByJobRequestDirectory(ctx, jobRequest, searchJobRequestChan)
-
-	for jobRequestResponse := range searchJobRequestChan {
-		var err error
-		var video *model.Video
-		if jobRequestResponse.errors == nil {
-			video, err = R.scheduleJobRequest(ctx, jobRequestResponse.jobRequest)
-			if err == nil {
-				video.Events = nil
-			}
-		} else {
-			b, _ := json.Marshal(jobRequestResponse.errors)
-			err = errors.New(string(b))
-		}
-		if err != nil {
-			if errors.Is(err, ErrorFileSkipped) {
-				result.SkippedFiles = append(result.SkippedFiles, &model.JobRequestError{
-					JobRequest: *jobRequestResponse.jobRequest,
-					Error:      errors.Unwrap(err).Error(),
-				})
-			} else {
-				result.FailedJobRequest = append(result.FailedJobRequest, &model.JobRequestError{
-					JobRequest: *jobRequestResponse.jobRequest,
-					Error:      err.Error(),
-				})
-			}
-		} else {
-			result.ScheduledJobs = append(result.ScheduledJobs, video)
-		}
+	if fileInfo.IsDir() {
+		errorMessage := fmt.Sprintf("%s is a directory", filePath)
+		return nil, &model.CustomError{Message: errorMessage}
 	}
-	return result, returnError
+
+	if fileInfo.Size() < R.config.MinFileSize {
+		errorMessage := fmt.Sprintf("%s File size must be bigger than %d", filePath, R.config.MinFileSize)
+		return nil, &model.CustomError{Message: errorMessage}
+	}
+	extension := filepath.Ext(fileInfo.Name())[1:]
+	if !helper.ValidExtension(extension) {
+		errorMessage := fmt.Sprintf("%s Invalid Extension %s", filePath, extension)
+		return nil, &model.CustomError{Message: errorMessage}
+	}
+
+	relativePathSource, err := filepath.Rel(R.config.DownloadPath, filepath.FromSlash(filePath))
+	if err != nil {
+		errorMessage := fmt.Sprintf("%s is not relative download path", filePath)
+		return nil, &model.CustomError{Message: errorMessage}
+	}
+
+	relativePathTarget := formatTargetName(relativePathSource)
+	if relativePathTarget == relativePathSource {
+		ext := filepath.Ext(relativePathTarget)
+		relativePathTarget = strings.Replace(relativePathTarget, ext, "_encoded.mkv", 1)
+	}
+
+	filteredJobRequest := &model.JobRequest{
+		SourcePath:      relativePathSource,
+		DestinationPath: relativePathTarget,
+	}
+
+	video, err := R.scheduleJobRequest(ctx, filteredJobRequest)
+	if err == nil {
+		video.Events = nil
+	}
+
+	jobUpdateNotification := model.JobUpdateNotification{
+		Id:              video.Id,
+		SourcePath:      video.SourcePath,
+		DestinationPath: video.DestinationPath,
+	}
+
+	R.updateJobsChan <- jobUpdateNotification
+	return video, nil
 }
 
 func (R *RuntimeScheduler) GetJob(ctx context.Context, uuid string) (*model.Video, error) {

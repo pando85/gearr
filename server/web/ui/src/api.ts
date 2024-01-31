@@ -9,10 +9,9 @@ import {
     deleteJobSuccess,
     deleteJobFailure,
     createJobRequest,
-    createJobSuccess,
     createJobFailure,
 } from './actions/JobActions';
-import {JobActionTypes} from './actions/JobActionsTypes';
+import { JobActionTypes } from './actions/JobActionsTypes';
 
 export const fetchJobs = (token: string, setShowJobTable: any, setErrorText: any) => async (dispatch: Dispatch<JobActionTypes>): Promise<void> => {
     dispatch(fetchJobsRequest());
@@ -60,12 +59,11 @@ export const deleteJob = (token: string, setShowJobTable: any, setErrorText: any
 
 export const createJob = (token: string, setShowJobTable: any, setErrorText: any, path: string) => async (dispatch: Dispatch<JobActionTypes>): Promise<void> => {
     dispatch(createJobRequest());
-
     try {
-        const response = await axios.post(
+        await axios.post(
             `/api/v1/job/`,
             {
-                SourcePath: path,
+                source_path: path,
             },
             {
                 headers: {
@@ -73,8 +71,6 @@ export const createJob = (token: string, setShowJobTable: any, setErrorText: any
                 },
             }
         );
-        const newJobs: Job[] = response.data.scheduled;
-        dispatch(createJobSuccess(newJobs));
     } catch (error) {
         console.error(`Error creating job with path ${path}:`, error);
         setShowJobTable(false);

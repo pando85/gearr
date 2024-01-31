@@ -63,7 +63,6 @@ type Config struct {
 	Jobs              AcceptedJobs   `mapstructure:"acceptedJobs"`
 	EncodeJobs        int            `mapstructure:"encodeJobs"`
 	PgsJobs           int            `mapstructure:"pgsJobs"`
-	Priority          int            `mapstructure:"priority"`
 	StartAfter        TimeHourMinute `mapstructure:"startAfter"`
 	StopAfter         TimeHourMinute `mapstructure:"stopAfter"`
 	Paused            bool

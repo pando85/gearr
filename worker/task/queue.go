@@ -140,7 +140,6 @@ func (Q *RabbitMQClient) ResponsePGSJob(pgsResponse model.TaskPGSResponse) error
 		ContentType: "text/plain",
 		Body:        bytes,
 		Type:        "PGSResponse",
-		Priority:    5,
 		Timestamp:   time.Now(),
 	}
 	return Q.publishAMQPMessage(pgsResponse.Queue, message)
@@ -355,7 +354,6 @@ func (Q *RabbitMQClient) publishMessageTtl(queueName string, obj interface{}, tt
 	message := amqp.Publishing{
 		Headers:     nil,
 		ContentType: "text/plain",
-		Priority:    5,
 		Expiration:  expiration,
 		Timestamp:   time.Now(),
 		Body:        bytes,

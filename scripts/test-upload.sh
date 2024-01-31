@@ -8,7 +8,7 @@ AUTH_HEADER="Authorization: Bearer ${TOKEN}"
 payload() {
   cat <<EOF
 {
-  "SourcePath": "$1"
+  "source_path": "$1"
 }
 EOF
 }

@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"transcoder/server/web/ui"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -23,21 +25,22 @@ type WebServer struct {
 	scheduler scheduler.Scheduler
 	router    *gin.Engine
 	ctx       context.Context
+	upgrader  websocket.Upgrader
 }
 
-func (w *WebServer) addJobs(c *gin.Context) {
+func (w *WebServer) addJob(c *gin.Context) {
 	var jobRequest model.JobRequest
 	if err := c.ShouldBindJSON(&jobRequest); err != nil {
 		webError(c, err, 500)
 		return
 	}
 
-	scheduleJobResults, err := w.scheduler.ScheduleJobRequests(w.ctx, &jobRequest)
+	video, err := w.scheduler.ScheduleJobRequest(w.ctx, &jobRequest)
 	if webError(c, err, 500) {
 		return
 	}
 
-	c.JSON(http.StatusOK, scheduleJobResults)
+	c.JSON(http.StatusOK, video)
 }
 
 func (w *WebServer) getJobs(c *gin.Context) {
@@ -53,7 +56,7 @@ func (w *WebServer) getJobs(c *gin.Context) {
 func (w *WebServer) getJobByID(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		webError(c, fmt.Errorf("Job ID parameter not found"), 404)
+		webError(c, fmt.Errorf("job ID parameter not found"), 404)
 		return
 	}
 
@@ -69,7 +72,7 @@ func (w *WebServer) getJobByID(c *gin.Context) {
 func (w *WebServer) deleteJob(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		webError(c, fmt.Errorf("Job ID parameter not found"), 404)
+		webError(c, fmt.Errorf("job ID parameter not found"), 404)
 		return
 	}
 
@@ -82,10 +85,36 @@ func (w *WebServer) deleteJob(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+func (w *WebServer) getJobsUpdates(c *gin.Context) {
+	conn, err := w.upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		log.Errorf("failed to upgrade: %s", err)
+		return
+	}
+	defer conn.Close()
+	log.Debug("websocket connected")
+
+	ch := w.scheduler.GetUpdateJobsChan(w.ctx)
+	log.Debug("channel connected")
+	for {
+		jobUpdateNotification, ok := <-ch
+		if !ok {
+			break
+		}
+		jsonBytes, err := json.Marshal(jobUpdateNotification)
+		if err != nil {
+			log.Errorf("task cannot be marshal to json: %s", err)
+			return
+		}
+		log.Debugf("sending update: %+v", jobUpdateNotification)
+		conn.WriteMessage(websocket.TextMessage, []byte(jsonBytes))
+	}
+}
+
 func (w *WebServer) upload(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		webError(c, fmt.Errorf("Job ID parameter not found"), 404)
+		webError(c, fmt.Errorf("job ID parameter not found"), 404)
 		return
 	}
 
@@ -101,7 +130,7 @@ func (w *WebServer) upload(c *gin.Context) {
 	}
 	defer uploadStream.Close(false)
 
-	size, err := strconv.ParseUint(c.GetHeader("Content-Length"), 10, 64)
+	size, _ := strconv.ParseUint(c.GetHeader("Content-Length"), 10, 64)
 	checksum := c.GetHeader("checksum")
 	if checksum == "" {
 		webError(c, fmt.Errorf("checksum is mandatory in the headers"), 403)
@@ -143,7 +172,7 @@ loop:
 func (w *WebServer) download(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		webError(c, fmt.Errorf("Job ID parameter not found"), 404)
+		webError(c, fmt.Errorf("job ID parameter not found"), 404)
 		return
 	}
 
@@ -192,7 +221,7 @@ func (w *WebServer) getWorkers(c *gin.Context) {
 func (w *WebServer) checksum(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		webError(c, fmt.Errorf("Job ID parameter not found"), 404)
+		webError(c, fmt.Errorf("job ID parameter not found"), 404)
 		return
 	}
 
@@ -228,16 +257,17 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler) *WebSer
 	})
 
 	api := r.Group("/api/v1")
-	api.GET("/job/", webServer.AuthFunc(webServer.getJobs))
-	api.POST("/job/", webServer.AuthFunc(webServer.addJobs))
-	api.GET("/job/:id", webServer.AuthFunc(webServer.getJobByID))
-	api.DELETE("/job/:id", webServer.AuthFunc(webServer.deleteJob))
+	api.GET("/job/", webServer.AuthHeaderFunc(webServer.getJobs))
+	api.POST("/job/", webServer.AuthHeaderFunc(webServer.addJob))
+	api.GET("/job/:id", webServer.AuthHeaderFunc(webServer.getJobByID))
+	api.DELETE("/job/:id", webServer.AuthHeaderFunc(webServer.deleteJob))
 	api.GET("/job/:id/download", webServer.download)
 	api.GET("/job/:id/checksum", webServer.checksum)
 	api.POST("/job/:id/upload", webServer.upload)
 
-	api.GET("/workers/", webServer.AuthFunc(webServer.getWorkers))
+	api.GET("/workers/", webServer.AuthHeaderFunc(webServer.getWorkers))
 
+	r.GET("/ws/job", webServer.AuthParamFunc(webServer.getJobsUpdates))
 	ui.AddRoutes(r)
 
 	return webServer
@@ -273,7 +303,7 @@ func (w *WebServer) stop(ctx context.Context) {
 	}
 }
 
-func (w *WebServer) AuthFunc(handler gin.HandlerFunc) gin.HandlerFunc {
+func (w *WebServer) AuthHeaderFunc(handler gin.HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -291,6 +321,19 @@ func (w *WebServer) AuthFunc(handler gin.HandlerFunc) gin.HandlerFunc {
 
 		if t != w.Token {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: Invalid token"})
+			return
+		}
+
+		handler(c)
+	}
+}
+
+func (w *WebServer) AuthParamFunc(handler gin.HandlerFunc) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := c.Query("token")
+
+		if token == "" || token != w.Token {
+			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 

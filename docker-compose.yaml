@@ -51,8 +51,6 @@ services:
       - rabbit
       - --broker.password
       - rabbit_password
-      - --worker.priority
-      - "9"
       - --worker.acceptedJobs
       - encode
       - --worker.pgsJobs
@@ -74,8 +72,6 @@ services:
       - rabbit
       - --broker.password
       - rabbit_password
-      - --worker.priority
-      - "9"
       - --worker.pgsJobs
       - "1"
       - --worker.acceptedJobs

@@ -15,6 +15,14 @@ type NotificationStatus string
 type JobAction string
 type TaskEvents []*TaskEvent
 
+type CustomError struct {
+	Message string
+}
+
+func (e *CustomError) Error() string {
+	return e.Message
+}
+
 const (
 	PingEvent         EventType = "Ping"
 	NotificationEvent EventType = "Notification"
@@ -80,7 +88,6 @@ type TaskEncode struct {
 	UploadURL   string    `json:"uploadURL"`
 	ChecksumURL string    `json:"checksumURL"`
 	EventID     int       `json:"eventID"`
-	Priority    int       `json:"priority"`
 }
 
 type WorkTaskEncode struct {
@@ -111,6 +118,15 @@ func (V TaskEncode) getUUID() uuid.UUID {
 }
 func (V TaskPGS) getUUID() uuid.UUID {
 	return V.Id
+}
+
+type JobUpdateNotification struct {
+	Id              uuid.UUID          `json:"id"`
+	Status          NotificationStatus `json:"status"`
+	Message         string             `json:"message"`
+	EventTime       time.Time          `json:"event_time"`
+	SourcePath      string             `json:"source_path,omitempty"`
+	DestinationPath string             `json:"destination_path,omitempty"`
 }
 
 type TaskEvent struct {
@@ -201,7 +217,6 @@ func (t *TaskEvents) GetLatest() *TaskEvent {
 }
 func (t *TaskEvents) GetLatestPerNotificationType(notificationType NotificationType) (returnEvent *TaskEvent) {
 	log.Debugf("notification type: %+v", notificationType)
-	log.Debugf("task events: %+v", t)
 
 	if t == nil || len(*t) == 0 {
 		log.Panic("task events are empty")
@@ -220,18 +235,9 @@ func (t *TaskEvents) GetStatus() NotificationStatus {
 	return t.GetLatestPerNotificationType(JobNotification).Status
 }
 
-type JobRequestError struct {
-	JobRequest
-	Error string `json:"error"`
-}
 type JobRequest struct {
 	SourcePath      string `json:"source_path"`
 	DestinationPath string `json:"destination_path"`
-	ForceCompleted  bool   `json:"forceCompleted"`
-	ForceFailed     bool   `json:"forceFailed"`
-	ForceExecuting  bool   `json:"forceExecuting"`
-	ForceQueued     bool   `json:"forceQueued"`
-	Priority        int    `json:"priority"`
 }
 
 func (a TaskEvents) Len() int {

@@ -47,7 +47,6 @@ func init() {
 	pflag.Int("worker.maxPrefetchJobs", 1, "Maximum number of jobs to prefetch")
 	pflag.Int("worker.encodeJobs", 1, "Worker Encode Jobs in parallel")
 	pflag.Int("worker.pgsJobs", 0, "Worker PGS Jobs in parallel")
-	pflag.Int("worker.priority", 3, "Only Accept Jobs of priority X( Priority 1= <30 Min, 2=<60 Min,3=<2 Hour,4=<3 Hour,5=>3 Hour,6-9 Manual High Priority tasks")
 	pflag.String("worker.dotnetPath", "/usr/bin/dotnet", "dotnet path")
 	pflag.String("worker.pgsToSrtDLLPath", "/app/PgsToSrt.dll", "PGSToSrt.dll path")
 	pflag.String("worker.tesseractDataPath", "/tessdata", "tesseract data path (https://github.com/tesseract-ocr/tessdata/)")

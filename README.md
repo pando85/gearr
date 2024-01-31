@@ -71,7 +71,6 @@ environment variables and their default values:
 | `WORKER_MAXPREFETCHJOBS`   | Maximum number of jobs to prefetch                               | 1                          |
 | `WORKER_ENCODEJOBS`        | Number of parallel worker jobs for encoding                      | 1                          |
 | `WORKER_PGJOBS`            | Number of parallel worker jobs for PGS to SRT conversion         | 0                          |
-| `WORKER_PRIORITY`          | Only accept jobs of priority X                                   | 3                          |
 | `WORKER_DOTNETPATH`        | Path to the dotnet executable                                    | "/usr/bin/dotnet"          |
 | `WORKER_PGSTOSRTDLLPATH`   | Path to the PGSToSrt.dll library                                 | "/app/PgsToSrt.dll"        |
 | `WORKER_TESSERACTDATAPATH` | Path to the tesseract data                                       | "/tessdata"                |
@@ -153,7 +152,6 @@ worker:
   maxPrefetchJobs: 2
   encodeJobs: 2
   pgJobs: 1
-  priority: 3
   dotnetPath: /usr/local/bin/dotnet
   pgsToSrtDLLPath: /custom/path/PgsToSrt.dll
   tesseractDataPath: /custom/tessdata
@@ -172,8 +170,7 @@ mkdir -p $DIR
 docker run -it -d --restart unless-stopped --cpuset-cpus 16-32 \
     --name transcoder-worker --hostname $(hostname) \
     -v $DIR:/tmp/ ghcr.io/pando85/transcoder:latest-worker \
-    --broker.host transcoder.example.com \
-    --worker.priority 9
+    --broker.host transcoder.example.com
 ```
 
 **Note:** Adjust the `--cpuset-cpus` and other parameters according to your system specifications.
@@ -187,8 +184,7 @@ mkdir -p $DIR
 docker run -it -d --restart unless-stopped \
     --name transcoder-worker-pgs --hostname $(hostname) \
     -v $DIR:/tmp/ ghcr.io/pando85/transcoder:latest-worker-pgs \
-    --broker.host transcoder.example.com \
-    --worker.priority 9
+    --broker.host transcoder.example.com
 ```
 
 **Warning:** The PGS agent must be started in advance if PGS is detected. It should run before
