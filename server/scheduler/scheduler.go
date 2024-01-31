@@ -34,7 +34,8 @@ type Scheduler interface {
 	GetDownloadJobWriter(ctx context.Context, uuid string) (*DownloadJobStream, error)
 	GetChecksum(ctx context.Context, uuid string) (string, error)
 	GetWorkers(ctx context.Context) (*[]model.Worker, error)
-	GetUpdateJobsChan(ctx context.Context) chan model.JobUpdateNotification
+	GetUpdateJobsChan(ctx context.Context) (uuid.UUID, chan *model.JobUpdateNotification)
+	CloseUpdateJobsChan(id uuid.UUID)
 }
 
 type SchedulerConfig struct {
@@ -47,22 +48,23 @@ type SchedulerConfig struct {
 }
 
 type RuntimeScheduler struct {
-	config          SchedulerConfig
-	repo            repository.Repository
-	queue           queue.BrokerServer
-	checksumChan    chan PathChecksum
-	updateJobsChan  chan model.JobUpdateNotification
-	pathChecksumMap map[string]string
+	config             SchedulerConfig
+	repo               repository.Repository
+	queue              queue.BrokerServer
+	checksumChan       chan PathChecksum
+	updateJobsChannels map[uuid.UUID]chan *model.JobUpdateNotification
+	jobChannelsMutex   sync.Mutex
+	pathChecksumMap    map[string]string
 }
 
 func NewScheduler(config SchedulerConfig, repo repository.Repository, queue queue.BrokerServer) (*RuntimeScheduler, error) {
 	runtimeScheduler := &RuntimeScheduler{
-		config:          config,
-		repo:            repo,
-		queue:           queue,
-		checksumChan:    make(chan PathChecksum),
-		updateJobsChan:  make(chan model.JobUpdateNotification),
-		pathChecksumMap: make(map[string]string),
+		config:             config,
+		repo:               repo,
+		queue:              queue,
+		checksumChan:       make(chan PathChecksum),
+		updateJobsChannels: make(map[uuid.UUID]chan *model.JobUpdateNotification, 0),
+		pathChecksumMap:    make(map[string]string),
 	}
 
 	return runtimeScheduler, nil
@@ -85,8 +87,25 @@ func (R *RuntimeScheduler) start(ctx context.Context) {
 	go R.schedule(ctx)
 }
 
-func (R *RuntimeScheduler) GetUpdateJobsChan(ctx context.Context) chan model.JobUpdateNotification {
-	return R.updateJobsChan
+func (R *RuntimeScheduler) GetUpdateJobsChan(ctx context.Context) (uuid.UUID, chan *model.JobUpdateNotification) {
+	ch := make(chan *model.JobUpdateNotification)
+	id := uuid.New()
+	R.jobChannelsMutex.Lock()
+	R.updateJobsChannels[id] = ch
+	R.jobChannelsMutex.Unlock()
+	return id, ch
+}
+
+func (R *RuntimeScheduler) CloseUpdateJobsChan(id uuid.UUID) {
+	R.jobChannelsMutex.Lock()
+	delete(R.updateJobsChannels, id)
+	R.jobChannelsMutex.Unlock()
+}
+
+func (R *RuntimeScheduler) sendUpdateJobsNotification(notification *model.JobUpdateNotification) {
+	for _, ch := range R.updateJobsChannels {
+		ch <- notification
+	}
 }
 
 func (R *RuntimeScheduler) schedule(ctx context.Context) {
@@ -107,7 +126,7 @@ func (R *RuntimeScheduler) schedule(ctx context.Context) {
 					Message:   jobEvent.Message,
 					EventTime: jobEvent.EventTime,
 				}
-				R.updateJobsChan <- jobUpdateNotification
+				R.sendUpdateJobsNotification(&jobUpdateNotification)
 			}
 
 			if jobEvent.EventType == model.NotificationEvent && jobEvent.NotificationType == model.JobNotification && jobEvent.Status == model.CompletedNotificationStatus {
@@ -127,7 +146,6 @@ func (R *RuntimeScheduler) schedule(ctx context.Context) {
 				if err != nil {
 					log.Error(err)
 				}
-
 			}
 		case checksumPath := <-R.checksumChan:
 			R.pathChecksumMap[checksumPath.path] = checksumPath.checksum
@@ -166,8 +184,7 @@ func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *m
 		}
 		var eventsToAdd []*model.TaskEvent
 		if video != nil {
-			errorMessage := fmt.Sprintf("%s job already exists", jobRequest.SourcePath)
-			return &model.CustomError{Message: errorMessage}
+			return &model.CustomError{Message: "job already exists"}
 		}
 		newUUID, _ := uuid.NewUUID()
 		video = &model.Video{
@@ -245,8 +262,8 @@ func (R *RuntimeScheduler) ScheduleJobRequest(ctx context.Context, jobRequest *m
 	}
 
 	video, err := R.scheduleJobRequest(ctx, filteredJobRequest)
-	if err == nil {
-		video.Events = nil
+	if err != nil {
+		return nil, err
 	}
 
 	jobUpdateNotification := model.JobUpdateNotification{
@@ -255,7 +272,7 @@ func (R *RuntimeScheduler) ScheduleJobRequest(ctx context.Context, jobRequest *m
 		DestinationPath: video.DestinationPath,
 	}
 
-	R.updateJobsChan <- jobUpdateNotification
+	R.sendUpdateJobsNotification(&jobUpdateNotification)
 	return video, nil
 }
 

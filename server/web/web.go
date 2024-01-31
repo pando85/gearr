@@ -36,7 +36,12 @@ func (w *WebServer) addJob(c *gin.Context) {
 	}
 
 	video, err := w.scheduler.ScheduleJobRequest(w.ctx, &jobRequest)
-	if webError(c, err, 500) {
+	if err != nil {
+		if err.Error() == "job already exists" {
+			c.Status(http.StatusConflict)
+			return
+		}
+		c.AbortWithStatusJSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -94,8 +99,9 @@ func (w *WebServer) getJobsUpdates(c *gin.Context) {
 	defer conn.Close()
 	log.Debug("websocket connected")
 
-	ch := w.scheduler.GetUpdateJobsChan(w.ctx)
+	id, ch := w.scheduler.GetUpdateJobsChan(w.ctx)
 	log.Debug("channel connected")
+	defer w.scheduler.CloseUpdateJobsChan(id)
 	for {
 		jobUpdateNotification, ok := <-ch
 		if !ok {
