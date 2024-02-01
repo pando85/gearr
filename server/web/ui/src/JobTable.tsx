@@ -111,7 +111,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
   const dispatch = useDispatch();
   const jobs: Job[] = useSelector((state: RootState) => state.jobs);
 
-  const protocol = window.location.protocol === "https" ? "wss" : "ws";
+  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
   const wsURL = `${protocol}://${window.location.hostname}:${window.location.port}/ws/job?token=${token}`;
 
   // TODO: reconnect when ReadyState.CLOSED
