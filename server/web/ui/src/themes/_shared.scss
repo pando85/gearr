@@ -53,6 +53,11 @@ code {
   padding: 0;
 }
 
+.content-container {
+  position: relative;
+  z-index: 10;
+}
+
 .link {
   text-decoration: none;
   align-items: center;
@@ -89,29 +94,29 @@ code {
 }
 
 .row {
-	max-width: 100%;
-	margin-right: auto;
-	margin-left: auto;
-	display: flex;
-	flex-flow: row wrap;
+  max-width: 100%;
+  margin-right: auto;
+  margin-left: auto;
+  display: flex;
+  flex-flow: row wrap;
 }
 
 .flex-top-bar {
   background-color: $gray-800;
-	right: 0;
+  right: 0;
   left: 0;
   width: 100%;
-	z-index: 5;
-	padding: 0 15px;
-	align-items: center;
-	flex-wrap: wrap;
+  z-index: 5;
+  padding: 0 15px;
+  align-items: center;
+  flex-wrap: wrap;
   line-height: $flex-top-bar-height;
 }
 
 .actions {
-	display: flex;
-	align-items: center;
-	line-height: $flex-top-bar-height;
+  display: flex;
+  align-items: center;
+  line-height: $flex-top-bar-height;
   height: $flex-top-bar-height;
   margin: 0 auto;
   padding: 0;
@@ -119,15 +124,15 @@ code {
 }
 
 .tools {
-	display: flex;
-	flex-grow: 1;
-	align-items: center;
+  display: flex;
+  flex-grow: 1;
+  align-items: center;
   margin: 0 auto;
   padding: 0;
 }
 
 .select {
-	position: relative;
+  position: relative;
   display: inline-block;
 }
 
@@ -135,27 +140,27 @@ code {
   line-height: normal;
   margin: 8px auto;
   display: flex;
-	position: relative;
+  position: relative;
 }
 
 .job-list {
   height: 500px;
   padding: 1em;
-  position: relative;
+  position: fixed;
 }
 
 .search {
-	background-color: $gray-900;
-	border-color: currentcolor;
+  background-color: $gray-900;
+  border-color: currentcolor;
   border: 1px solid;
   min-width: 60px;
-	border-radius: 7px;
-	position: relative;
-	padding: 0 10px;
-	height: 33px;
-	display: flex;
-	align-items: center;
-	transition: width 200ms;
+  border-radius: 7px;
+  position: relative;
+  padding: 0 10px;
+  height: 33px;
+  display: flex;
+  align-items: center;
+  transition: width 200ms;
 }
 
 .search-input {
@@ -198,7 +203,7 @@ code {
 }
 
 .padder {
-	height: 50px;
+  height: 50px;
   margin: 0;
   padding: 0;
   width: 100%;
@@ -224,6 +229,10 @@ code {
 
 .row-menu {
   display: flex;
+}
+
+.row-date {
+  min-width: 60px;
 }
 
 .centered-container {
@@ -313,12 +322,14 @@ code {
 }
 
 table {
+  position: relative;
   display: table !important;
   width: 100%;
   table-layout: fixed;
 }
 
-th, td {
+th,
+td {
   color: $body-color !important;
   border-top: none !important;
   border-bottom: 1px solid $table-border-color !important;

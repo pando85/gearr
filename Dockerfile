@@ -6,8 +6,15 @@ ARG FFMPEG_BUILD_SCRIPT_VERSION=1.48
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update \
-    && apt-get -y --no-install-recommends install build-essential curl ca-certificates libva-dev \
-        python3 python-is-python3 ninja-build meson \
+    && apt-get -y --no-install-recommends install \
+        build-essential \
+        curl \
+        ca-certificates \
+        libva-dev \
+        python3 \
+        python-is-python3 \
+        ninja-build \
+        meson \
     && apt-get clean; rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/* \
     && update-ca-certificates
 

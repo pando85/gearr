@@ -99,6 +99,8 @@ const renderPath = (isSmallScreen: boolean, path: string) => {
 const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorText }) => {
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [anchorPosition, setAnchorPosition] = useState({ x: 0, y: 0 });
+  const [isAnchored, setIsAnchored] = useState(false);
   const [buttonsMenu, setButtonsMenu] = useState<null | HTMLElement>(null);
   const [nameFilter, setNameFilter] = useState<string>('');
   const [selectedStatusFilter, setSelectedStatus] = useState<string | string[]>([]);
@@ -116,7 +118,6 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
 
   // TODO: reconnect when ReadyState.CLOSED
   const { lastMessage } = useWebSocket(wsURL);
-
 
   useEffect(() => {
     if (lastMessage !== null) {
@@ -175,8 +176,28 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
     handleReload();
   };
 
+  const listRef = useRef<FixedSizeList | null>(null);
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+    if (!(event.target instanceof Element)) {
+      console.log("coordinates not found")
+      return
+    };
+    const boundingRect = event.target.getBoundingClientRect();
+    const newPosition = {
+      x: boundingRect.left - 48,
+      y: boundingRect.bottom - 126 + 24,
+    };
+    const listScroll = listRef.current ? listRef.current.state.scrollOffset : 0;
+    newPosition.y += listScroll;
+    console.log(boundingRect.bottom)
+    console.log(newPosition.y)
+    console.log(listScroll)
+    setAnchorPosition(newPosition);
+    setIsAnchored(!isAnchored);
+    console.log(event.currentTarget);
+    console.log(event.currentTarget.parentNode);
     setButtonsMenu(event.currentTarget);
+    console.log(buttonsMenu);
   };
 
   const handleClose = () => {
@@ -307,7 +328,6 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
     header?: React.ReactNode
     row: FixedSizeListProps['children']
   } & Omit<FixedSizeListProps, 'children' | 'innerElementType'>) {
-    const listRef = useRef<FixedSizeList | null>()
     const [top, setTop] = useState(0)
 
     return (
@@ -338,7 +358,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
       const { header, top } = useContext(VirtualTableContext)
       return (
         <div {...rest} ref={ref}>
-          <Table striped hover responsive style={{ top, position: 'absolute', width: '100%', height: '100%' }}>
+          <Table striped hover style={{ top, width: '100%' }}>
             {header}
             <tbody>{children}</tbody>
           </Table>
@@ -363,7 +383,9 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
         <td style={{ wordBreak: "keep-all" }}>{renderStatusCellContent(job)}</td>
         <td style={{ wordBreak: "keep-all" }} title={formatDateDetailed(job.last_update)}>
           <div className="row-menu">
-            {formatDateShort(job.last_update)}
+            <div className="row-date">
+              {formatDateShort(job.last_update)}
+            </div>
             <Button
               variant="link"
               className="buttons-menu"
@@ -375,10 +397,10 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
             <Menu
               id="buttons-menu"
               className="buttons-menu"
-              anchorEl={buttonsMenu}
               keepMounted
               open={Boolean(buttonsMenu)}
               onClose={handleClose}
+              style={{ top: anchorPosition.y, left: anchorPosition.x }}
             >
               <MenuItem title="Details" onClick={(event) => handleDetailedViewClick(event)}>
                 <Feed />
