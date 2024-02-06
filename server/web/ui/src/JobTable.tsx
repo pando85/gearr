@@ -2,13 +2,31 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { FixedSizeList } from 'react-window';
 import { Button, Dropdown } from 'react-bootstrap';
-import { Cached, CalendarMonth, Delete, Error, Feed, QuestionMark, Replay, Search, Task, VideoSettings } from '@mui/icons-material';
-import { Checkbox, FormControl, MenuItem, InputLabel, ListItemIcon, Select } from '@mui/material';
+import {
+  Cached,
+  CalendarMonth,
+  Delete,
+  Error,
+  Feed,
+  QuestionMark,
+  Replay,
+  Search,
+  Task,
+  VideoSettings
+} from '@mui/icons-material';
+import {
+  Checkbox,
+  FormControl,
+  MenuItem,
+  InputLabel,
+  ListItemIcon,
+  Select
+} from '@mui/material';
 import useWebSocket from 'react-use-websocket';
 import { Job, JobUpdateNotification, JobUpdateNotificationClass } from './model';
 import { fetchJobs, deleteJob, createJob } from './api';
 import { RootState } from './store';
-import { formatDateShort, formatDateDetailed, getDateFromFilterOption, renderPath } from './utils';
+import { STATUS_FILTER_OPTIONS, DATE_FILTER_OPTIONS, formatDateShort, formatDateDetailed, getDateFromFilterOption, getStatusColor, renderPath } from './utils';
 import { updateJob, resetJobs } from './actions/JobActions';
 import './JobTable.css';
 
@@ -19,48 +37,35 @@ interface JobTableProps {
 }
 
 const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorText }) => {
+  // States
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [nameFilter, setNameFilter] = useState<string>('');
   const [selectedStatusFilter, setSelectedStatus] = useState<string | string[]>([]);
   const [selectedDateFilter, setSelectedDateFilter] = useState<string>('');
   const [selectedJobIndex, setSelectedJobIndex] = useState<number | null>(null);
-
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth <= 768);
   const [height, setHeight] = useState(window.innerHeight);
 
+  // Redux
   const dispatch = useDispatch();
   const jobs: Job[] = useSelector((state: RootState) => state.jobs);
 
+  // WebSocket
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
   const wsURL = `${protocol}://${window.location.hostname}:${window.location.port}/ws/job?token=${token}`;
-
-  // TODO: reconnect when ReadyState.CLOSED
   const { lastMessage } = useWebSocket(wsURL);
 
+  // Effects
   useEffect(() => {
     if (lastMessage !== null) {
       const JobUpdateNotification: JobUpdateNotification = new JobUpdateNotificationClass(JSON.parse(lastMessage.data));
-      dispatch(updateJob(JobUpdateNotification) as any)
+      dispatch(updateJob(JobUpdateNotification) as any);
     }
   }, [dispatch, lastMessage]);
-
 
   useEffect(() => {
     dispatch(fetchJobs(token, setShowJobTable, setErrorText) as any);
   }, [dispatch, token, setShowJobTable, setErrorText]);
-
-  const handleDeleteJob = async (jobId: string) => {
-    await dispatch(deleteJob(token, setShowJobTable, setErrorText, jobId) as any);
-  };
-
-  const handleCreateJob = async (path: string) => {
-    await dispatch(createJob(token, setShowJobTable, setErrorText, path) as any);
-  };
-
-  const handleReload = () => {
-    dispatch(resetJobs() as any);
-    dispatch(fetchJobs(token, setShowJobTable, setErrorText) as any);
-  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -90,8 +95,18 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
     setFilteredJobs(filteredJobs);
   }, [selectedStatusFilter, jobs, selectedDateFilter, nameFilter]);
 
-  const reload = () => {
-    handleReload();
+  // Handlers
+  const handleDeleteJob = async (jobId: string) => {
+    await dispatch(deleteJob(token, setShowJobTable, setErrorText, jobId) as any);
+  };
+
+  const handleCreateJob = async (path: string) => {
+    await dispatch(createJob(token, setShowJobTable, setErrorText, path) as any);
+  };
+
+  const handleReload = () => {
+    dispatch(resetJobs() as any);
+    dispatch(fetchJobs(token, setShowJobTable, setErrorText) as any);
   };
 
   const handleMenuOptionClick = async (job: Job | null, option: string) => {
@@ -109,33 +124,16 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
     setNameFilter(event.target.value);
   };
 
-  const statusFilterOptions = [
-    'progressing',
-    'queued',
-    'completed',
-    'failed',
-  ];
+  const handleButtonClick = (index: number) => {
+    setSelectedJobIndex(index);
+  };
 
-  const dateFilterOptions = [
-    'Last update',
-    'Last 30 minutes',
-    'Last 3 hours',
-    'Last 6 hours',
-    'Last 24 hours',
-    'Last 2 days',
-    'Last 7 days',
-    'Last 30 days',
-  ];
+  const handleDropdownItemClick = () => {
+    setSelectedJobIndex(null);
+  };
 
-  const getStatusColor = (status: string): string => {
-    switch (status) {
-      case 'completed':
-        return 'green';
-      case 'failed':
-        return 'red';
-      default:
-        return 'grey';
-    }
+  const handleDropdownClick = (e: React.MouseEvent<HTMLElement>, job: Job) => {
+    e.stopPropagation();
   };
 
   const renderStatusCellContent = (job: Job) => {
@@ -148,10 +146,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
               const progress = parseFloat(messageObj.progress);
               return (
                 <div className="progress" title={`${progress.toFixed(2)}%`}>
-                  <div
-                    className="progress-bar"
-                    style={{ width: `${progress}%` }}
-                  />
+                  <div className="progress-bar" style={{ width: `${progress}%` }} />
                 </div>
               );
             }
@@ -176,36 +171,15 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
       return (
         <Button
           variant="contained"
-          style={{
-            backgroundColor: getStatusColor(job.status),
-          }}
+          style={{ backgroundColor: getStatusColor(job.status) }}
         >
           {job.status}
         </Button>
       );
     }
   };
-  const handleButtonClick = (index: number) => {
-    setSelectedJobIndex(index);
-  };
 
-  // Close DetailedMenu in any click
-  // const closeDetailedMenu = (_: any) => {
-  //   if (selectedJobIndex || selectedJobIndex === 0) {
-  //     setSelectedJobIndex(null)
-  //   }
-  // };
-
-  // document.addEventListener('mousedown', closeDetailedMenu)
-
-  const handleDropdownItemClick = () => {
-    setSelectedJobIndex(null);
-  };
-
-  const handleDropdownClick = (e: React.MouseEvent<HTMLElement>, job: Job) => {
-    e.stopPropagation();
-  };
-
+  // Components
   const Row = ({ index, style }: { index: number, style: React.CSSProperties }) => {
     const job = filteredJobs[index];
     if (!job) {
@@ -262,6 +236,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
     return <div style={{ ...style, marginTop: '189px' }}>{children}</div>;
   };
 
+  // JSX
   return (
     <div className="content-wrapper">
       <div className="row flex-top-bar">
@@ -290,8 +265,8 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
               displayEmpty
               renderValue={(selected) => Array.isArray(selected) ? selected.join(', ') : selected}
             >
-              {statusFilterOptions.map((option) => (
-                <MenuItem value={option}>
+              {STATUS_FILTER_OPTIONS.map((option) => (
+                <MenuItem value={option} key={option}>
                   <ListItemIcon>
                     <Checkbox checked={selectedStatusFilter.includes(option)} />
                   </ListItemIcon>
@@ -305,13 +280,13 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
             onChange={(event) => setSelectedDateFilter(event.target.value)}
             displayEmpty
           >
-            {dateFilterOptions.map((option) => (
+            {DATE_FILTER_OPTIONS.map((option) => (
               <MenuItem key={option} value={option}>
                 {option}
               </MenuItem>
             ))}
           </Select>
-          <Button variant="link" className="float-right" style={{ marginLeft: 'auto' }} onClick={reload}>
+          <Button variant="link" className="float-right" style={{ marginLeft: 'auto' }} onClick={handleReload}>
             <Cached />
           </Button>
         </div>

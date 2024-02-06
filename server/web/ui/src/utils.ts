@@ -1,3 +1,22 @@
+
+export const STATUS_FILTER_OPTIONS = [
+    'progressing',
+    'queued',
+    'completed',
+    'failed',
+];
+
+export const DATE_FILTER_OPTIONS = [
+    'Last update',
+    'Last 30 minutes',
+    'Last 3 hours',
+    'Last 6 hours',
+    'Last 24 hours',
+    'Last 2 days',
+    'Last 7 days',
+    'Last 30 days',
+];
+
 const formatDate = (date: Date, options: Intl.DateTimeFormatOptions): string => {
     if (date == null) {
         return '';
@@ -55,6 +74,17 @@ export const getDateFromFilterOption = (filterOption: string) => {
             return new Date(0);
     }
 }
+
+export const getStatusColor = (status: string): string => {
+    switch (status) {
+        case 'completed':
+            return 'green';
+        case 'failed':
+            return 'red';
+        default:
+            return 'grey';
+    }
+};
 
 export const renderPath = (isSmallScreen: boolean, path: string) => {
     if (isSmallScreen) {
