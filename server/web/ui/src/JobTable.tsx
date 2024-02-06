@@ -188,7 +188,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
     return (
       <div className="tr row" style={{ ...style }}>
         <div className="td col">{renderPath(isSmallScreen, job.source_path)}</div>
-        <div className="td col d-none d-sm-flex">{job.destination_path}</div>
+        <div className="td col d-none d-sm-flex">{renderPath(false, job.destination_path)}</div>
         <Dropdown show={selectedJobIndex === index} onSelect={handleDropdownItemClick}>
           <Dropdown.Menu>
             <Dropdown.Item>
