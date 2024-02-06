@@ -87,7 +87,7 @@ export const getStatusColor = (status: string): string => {
 };
 
 export const renderPath = (isSmallScreen: boolean, path: string) => {
-    if (isSmallScreen) {
+    if (isSmallScreen || path.length > 60) {
         const shortPath = path.split('/').pop();
         return shortPath ? shortPath : path;
     } else {

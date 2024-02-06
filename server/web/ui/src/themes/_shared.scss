@@ -164,10 +164,13 @@ code {
   transition: width 200ms;
 }
 
-.search-input {
+.search-input,
+.search-input:focus,
+.search-input:focus-visible {
   background-color: transparent;
-  border: none;
+  border: none !important;
   color: $gray-500;
+  outline: none !important;
 }
 
 .MuiSelect-select {
