@@ -7,9 +7,16 @@
   <br>
 </h1>
 
-Gearr is a program designed to operate on a server with two distinct types of agents for video
-transcoding tasks, specifically converting a video library to the x265 format using ffmpeg. The
-following information provides details on how to use and configure the Gearr system.
+**Warning: Use at your own risk! Gearr is currently in alpha stage and has not undergone extensive testing.**
+
+Gearr is an open-source video transcoding software designed to efficiently convert videos to the x265 format. It leverages the powerful ffmpeg library under the hood to ensure high-quality transcoding. Gearr also supports distributed transcoding across multiple agents, facilitating faster processing of video files.
+
+## Features
+
+- **x265 Transcoding:** Convert videos to the x265 format for improved compression and quality.
+- **Distributed Transcoding:** Utilize multiple agents to distribute transcoding tasks, speeding up the process.
+- **Queue system:** Connect to a RabbitMQ server to manage transcoding job queues.
+- **PGS Subtitle Conversion:** Extract PGS subtitles from video files and convert them to STR format for wider compatibility.
 
 ## Container Images
 
