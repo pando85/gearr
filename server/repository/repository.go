@@ -24,12 +24,12 @@ type Repository interface {
 	ProcessEvent(ctx context.Context, event *model.TaskEvent) error
 	PingServerUpdate(ctx context.Context, name string, ip string, queueName string) error
 	GetTimeoutJobs(ctx context.Context, timeout time.Duration) ([]*model.TaskEvent, error)
-	GetJob(ctx context.Context, uuid string) (*model.Video, error)
+	GetJob(ctx context.Context, uuid string) (*model.Job, error)
 	DeleteJob(ctx context.Context, uuid string) error
-	GetJobs(ctx context.Context) (*[]model.Video, error)
-	GetJobByPath(ctx context.Context, path string) (*model.Video, error)
+	GetJobs(ctx context.Context) (*[]model.Job, error)
+	GetJobByPath(ctx context.Context, path string) (*model.Job, error)
 	AddNewTaskEvent(ctx context.Context, event *model.TaskEvent) error
-	AddVideo(ctx context.Context, video *model.Video) error
+	AddJob(ctx context.Context, job *model.Job) error
 	WithTransaction(ctx context.Context, transactionFunc func(ctx context.Context, tx Repository) error) error
 	GetWorker(ctx context.Context, name string) (*model.Worker, error)
 	GetWorkers(ctx context.Context) (*[]model.Worker, error)
@@ -201,13 +201,13 @@ func (S *SQLRepository) getWorkers(ctx context.Context, db Transaction) (*[]mode
 	return &workers, nil
 }
 
-func (S *SQLRepository) GetJob(ctx context.Context, uuid string) (video *model.Video, returnError error) {
+func (S *SQLRepository) GetJob(ctx context.Context, uuid string) (job *model.Job, returnError error) {
 	db, err := S.getConnection(ctx)
 	if err != nil {
 		return nil, err
 	}
-	video, err = S.getJob(ctx, db, uuid)
-	return video, err
+	job, err = S.getJob(ctx, db, uuid)
+	return job, err
 }
 
 func (S *SQLRepository) DeleteJob(ctx context.Context, uuid string) error {
@@ -219,13 +219,13 @@ func (S *SQLRepository) DeleteJob(ctx context.Context, uuid string) error {
 	return err
 }
 
-func (S *SQLRepository) GetJobs(ctx context.Context) (videos *[]model.Video, returnError error) {
+func (S *SQLRepository) GetJobs(ctx context.Context) (jobs *[]model.Job, returnError error) {
 	db, err := S.getConnection(ctx)
 	if err != nil {
 		return nil, err
 	}
-	videos, err = S.getJobs(ctx, db)
-	return videos, err
+	jobs, err = S.getJobs(ctx, db)
+	return jobs, err
 }
 
 func (S *SQLRepository) GetTimeoutJobs(ctx context.Context, timeout time.Duration) (taskEvent []*model.TaskEvent, returnError error) {
@@ -240,15 +240,15 @@ func (S *SQLRepository) GetTimeoutJobs(ctx context.Context, timeout time.Duratio
 	return taskEvent, nil
 }
 
-func (S *SQLRepository) getJob(ctx context.Context, tx Transaction, uuid string) (*model.Video, error) {
-	rows, err := tx.QueryContext(ctx, "SELECT id, source_path, destination_path FROM videos WHERE id=$1", uuid)
+func (S *SQLRepository) getJob(ctx context.Context, tx Transaction, uuid string) (*model.Job, error) {
+	rows, err := tx.QueryContext(ctx, "SELECT id, source_path, destination_path FROM jobs WHERE id=$1", uuid)
 	if err != nil {
 		return nil, err
 	}
-	video := model.Video{}
+	job := model.Job{}
 	found := false
 	if rows.Next() {
-		rows.Scan(&video.Id, &video.SourcePath, &video.DestinationPath)
+		rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath)
 		found = true
 	}
 	rows.Close()
@@ -256,24 +256,24 @@ func (S *SQLRepository) getJob(ctx context.Context, tx Transaction, uuid string)
 		return nil, fmt.Errorf("%w, %s", ErrElementNotFound, uuid)
 	}
 
-	taskEvents, err := S.getTaskEvents(ctx, tx, video.Id.String())
+	taskEvents, err := S.getTaskEvents(ctx, tx, job.Id.String())
 	if err != nil {
 		return nil, err
 	}
-	video.Events = taskEvents
-	last_update, status, statusMessage, _ := S.getVideoStatus(ctx, tx, video.Id.String())
+	job.Events = taskEvents
+	last_update, status, statusMessage, _ := S.getJobStatus(ctx, tx, job.Id.String())
 
 	if last_update != nil {
-		video.LastUpdate = last_update
+		job.LastUpdate = last_update
 	}
-	video.Status = status
-	video.StatusMessage = statusMessage
+	job.Status = status
+	job.StatusMessage = statusMessage
 
-	return &video, nil
+	return &job, nil
 }
 
 func (S *SQLRepository) deleteJob(tx Transaction, uuid string) error {
-	sqlResult, err := tx.Exec("DELETE FROM videos WHERE id=$1", uuid)
+	sqlResult, err := tx.Exec("DELETE FROM jobs WHERE id=$1", uuid)
 	log.Debugf("query result: +%v", sqlResult)
 	if err != nil {
 		return err
@@ -281,11 +281,11 @@ func (S *SQLRepository) deleteJob(tx Transaction, uuid string) error {
 	return nil
 }
 
-func (S *SQLRepository) getJobs(ctx context.Context, tx Transaction) (*[]model.Video, error) {
+func (S *SQLRepository) getJobs(ctx context.Context, tx Transaction) (*[]model.Job, error) {
 	query := fmt.Sprintf(`
     SELECT v.id, v.source_path, v.destination_path, vs.event_time, vs.status, vs.message
-    FROM videos v
-    INNER JOIN video_status vs ON v.id = vs.video_id
+    FROM jobs v
+    INNER JOIN job_status vs ON v.id = vs.job_id
 `)
 	rows, err := tx.QueryContext(ctx, query)
 	if err != nil {
@@ -293,20 +293,20 @@ func (S *SQLRepository) getJobs(ctx context.Context, tx Transaction) (*[]model.V
 	}
 	defer rows.Close()
 
-	videos := []model.Video{}
+	jobs := []model.Job{}
 	for rows.Next() {
-		video := model.Video{}
-		rows.Scan(&video.Id, &video.SourcePath, &video.DestinationPath, &video.LastUpdate, &video.Status, &video.StatusMessage)
-		videos = append(videos, video)
+		job := model.Job{}
+		rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath, &job.LastUpdate, &job.Status, &job.StatusMessage)
+		jobs = append(jobs, job)
 	}
 
-	return &videos, nil
+	return &jobs, nil
 }
 
 func (S *SQLRepository) getTaskEvents(ctx context.Context, tx Transaction, uuid string) ([]*model.TaskEvent, error) {
-	rows, err := tx.QueryContext(ctx, "SELECT video_id, video_event_id, worker_name, event_time, event_type, notification_type, status, message FROM video_events WHERE video_id=$1 order by event_time asc", uuid)
+	rows, err := tx.QueryContext(ctx, "SELECT job_id, job_event_id, worker_name, event_time, event_type, notification_type, status, message FROM job_events WHERE job_id=$1 order by event_time asc", uuid)
 	if err != nil {
-		log.Errorf("no video events founds by uuid: %s", uuid)
+		log.Errorf("no job events founds by uuid: %s", uuid)
 		return nil, err
 	}
 	defer rows.Close()
@@ -320,12 +320,12 @@ func (S *SQLRepository) getTaskEvents(ctx context.Context, tx Transaction, uuid 
 	return taskEvents, nil
 }
 
-func (S *SQLRepository) getVideoStatus(ctx context.Context, tx Transaction, uuid string) (*time.Time, string, string, error) {
+func (S *SQLRepository) getJobStatus(ctx context.Context, tx Transaction, uuid string) (*time.Time, string, string, error) {
 	var last_update time.Time
 	var status string
 	var message string
 
-	rows, err := tx.QueryContext(ctx, "SELECT event_time, status, message FROM video_status WHERE video_id=$1", uuid)
+	rows, err := tx.QueryContext(ctx, "SELECT event_time, status, message FROM job_status WHERE job_id=$1", uuid)
 	if err != nil {
 		return &last_update, status, message, err
 	}
@@ -337,39 +337,39 @@ func (S *SQLRepository) getVideoStatus(ctx context.Context, tx Transaction, uuid
 	return &last_update, status, message, nil
 }
 
-func (S *SQLRepository) getJobByPath(ctx context.Context, tx Transaction, path string) (*model.Video, error) {
-	log.Debugf("get video by path: %s", path)
-	rows, err := tx.QueryContext(ctx, "SELECT * FROM videos WHERE source_path=$1", path)
+func (S *SQLRepository) getJobByPath(ctx context.Context, tx Transaction, path string) (*model.Job, error) {
+	log.Debugf("get job by path: %s", path)
+	rows, err := tx.QueryContext(ctx, "SELECT * FROM jobs WHERE source_path=$1", path)
 	if err != nil {
-		log.Errorf("no video founds by path: %s", path)
+		log.Errorf("no job founds by path: %s", path)
 		return nil, err
 	}
 
 	log.Debugf("rows: %+v", rows)
 
-	video := model.Video{}
+	job := model.Job{}
 
 	found := false
 	if rows.Next() {
-		rows.Scan(&video.Id, &video.SourcePath, &video.DestinationPath)
+		rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath)
 		found = true
 	}
-	log.Debugf("video: %+v", video)
+	log.Debugf("job: %+v", job)
 	rows.Close()
 	if !found {
 		return nil, nil
 	}
 
-	taskEvents, err := S.getTaskEvents(ctx, tx, video.Id.String())
+	taskEvents, err := S.getTaskEvents(ctx, tx, job.Id.String())
 	log.Debugf("taskEvents: %+v", taskEvents)
 	if err != nil {
 		return nil, err
 	}
-	video.Events = taskEvents
-	return &video, nil
+	job.Events = taskEvents
+	return &job, nil
 }
 
-func (S *SQLRepository) GetJobByPath(ctx context.Context, path string) (video *model.Video, returnError error) {
+func (S *SQLRepository) GetJobByPath(ctx context.Context, path string) (*model.Job, error) {
 	conn, err := S.getConnection(ctx)
 	if err != nil {
 		return nil, err
@@ -395,44 +395,44 @@ func (S *SQLRepository) AddNewTaskEvent(ctx context.Context, event *model.TaskEv
 }
 
 func (S *SQLRepository) addNewTaskEvent(ctx context.Context, tx Transaction, event *model.TaskEvent) error {
-	rows, err := tx.QueryContext(ctx, "SELECT max(video_event_id) FROM video_events WHERE video_id=$1", event.Id.String())
+	rows, err := tx.QueryContext(ctx, "SELECT max(job_event_id) FROM job_events WHERE job_id=$1", event.Id.String())
 	if err != nil {
 		return err
 	}
 
-	videoEventID := -1
+	jobEventID := -1
 	if rows.Next() {
-		rows.Scan(&videoEventID)
+		rows.Scan(&jobEventID)
 	}
 	rows.Close()
-	if videoEventID+1 != event.EventID {
-		return fmt.Errorf("EventID for %s not match,lastReceived %d, new %d", event.Id.String(), videoEventID, event.EventID)
+	if jobEventID+1 != event.EventID {
+		return fmt.Errorf("EventID for %s not match,lastReceived %d, new %d", event.Id.String(), jobEventID, event.EventID)
 	}
 
-	_, err = tx.ExecContext(ctx, "INSERT INTO video_events (video_id, video_event_id,worker_name,event_time,event_type,notification_type,status,message)"+
+	_, err = tx.ExecContext(ctx, "INSERT INTO job_events (job_id, job_event_id,worker_name,event_time,event_type,notification_type,status,message)"+
 		" VALUES ($1,$2,$3,$4,$5,$6,$7,$8)", event.Id.String(), event.EventID, event.WorkerName, time.Now(), event.EventType, event.NotificationType, event.Status, strings.TrimSpace(event.Message))
 	return err
 }
-func (S *SQLRepository) AddVideo(ctx context.Context, video *model.Video) error {
+func (S *SQLRepository) AddJob(ctx context.Context, job *model.Job) error {
 	conn, err := S.getConnection(ctx)
 	if err != nil {
 		return err
 	}
-	return S.addVideo(ctx, conn, video)
+	return S.addJob(ctx, conn, job)
 }
 
-func (S *SQLRepository) addVideo(ctx context.Context, tx Transaction, video *model.Video) error {
-	_, err := tx.ExecContext(ctx, "INSERT INTO videos (id, source_path,destination_path)"+
-		" VALUES ($1,$2,$3)", video.Id.String(), video.SourcePath, video.DestinationPath)
+func (S *SQLRepository) addJob(ctx context.Context, tx Transaction, job *model.Job) error {
+	_, err := tx.ExecContext(ctx, "INSERT INTO jobs (id, source_path,destination_path)"+
+		" VALUES ($1,$2,$3)", job.Id.String(), job.SourcePath, job.DestinationPath)
 	return err
 }
 
 func (S *SQLRepository) getTimeoutJobs(ctx context.Context, tx Transaction, timeout time.Duration) ([]*model.TaskEvent, error) {
 	timeoutDate := time.Now().Add(-timeout)
 
-	rows, err := tx.QueryContext(ctx, "SELECT v.* FROM video_events v right join "+
-		"(SELECT video_id,max(video_event_id) as video_event_id  FROM video_events WHERE notification_type='Job'  group by video_id) as m "+
-		"on m.video_id=v.video_id and m.video_event_id=v.video_event_id WHERE status='started' and v.event_time < $1::timestamptz", timeoutDate)
+	rows, err := tx.QueryContext(ctx, "SELECT v.* FROM job_events v right join "+
+		"(SELECT job_id,max(job_event_id) as job_event_id  FROM job_events WHERE notification_type='Job'  group by job_id) as m "+
+		"on m.job_id=v.job_id and m.job_event_id=v.job_event_id WHERE status='started' and v.event_time < $1::timestamptz", timeoutDate)
 
 	//2020-05-17 20:50:41.428531 +00:00
 	if err != nil {

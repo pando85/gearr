@@ -26,10 +26,10 @@ var (
 
 type Scheduler interface {
 	Run(wg *sync.WaitGroup, ctx context.Context)
-	ScheduleJobRequest(ctx context.Context, jobRequest *model.JobRequest) (*model.Video, error)
-	GetJob(ctx context.Context, uuid string) (*model.Video, error)
+	ScheduleJobRequest(ctx context.Context, jobRequest *model.JobRequest) (*model.Job, error)
+	GetJob(ctx context.Context, uuid string) (*model.Job, error)
 	DeleteJob(ctx context.Context, uuid string) error
-	GetJobs(ctx context.Context) (*[]model.Video, error)
+	GetJobs(ctx context.Context) (*[]model.Job, error)
 	GetUploadJobWriter(ctx context.Context, uuid string) (*UploadJobStream, error)
 	GetDownloadJobWriter(ctx context.Context, uuid string) (*DownloadJobStream, error)
 	GetChecksum(ctx context.Context, uuid string) (string, error)
@@ -176,7 +176,7 @@ func (R *RuntimeScheduler) schedule(ctx context.Context) {
 	}
 }
 
-func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *model.JobRequest) (video *model.Video, err error) {
+func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *model.JobRequest) (video *model.Job, err error) {
 	err = R.repo.WithTransaction(ctx, func(ctx context.Context, tx repository.Repository) error {
 		video, err = tx.GetJobByPath(ctx, jobRequest.SourcePath)
 		if err != nil {
@@ -187,12 +187,12 @@ func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *m
 			return &model.CustomError{Message: "job already exists"}
 		}
 		newUUID, _ := uuid.NewUUID()
-		video = &model.Video{
+		video = &model.Job{
 			SourcePath:      jobRequest.SourcePath,
 			DestinationPath: jobRequest.DestinationPath,
 			Id:              newUUID,
 		}
-		err = tx.AddVideo(ctx, video)
+		err = tx.AddJob(ctx, video)
 		if err != nil {
 			return err
 		}
@@ -222,7 +222,7 @@ func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *m
 	return video, err
 }
 
-func (R *RuntimeScheduler) ScheduleJobRequest(ctx context.Context, jobRequest *model.JobRequest) (*model.Video, error) {
+func (R *RuntimeScheduler) ScheduleJobRequest(ctx context.Context, jobRequest *model.JobRequest) (*model.Job, error) {
 	filePath := filepath.Join(R.config.DownloadPath, jobRequest.SourcePath)
 	fileInfo, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
@@ -276,7 +276,7 @@ func (R *RuntimeScheduler) ScheduleJobRequest(ctx context.Context, jobRequest *m
 	return video, nil
 }
 
-func (R *RuntimeScheduler) GetJob(ctx context.Context, uuid string) (*model.Video, error) {
+func (R *RuntimeScheduler) GetJob(ctx context.Context, uuid string) (*model.Job, error) {
 	return R.repo.GetJob(ctx, uuid)
 }
 
@@ -284,11 +284,11 @@ func (R *RuntimeScheduler) DeleteJob(ctx context.Context, uuid string) error {
 	return R.repo.DeleteJob(ctx, uuid)
 }
 
-func (R *RuntimeScheduler) GetJobs(ctx context.Context) (*[]model.Video, error) {
+func (R *RuntimeScheduler) GetJobs(ctx context.Context) (*[]model.Job, error) {
 	return R.repo.GetJobs(ctx)
 }
 
-func (R *RuntimeScheduler) isValidStremeableJob(ctx context.Context, uuid string) (*model.Video, error) {
+func (R *RuntimeScheduler) isValidStremeableJob(ctx context.Context, uuid string) (*model.Job, error) {
 	video, err := R.repo.GetJob(ctx, uuid)
 	if err != nil {
 		return nil, err

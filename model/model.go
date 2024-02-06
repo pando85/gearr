@@ -49,7 +49,7 @@ const (
 type Identity interface {
 	getUUID() uuid.UUID
 }
-type Video struct {
+type Job struct {
 	SourcePath      string     `json:"source_path,omitempty"`
 	DestinationPath string     `json:"destination_path,omitempty"`
 	Id              uuid.UUID  `json:"id"`
@@ -253,7 +253,7 @@ func (a TaskEvents) GetLastElement(i int) interface{} {
 	return a[i]
 }
 
-func (v *Video) AddEvent(eventType EventType, notificationType NotificationType, notificationStatus NotificationStatus) (newEvent *TaskEvent) {
+func (v *Job) AddEvent(eventType EventType, notificationType NotificationType, notificationStatus NotificationStatus) (newEvent *TaskEvent) {
 	latestEvent := v.Events.GetLatest()
 	newEventID := 0
 	if latestEvent != nil {

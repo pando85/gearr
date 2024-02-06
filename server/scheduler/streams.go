@@ -14,7 +14,7 @@ type PathChecksum struct {
 }
 type JobStream struct {
 	hasher            hash.Hash
-	video             *model.Video
+	video             *model.Job
 	path              string
 	file              *os.File
 	checksumPublisher chan PathChecksum
