@@ -157,14 +157,14 @@ func (R *RuntimeScheduler) schedule(ctx context.Context) {
 			for _, taskEvent := range taskEvents {
 				if taskEvent.Status == model.ProgressingNotificationStatus {
 					log.Infof("rescheduling %s after job timeout", taskEvent.Id.String())
-					video, err := R.repo.GetJob(ctx, taskEvent.Id.String())
+					job, err := R.repo.GetJob(ctx, taskEvent.Id.String())
 					if err != nil {
 						log.Error(err)
 						continue
 					}
 					jobRequest := &model.JobRequest{
-						SourcePath:      video.SourcePath,
-						DestinationPath: video.DestinationPath,
+						SourcePath:      job.SourcePath,
+						DestinationPath: job.DestinationPath,
 					}
 					_, err = R.scheduleJobRequest(ctx, jobRequest)
 					if err != nil {
@@ -261,19 +261,19 @@ func (R *RuntimeScheduler) ScheduleJobRequest(ctx context.Context, jobRequest *m
 		DestinationPath: relativePathTarget,
 	}
 
-	video, err := R.scheduleJobRequest(ctx, filteredJobRequest)
+	job, err := R.scheduleJobRequest(ctx, filteredJobRequest)
 	if err != nil {
 		return nil, err
 	}
 
 	jobUpdateNotification := model.JobUpdateNotification{
-		Id:              video.Id,
-		SourcePath:      video.SourcePath,
-		DestinationPath: video.DestinationPath,
+		Id:              job.Id,
+		SourcePath:      job.SourcePath,
+		DestinationPath: job.DestinationPath,
 	}
 
 	R.sendUpdateJobsNotification(&jobUpdateNotification)
-	return video, nil
+	return job, nil
 }
 
 func (R *RuntimeScheduler) GetJob(ctx context.Context, uuid string) (*model.Job, error) {
@@ -289,22 +289,23 @@ func (R *RuntimeScheduler) GetJobs(ctx context.Context) (*[]model.Job, error) {
 }
 
 func (R *RuntimeScheduler) isValidStremeableJob(ctx context.Context, uuid string) (*model.Job, error) {
-	video, err := R.repo.GetJob(ctx, uuid)
+	job, err := R.repo.GetJob(ctx, uuid)
 	if err != nil {
 		return nil, err
 	}
-	status := video.Events.GetLatestPerNotificationType(model.JobNotification).Status
+	status := job.Events.GetLatestPerNotificationType(model.JobNotification).Status
 	if status != model.ProgressingNotificationStatus {
 		return nil, fmt.Errorf("%w: job is in status %s", ErrorStreamNotAllowed, status)
 	}
-	return video, nil
+	return job, nil
 }
+
 func (R *RuntimeScheduler) GetDownloadJobWriter(ctx context.Context, uuid string) (*DownloadJobStream, error) {
-	video, err := R.isValidStremeableJob(ctx, uuid)
+	job, err := R.isValidStremeableJob(ctx, uuid)
 	if err != nil {
 		return nil, err
 	}
-	filePath := filepath.Join(R.config.DownloadPath, video.SourcePath)
+	filePath := filepath.Join(R.config.DownloadPath, job.SourcePath)
 	downloadFile, err := os.Open(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -323,7 +324,7 @@ func (R *RuntimeScheduler) GetDownloadJobWriter(ctx context.Context, uuid string
 	}
 	return &DownloadJobStream{
 		JobStream: &JobStream{
-			video:             video,
+			job:               job,
 			file:              downloadFile,
 			path:              filePath,
 			checksumPublisher: R.checksumChan,
@@ -349,7 +350,7 @@ func (R *RuntimeScheduler) GetUploadJobWriter(ctx context.Context, uuid string) 
 	uploadFile, err := os.OpenFile(temporalPath, os.O_TRUNC|os.O_CREATE|os.O_RDWR, os.ModePerm)
 	return &UploadJobStream{
 		&JobStream{
-			video:        video,
+			job:          video,
 			file:         uploadFile,
 			path:         filePath,
 			temporalPath: temporalPath,
