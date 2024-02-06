@@ -222,6 +222,15 @@ code {
   border: 0 solid rgba($box-shadow-color, 0.20);
 }
 
+.MuiMenu-paper {
+  background-color: $dropdown-divider-bg !important;
+  color: $body-color !important;
+}
+
+.MuiSvgIcon-root {
+  color: $body-color !important;
+}
+
 .job-table {
   width: 100%;
 }
