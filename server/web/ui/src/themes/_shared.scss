@@ -376,6 +376,10 @@ td,
   word-break: break-word;
 }
 
+.progress {
+  min-width: 100px;
+}
+
 ul {
   margin-bottom: 0 !important;
 }
