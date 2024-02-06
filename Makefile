@@ -8,6 +8,8 @@ GOARCH ?= $(shell $(GO) env GOHOSTARCH)
 IMAGE_NAME ?= ghcr.io/pando85/gearr
 IMAGE_VERSION ?= latest
 
+PROJECT_VERSION := 0.0.0
+
 .DEFAULT: help
 .PHONY: help
 help:	## show this help menu.
@@ -111,3 +113,12 @@ demo-files:
 test-upload:	## upload job to test all process
 test-upload: demo-files run-all
 	@scripts/test-upload.sh
+
+.PHONY: update-changelog
+update-changelog:	## automatically update changelog based on commits
+	git cliff -t v$(PROJECT_VERSION) -u -p CHANGELOG.md
+
+.PHONY: tag
+tag:	## create a tag using version from Cargo.toml
+	git tag -s v$(PROJECT_VERSION)  -m "v$(PROJECT_VERSION)" && \
+	git push origin v$(PROJECT_VERSION)
