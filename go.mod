@@ -1,4 +1,4 @@
-module transcoder
+module gearr
 
 go 1.21
 

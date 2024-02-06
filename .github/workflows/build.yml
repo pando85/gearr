@@ -3,9 +3,9 @@ name: Test and push docker images
 on:
   push:
     branches:
-      - '*'
+      - "*"
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
   test-project:
@@ -42,7 +42,7 @@ jobs:
     needs: test-project
     if: github.ref == 'refs/heads/master'
     env:
-      IMAGE_NAME: ghcr.io/${{ github.actor }}/transcoder
+      IMAGE_NAME: ghcr.io/${{ github.actor }}/gearr
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4

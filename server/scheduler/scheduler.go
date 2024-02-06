@@ -3,6 +3,10 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"gearr/helper"
+	"gearr/model"
+	"gearr/server/queue"
+	"gearr/server/repository"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -10,10 +14,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"transcoder/helper"
-	"transcoder/model"
-	"transcoder/server/queue"
-	"transcoder/server/repository"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"

@@ -4,9 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"gearr/model"
 	"strings"
 	"time"
-	"transcoder/model"
 
 	_ "embed"
 

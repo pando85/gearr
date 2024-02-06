@@ -1,8 +1,8 @@
-version: '3'
+version: "3"
 
 services:
   server:
-    image: ghcr.io/pando85/transcoder:latest-server
+    image: ghcr.io/pando85/gearr:latest-server
     environment:
       LOG_LEVEL: DEBUG
       BROKER_HOST: rabbitmq
@@ -11,7 +11,7 @@ services:
       DATABASE_HOST: postgres
       DATABASE_USER: postgres
       DATABASE_PASSWORD: postgres_password
-      DATABASE_DATABASE: transcoder
+      DATABASE_DATABASE: gearr
       SCHEDULER_DOMAIN: http://server:8080
       SCHEDULER_MINFILESIZE: "100"
       WEB_TOKEN: super-secret-token
@@ -26,7 +26,7 @@ services:
   postgres:
     image: postgres:latest
     environment:
-      POSTGRES_DB: transcoder
+      POSTGRES_DB: gearr
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres_password
     ports:
@@ -41,7 +41,7 @@ services:
       - "5672:5672"
 
   worker:
-    image: ghcr.io/pando85/transcoder:latest-worker
+    image: ghcr.io/pando85/gearr:latest-worker
     command:
       - --log-level
       - debug
@@ -62,7 +62,7 @@ services:
       - server
 
   worker-pgs:
-    image: ghcr.io/pando85/transcoder:latest-worker-pgs
+    image: ghcr.io/pando85/gearr:latest-worker-pgs
     command:
       - --log-level
       - debug

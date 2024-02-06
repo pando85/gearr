@@ -5,7 +5,7 @@ GOOPTS ?=
 GOOS ?= $(shell $(GO) env GOHOSTOS)
 GOARCH ?= $(shell $(GO) env GOHOSTARCH)
 
-IMAGE_NAME ?= ghcr.io/pando85/transcoder
+IMAGE_NAME ?= ghcr.io/pando85/gearr
 IMAGE_VERSION ?= latest
 
 .DEFAULT: help
@@ -30,14 +30,14 @@ worker:		## build worker binary
 
 .PHONY: build-%
 build-%:
-	@echo "Building dist/transcoder-$*"
+	@echo "Building dist/gearr-$*"
 	@if [ "$*" = "server" ]; then \
 		cd server/web/ui && \
 			npm install && \
 			npm run build || exit 1; \
 		cd -; \
 	fi
-	@CGO_ENABLED=0 go build -o dist/transcoder-$* $*/main.go
+	@CGO_ENABLED=0 go build -o dist/gearr-$* $*/main.go
 
 .PHONY: images
 images: image-server image-worker

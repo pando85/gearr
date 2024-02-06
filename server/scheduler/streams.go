@@ -3,9 +3,9 @@ package scheduler
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"gearr/model"
 	"hash"
 	"os"
-	"transcoder/model"
 )
 
 type PathChecksum struct {

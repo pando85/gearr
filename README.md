@@ -1,21 +1,21 @@
 <h1 align="center">
   <br>
-  <img src="https://raw.githubusercontent.com/pando85/transcoder/master/server/web/ui/public/logo.svg" alt="logo" width="200">
+  <img src="https://raw.githubusercontent.com/pando85/gearr/master/server/web/ui/public/logo.svg" alt="logo" width="200">
   <br>
-  Transcoder
+  Gearr
   <br>
   <br>
 </h1>
 
-Transcoder is a program designed to operate on a server with two distinct types of agents for video
+Gearr is a program designed to operate on a server with two distinct types of agents for video
 transcoding tasks, specifically converting a video library to the x265 format using ffmpeg. The
-following information provides details on how to use and configure the Transcoder system.
+following information provides details on how to use and configure the Gearr system.
 
 ## Container Images
 
-- **Server:** `ghcr.io/pando85/transcoder:latest-server`
-- **Worker:** `ghcr.io/pando85/transcoder:latest-worker`
-- **PGS Worker:** `ghcr.io/pando85/transcoder:latest-worker-pgs`
+- **Server:** `ghcr.io/pando85/gearr:latest-server`
+- **Worker:** `ghcr.io/pando85/gearr:latest-worker`
+- **PGS Worker:** `ghcr.io/pando85/gearr:latest-worker-pgs`
 
 ## Configuration
 
@@ -40,7 +40,7 @@ environment variables and their default values:
 | `DATABASE_PORT`          | Database port                                         | 5432                  |
 | `DATABASE_USER`          | Database username                                     | postgres              |
 | `DATABASE_PASSWORD`      | Database password                                     | postgres              |
-| `DATABASE_DATABASE`      | Database name                                         | transcoder            |
+| `DATABASE_DATABASE`      | Database name                                         | gearr                 |
 | `DATABASE_SSLMODE`       | Database SSL mode                                     | disable               |
 | `LOG_LEVEL`              | Log level (debug, info, warning, error, fatal)        | info                  |
 | `SCHEDULER_DOMAIN`       | Base domain for worker downloads and uploads          | http://localhost:8080 |
@@ -113,7 +113,7 @@ database:
   port: 5432
   User: postgres
   Password: postgres
-  Database: transcoder
+  Database: gearr
   SSLMode: disable
 
 scheduler:
@@ -168,9 +168,9 @@ DIR=/data/images/encode
 
 mkdir -p $DIR
 docker run -it -d --restart unless-stopped --cpuset-cpus 16-32 \
-    --name transcoder-worker --hostname $(hostname) \
-    -v $DIR:/tmp/ ghcr.io/pando85/transcoder:latest-worker \
-    --broker.host transcoder.example.com
+    --name gearr-worker --hostname $(hostname) \
+    -v $DIR:/tmp/ ghcr.io/pando85/gearr:latest-worker \
+    --broker.host gearr.example.com
 ```
 
 **Note:** Adjust the `--cpuset-cpus` and other parameters according to your system specifications.
@@ -182,9 +182,9 @@ DIR=/data/images/pgs
 
 mkdir -p $DIR
 docker run -it -d --restart unless-stopped \
-    --name transcoder-worker-pgs --hostname $(hostname) \
-    -v $DIR:/tmp/ ghcr.io/pando85/transcoder:latest-worker-pgs \
-    --broker.host transcoder.example.com
+    --name gearr-worker-pgs --hostname $(hostname) \
+    -v $DIR:/tmp/ ghcr.io/pando85/gearr:latest-worker-pgs \
+    --broker.host gearr.example.com
 ```
 
 **Warning:** The PGS agent must be started in advance if PGS is detected. It should run before
@@ -193,10 +193,10 @@ detection to create the RabbitMQ queue.
 ## Add movies from Radarr
 
 ```bash
-go run ./radarr/add/main.go --api-key XXXXXX --url https://radarr.example.com --movies 5 --transcoder-url 'https://transcoder.example.com' --transcoder-token XXXXXX
+go run ./radarr/add/main.go --api-key XXXXXX --url https://radarr.example.com --movies 5 --gearr-url 'https://gearr.example.com' --gearr-token XXXXXX
 ```
 
-Feel free to customize the parameters based on your Radarr and Transcoder setup.
+Feel free to customize the parameters based on your Radarr and Gearr setup.
 
 ## Update movies in Radarr
 

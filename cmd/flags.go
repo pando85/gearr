@@ -22,7 +22,7 @@ func DatabaseFlags() {
 	pflag.Int("database.port", 5432, "DB Port")
 	pflag.String("database.User", "postgres", "DB User")
 	pflag.String("database.Password", "postgres", "DB Password")
-	pflag.String("database.Database", "transcoder", "DB Database")
+	pflag.String("database.Database", "gearr", "DB Database")
 	pflag.String("database.SSLMode", "disable", "DB Scheme")
 }
 

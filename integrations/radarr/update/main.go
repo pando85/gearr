@@ -21,7 +21,7 @@ func isMovieInMovieArray(movie *radarr.Movie, mArray []radarr.Movie) bool {
 func main() {
 	apiKey := pflag.StringP("api-key", "k", "", "Radarr API key")
 	radarrURL := pflag.StringP("url", "u", "", "Radarr server URL")
-	dryRun := pflag.Bool("dry-run", false, "Dry run mode doesn't add movies to transcoder queue")
+	dryRun := pflag.Bool("dry-run", false, "Dry run mode doesn't add movies to gearr queue")
 
 	pflag.Parse()
 	regexPattern := `(.*)/[^\/]+_encoded\.mkv`

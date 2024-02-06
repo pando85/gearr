@@ -1,9 +1,9 @@
 package model
 
 import (
+	"gearr/helper/max"
 	"os"
 	"time"
-	"transcoder/helper/max"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"

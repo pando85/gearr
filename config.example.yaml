@@ -22,4 +22,4 @@ broker:
 scheduler:
   downloadPath: /source
   uploadPath: /target
-  domain: http://transcoder.example.com
+  domain: http://gearr.example.com

@@ -3,9 +3,9 @@ package task
 import (
 	"context"
 	"fmt"
+	"gearr/model"
 	"runtime"
 	"sync"
-	"transcoder/model"
 
 	log "github.com/sirupsen/logrus"
 )

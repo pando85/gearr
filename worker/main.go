@@ -3,6 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"gearr/broker"
+	"gearr/cmd"
+	"gearr/helper"
+	"gearr/worker/task"
 	"os"
 	"os/signal"
 	"reflect"
@@ -10,10 +14,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"transcoder/broker"
-	"transcoder/cmd"
-	"transcoder/helper"
-	"transcoder/worker/task"
 
 	log "github.com/sirupsen/logrus"
 	pflag "github.com/spf13/pflag"

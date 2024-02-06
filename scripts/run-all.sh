@@ -8,7 +8,7 @@ docker-compose up -d postgres rabbitmq
 ATTEMPT=1
 while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
     echo "Attempt $ATTEMPT of $MAX_ATTEMPTS"
-    if docker-compose exec postgres psql -U postgres -d transcoder -c "SELECT 1" &> /dev/null; then
+    if docker-compose exec postgres psql -U postgres -d gearr -c "SELECT 1" &> /dev/null; then
         echo "postgres running"
         break
     fi

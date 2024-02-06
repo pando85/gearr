@@ -31,7 +31,7 @@ const CollapseNav: React.FC<CollapseNavProps> = ({ isOpen, className, id }) => (
         </NavLink>
       </NavItem>
       <NavItem>
-        <NavLink href="https://github.com/pando85/transcoder" title="GitHub">
+        <NavLink href="https://github.com/pando85/gearr" title="GitHub">
           <GitHubIcon />
         </NavLink>
       </NavItem>
@@ -47,8 +47,8 @@ const Navigation: React.FC = () => {
     <Navbar className="top-bar" dark color="dark" expand="md" fixed="top">
       <NavbarToggler onClick={toggle} className="mr-2" />
       <Link className="link pt-0 navbar-brand" to='/jobs'>
-        <img src="/logo.svg" alt="Transcoder" className="d-inline-block align-top logo" />
-        <span className="d-none d-sm-inline">Transcoder</span>
+        <img src="/logo.svg" alt="Gearr" className="d-inline-block align-top logo" />
+        <span className="d-none d-sm-inline">Gearr</span>
       </Link>
       <CollapseNav isOpen={isOpen} className="d-none d-sm-inline" />
       <ThemeToggle />

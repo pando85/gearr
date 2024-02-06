@@ -2,9 +2,9 @@ package task
 
 import (
 	"fmt"
+	"gearr/model"
 	"strconv"
 	"strings"
-	"transcoder/model"
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/errgo.v2/errors"

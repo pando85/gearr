@@ -73,7 +73,7 @@ type Response struct {
 	Skipped   interface{}     `json:"skipped"`
 }
 
-func PrintTranscoderResponse(jsonStr []byte) error {
+func PrintGearrResponse(jsonStr []byte) error {
 	var response Response
 	if err := json.Unmarshal(jsonStr, &response); err != nil {
 		return err
@@ -91,7 +91,7 @@ func PrintTranscoderResponse(jsonStr []byte) error {
 	return nil
 }
 
-func AddMovieToTranscoderQueue(path string, url string, token string) error {
+func AddMovieToGearrQueue(path string, url string, token string) error {
 	payload := map[string]string{
 		"source_path": path,
 	}
@@ -112,7 +112,7 @@ func AddMovieToTranscoderQueue(path string, url string, token string) error {
 
 	client := http.Client{}
 
-	fmt.Println("Adding movie to transcoder queue")
+	fmt.Println("Adding movie to gearr queue")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -125,7 +125,7 @@ func AddMovieToTranscoderQueue(path string, url string, token string) error {
 		return err
 	}
 
-	err = PrintTranscoderResponse(body)
+	err = PrintGearrResponse(body)
 	if resp.StatusCode != http.StatusOK {
 		fmt.Fprintf(os.Stderr, "Failed with status %s and message: %s", resp.Status, body)
 	}
@@ -139,19 +139,19 @@ func main() {
 	apiKey := pflag.StringP("api-key", "k", "", "Radarr API key")
 	radarrURL := pflag.StringP("url", "u", "", "Radarr server URL")
 	numMovies := pflag.Int("movies", 10, "Number of movies to retrieve")
-	transcoderURL := pflag.String("transcoder-url", "", "Transcoder server URL")
-	transcoderToken := pflag.String("transcoder-token", "", "Transcoder web server token")
-	dryRun := pflag.Bool("dry-run", false, "Dry run mode doesn't add movies to transcoder queue")
+	gearrURL := pflag.String("gearr-url", "", "Gearr server URL")
+	gearrToken := pflag.String("gearr-token", "", "Gearr web server token")
+	dryRun := pflag.Bool("dry-run", false, "Dry run mode doesn't add movies to gearr queue")
 
 	pflag.Parse()
 
-	if *apiKey == "" || *radarrURL == "" || *transcoderURL == "" || *transcoderToken == "" {
+	if *apiKey == "" || *radarrURL == "" || *gearrURL == "" || *gearrToken == "" {
 		fmt.Println("Both API key and Radarr URL are required.")
 		pflag.PrintDefaults()
 		return
 	}
 
-	transcoderPostURL := fmt.Sprintf("%s/api/v1/job/", *transcoderURL)
+	gearrPostURL := fmt.Sprintf("%s/api/v1/job/", *gearrURL)
 
 	c := starr.New(*apiKey, *radarrURL, 0)
 	r := radarr.New(c)
@@ -187,7 +187,7 @@ func main() {
 			fmt.Printf("Full Path: %s\n\n", m.MovieFile.Path)
 
 			if !*dryRun {
-				err := AddMovieToTranscoderQueue(m.MovieFile.Path, transcoderPostURL, *transcoderToken)
+				err := AddMovieToGearrQueue(m.MovieFile.Path, gearrPostURL, *gearrToken)
 				if err != nil {
 					fmt.Println("error:", err)
 					os.Exit(1)

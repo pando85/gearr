@@ -49,16 +49,16 @@ RUN ldd /usr/bin/ffmpeg && \
     ldd /usr/bin/ffplay
 
 FROM base as server
-COPY ./dist/transcoder-server /app/transcoder-server
+COPY ./dist/gearr-server /app/gearr-server
 
-ENTRYPOINT ["/app/transcoder-server"]
+ENTRYPOINT ["/app/gearr-server"]
 
 FROM base as worker
-COPY ./dist/transcoder-worker /app/transcoder-worker
+COPY ./dist/gearr-worker /app/gearr-worker
 
-ENTRYPOINT ["/app/transcoder-worker"]
+ENTRYPOINT ["/app/gearr-worker"]
 
 FROM tentacule/pgstosrt as worker-pgs
-COPY ./dist/transcoder-worker /app/transcoder-worker
+COPY ./dist/gearr-worker /app/gearr-worker
 
-ENTRYPOINT ["/app/transcoder-worker"]
+ENTRYPOINT ["/app/gearr-worker"]

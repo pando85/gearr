@@ -94,7 +94,7 @@ Resolves: #{issue.id}
 ```
 
 You can find what values area could take see
-[transcoder/.commitlintrc.json](https://github.com/pando85/transcoder/blob/master/.commitlintrc.json).
+[gearr/.commitlintrc.json](https://github.com/pando85/gearr/blob/master/.commitlintrc.json).
 
 The first line is the subject and should be no longer than 70 characters. The second line is always
 blank, and other lines should be wrapped at 80 characters. This allows the message to be easier to
