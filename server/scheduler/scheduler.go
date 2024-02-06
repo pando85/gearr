@@ -130,13 +130,13 @@ func (R *RuntimeScheduler) schedule(ctx context.Context) {
 			}
 
 			if jobEvent.EventType == model.NotificationEvent && jobEvent.NotificationType == model.JobNotification && jobEvent.Status == model.CompletedNotificationStatus {
-				video, err := R.repo.GetJob(ctx, jobEvent.Id.String())
+				job, err := R.repo.GetJob(ctx, jobEvent.Id.String())
 				if err != nil {
 					log.Error(err)
 					continue
 				}
-				sourcePath := filepath.Join(R.config.DownloadPath, video.SourcePath)
-				target := filepath.Join(R.config.DownloadPath, video.DestinationPath)
+				sourcePath := filepath.Join(R.config.DownloadPath, job.SourcePath)
+				target := filepath.Join(R.config.DownloadPath, job.DestinationPath)
 				if _, err := os.Stat(target); err != nil {
 					log.Warnf("job %s completed, source file %s can not be removed because target file does not exists", jobEvent.Id.String(), sourcePath)
 					continue
@@ -176,27 +176,27 @@ func (R *RuntimeScheduler) schedule(ctx context.Context) {
 	}
 }
 
-func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *model.JobRequest) (video *model.Job, err error) {
+func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *model.JobRequest) (job *model.Job, err error) {
 	err = R.repo.WithTransaction(ctx, func(ctx context.Context, tx repository.Repository) error {
-		video, err = tx.GetJobByPath(ctx, jobRequest.SourcePath)
+		job, err = tx.GetJobByPath(ctx, jobRequest.SourcePath)
 		if err != nil {
 			return err
 		}
 		var eventsToAdd []*model.TaskEvent
-		if video != nil {
+		if job != nil {
 			return &model.CustomError{Message: "job already exists"}
 		}
 		newUUID, _ := uuid.NewUUID()
-		video = &model.Job{
+		job = &model.Job{
 			SourcePath:      jobRequest.SourcePath,
 			DestinationPath: jobRequest.DestinationPath,
 			Id:              newUUID,
 		}
-		err = tx.AddJob(ctx, video)
+		err = tx.AddJob(ctx, job)
 		if err != nil {
 			return err
 		}
-		startEvent := video.AddEvent(model.NotificationEvent, model.JobNotification, model.QueuedNotificationStatus)
+		startEvent := job.AddEvent(model.NotificationEvent, model.JobNotification, model.QueuedNotificationStatus)
 		eventsToAdd = append(eventsToAdd, startEvent)
 		if len(eventsToAdd) > 0 {
 			for _, taskEvent := range eventsToAdd {
@@ -207,19 +207,19 @@ func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *m
 			}
 		}
 
-		downloadURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/job/%s/download", R.config.Domain.String(), video.Id.String()))
-		uploadURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/job/%s/upload", R.config.Domain.String(), video.Id.String()))
-		checksumURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/job/%s/checksum", R.config.Domain.String(), video.Id.String()))
+		downloadURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/job/%s/download", R.config.Domain.String(), job.Id.String()))
+		uploadURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/job/%s/upload", R.config.Domain.String(), job.Id.String()))
+		checksumURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/job/%s/checksum", R.config.Domain.String(), job.Id.String()))
 		task := &model.TaskEncode{
-			Id:          video.Id,
+			Id:          job.Id,
 			DownloadURL: downloadURL.String(),
 			UploadURL:   uploadURL.String(),
 			ChecksumURL: checksumURL.String(),
-			EventID:     video.Events.GetLatest().EventID,
+			EventID:     job.Events.GetLatest().EventID,
 		}
 		return R.queue.PublishJobRequest(task)
 	})
-	return video, err
+	return job, err
 }
 
 func (R *RuntimeScheduler) ScheduleJobRequest(ctx context.Context, jobRequest *model.JobRequest) (*model.Job, error) {

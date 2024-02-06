@@ -93,7 +93,7 @@ func PrintTranscoderResponse(jsonStr []byte) error {
 
 func AddMovieToTranscoderQueue(path string, url string, token string) error {
 	payload := map[string]string{
-		"SourcePath": path,
+		"source_path": path,
 	}
 
 	payloadJSON, err := json.Marshal(payload)
