@@ -54,7 +54,7 @@ code {
 }
 
 .content-container {
-  position: relative;
+  position: fixed;
   z-index: 10;
 }
 
@@ -147,6 +147,7 @@ code {
   height: 500px;
   padding: 1em;
   position: fixed;
+  width: 100%;
 }
 
 .search {
@@ -197,21 +198,15 @@ code {
   color: $gray-200;
 }
 
-.MuiPaper-root {
+.dropdown-menu {
   background-color: $body-bg;
   color: $body-color;
+  min-width: 0 !important;
+  padding: 4px 0px;
 }
 
-.padder {
-  height: 50px;
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  z-index: 1 !important;
-  position: relative;
-  box-sizing: border-box;
-  width: 100%;
-  padding: 10px;
+.dropdown-item {
+  padding: 6px 6px;
 }
 
 .app-container {
@@ -225,6 +220,36 @@ code {
   border-width: 1px !important;
   border-radius: .5rem;
   border: 0 solid rgba($box-shadow-color, 0.20);
+}
+
+.job-table {
+  width: 100%;
+}
+
+.thead {
+  display: flex;
+}
+
+.tr {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+}
+
+.th,
+.td {
+  height: 63px;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.d-none {
+  display: none;
+}
+
+.d-sm-table-cell {
+  display: table-cell;
 }
 
 .row-menu {
@@ -321,7 +346,8 @@ code {
   line-height: 0;
 }
 
-table {
+table,
+.job-table {
   position: relative;
   display: table !important;
   width: 100%;
@@ -329,7 +355,9 @@ table {
 }
 
 th,
-td {
+td,
+.th,
+.td {
   color: $body-color !important;
   border-top: none !important;
   border-bottom: 1px solid $table-border-color !important;
@@ -350,6 +378,7 @@ button {
 }
 
 button:focus,
+.dropdown-item:focus,
 [type="submit"]:focus {
   outline: none !important;
   box-shadow: none !important;
@@ -357,6 +386,7 @@ button:focus,
 }
 
 button:active,
+.dropdown-item:active,
 [type="submit"]:active {
   outline: none !important;
   box-shadow: none !important;

@@ -1,26 +1,15 @@
-import React, { useContext, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { FixedSizeList } from 'react-window';
+import { Button, Dropdown } from 'react-bootstrap';
+import { Cached, CalendarMonth, Delete, Error, Feed, QuestionMark, Replay, Search, Task, VideoSettings } from '@mui/icons-material';
+import { Checkbox, FormControl, MenuItem, InputLabel, ListItemIcon, Select } from '@mui/material';
+import useWebSocket from 'react-use-websocket';
 import { Job, JobUpdateNotification, JobUpdateNotificationClass } from './model';
 import { fetchJobs, deleteJob, createJob } from './api';
 import { RootState } from './store';
+import { formatDateShort, formatDateDetailed, getDateFromFilterOption, renderPath } from './utils';
 import { updateJob, resetJobs } from './actions/JobActions';
-
-import { FixedSizeList, FixedSizeListProps } from 'react-window';
-import {
-  Checkbox,
-  FormControl as FormControlMui,
-  Menu,
-  MenuItem,
-  InputLabel,
-  ListItemIcon,
-  Select,
-  Typography,
-} from '@mui/material';
-
-import { Button, Table } from 'react-bootstrap';
-import useWebSocket from 'react-use-websocket';
-import { Cached, CalendarMonth, Delete, Error, Feed, MoreVert, QuestionMark, Replay, Search, Task, VideoSettings } from '@mui/icons-material';
-
 import './JobTable.css';
 
 interface JobTableProps {
@@ -29,83 +18,12 @@ interface JobTableProps {
   setErrorText: React.Dispatch<React.SetStateAction<string>>;
 }
 
-const formatDate = (date: Date, options: Intl.DateTimeFormatOptions): string => {
-  if (date == null) {
-    return '';
-  }
-
-  try {
-    return new Intl.DateTimeFormat(navigator.language, options).format(date);
-  } catch (error) {
-    console.error('Error formatting date:', error);
-    return '';
-  }
-};
-
-const formatDateDetailed = (date: Date): string => {
-  const options: Intl.DateTimeFormatOptions = {
-    timeStyle: 'long',
-  };
-  return formatDate(date, options);
-};
-
-const formatDateShort = (date: Date): string => {
-  const options: Intl.DateTimeFormatOptions = {
-    dateStyle: 'short',
-  };
-  const formatedDate = formatDate(date, options)
-  return formatedDate;
-};
-
-const getDateFromFilterOption = (filterOption: string) => {
-  const currentDate = new Date();
-
-  switch (filterOption) {
-    case 'Last 30 minutes':
-      return new Date(currentDate.getTime() - 30 * 60 * 1000);
-
-    case 'Last 3 hours':
-      return new Date(currentDate.getTime() - 3 * 60 * 60 * 1000);
-
-    case 'Last 6 hours':
-      return new Date(currentDate.getTime() - 6 * 60 * 60 * 1000);
-
-    case 'Last 24 hours':
-      return new Date(currentDate.getTime() - 24 * 60 * 60 * 1000);
-
-    case 'Last 2 days':
-      return new Date(currentDate.getTime() - 2 * 24 * 60 * 60 * 1000);
-
-    case 'Last 7 days':
-      return new Date(currentDate.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-    case 'Last 30 days':
-      return new Date(currentDate.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-    default:
-      return new Date(0);
-  }
-}
-
-const renderPath = (isSmallScreen: boolean, path: string) => {
-  if (isSmallScreen) {
-    const shortPath = path.split('/').pop();
-    return shortPath ? shortPath : path;
-  } else {
-    return path;
-  }
-};
-
 const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorText }) => {
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
-  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [anchorPosition, setAnchorPosition] = useState({ x: 0, y: 0 });
-  const [isAnchored, setIsAnchored] = useState(false);
-  const [buttonsMenu, setButtonsMenu] = useState<null | HTMLElement>(null);
   const [nameFilter, setNameFilter] = useState<string>('');
   const [selectedStatusFilter, setSelectedStatus] = useState<string | string[]>([]);
   const [selectedDateFilter, setSelectedDateFilter] = useState<string>('');
-  const [detailsMenuAnchor, setDetailsMenuAnchor] = useState<null | HTMLElement>(null);
+  const [selectedJobIndex, setSelectedJobIndex] = useState<number | null>(null);
 
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth <= 768);
   const [height, setHeight] = useState(window.innerHeight);
@@ -176,61 +94,19 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
     handleReload();
   };
 
-  const listRef = useRef<FixedSizeList | null>(null);
-  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
-    if (!(event.target instanceof Element)) {
-      console.log("coordinates not found")
-      return
-    };
-    const boundingRect = event.target.getBoundingClientRect();
-    const newPosition = {
-      x: boundingRect.left - 48,
-      y: boundingRect.bottom - 126 + 24,
-    };
-    const listScroll = listRef.current ? listRef.current.state.scrollOffset : 0;
-    newPosition.y += listScroll;
-    console.log(boundingRect.bottom)
-    console.log(newPosition.y)
-    console.log(listScroll)
-    setAnchorPosition(newPosition);
-    setIsAnchored(!isAnchored);
-    console.log(event.currentTarget);
-    console.log(event.currentTarget.parentNode);
-    setButtonsMenu(event.currentTarget);
-    console.log(buttonsMenu);
-  };
-
-  const handleClose = () => {
-    setButtonsMenu(null);
-  };
-
-  const handleCloseDetailsMenu = () => {
-    setDetailsMenuAnchor(null);
-  }
-
   const handleMenuOptionClick = async (job: Job | null, option: string) => {
     if (job !== null) {
       if (['delete', 'recreate'].includes(option)) {
         await handleDeleteJob(job.id);
       };
-      handleClose();
       if (option === 'recreate') {
         await handleCreateJob(job.source_path);
       }
     }
   };
 
-  const handleRowClick = (job: Job) => {
-    setSelectedJob(job);
-  };
-
   const handleNameFilterChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setNameFilter(event.target.value);
-  };
-
-  const handleDetailedViewClick = (event: React.MouseEvent<HTMLElement>) => {
-    event.stopPropagation();
-    setDetailsMenuAnchor(event.currentTarget);
   };
 
   const statusFilterOptions = [
@@ -309,144 +185,81 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
       );
     }
   };
-
-  const VirtualTableContext = React.createContext<{
-    top: number
-    setTop: (top: number) => void
-    header: React.ReactNode
-  }>({
-    top: 0,
-    setTop: (_: number) => { },
-    header: <></>,
-  });
-
-  function VirtualTable({
-    row,
-    header,
-    ...rest
-  }: {
-    header?: React.ReactNode
-    row: FixedSizeListProps['children']
-  } & Omit<FixedSizeListProps, 'children' | 'innerElementType'>) {
-    const [top, setTop] = useState(0)
-
-    return (
-      <VirtualTableContext.Provider value={{ top, setTop, header }}>
-        <FixedSizeList
-          {...rest}
-          innerElementType={Inner}
-          onItemsRendered={props => {
-            const style =
-              listRef.current &&
-              // @ts-ignore private method access
-              listRef.current._getItemStyle(props.overscanStartIndex)
-            setTop((style && style.top) || 0)
-
-            // Call the original callback
-            rest.onItemsRendered && rest.onItemsRendered(props)
-          }}
-          ref={el => (listRef.current = el)}
-        >
-          {row}
-        </FixedSizeList>
-      </VirtualTableContext.Provider>
-    );
+  const handleButtonClick = (index: number) => {
+    setSelectedJobIndex(index);
   };
 
-  const Inner = React.forwardRef<HTMLDivElement, React.HTMLProps<HTMLDivElement>>(
-    function Inner({ children, ...rest }, ref) {
-      const { header, top } = useContext(VirtualTableContext)
-      return (
-        <div {...rest} ref={ref}>
-          <Table striped hover style={{ top, width: '100%' }}>
-            {header}
-            <tbody>{children}</tbody>
-          </Table>
-        </div>
-      )
-    }
-  );
+  // Close DetailedMenu in any click
+  // const closeDetailedMenu = (_: any) => {
+  //   if (selectedJobIndex || selectedJobIndex === 0) {
+  //     setSelectedJobIndex(null)
+  //   }
+  // };
 
-  const Row = ({ index }: { index: number }) => {
+  // document.addEventListener('mousedown', closeDetailedMenu)
+
+  const handleDropdownItemClick = () => {
+    setSelectedJobIndex(null);
+  };
+
+  const handleDropdownClick = (e: React.MouseEvent<HTMLElement>, job: Job) => {
+    e.stopPropagation();
+  };
+
+  const Row = ({ index, style }: { index: number, style: React.CSSProperties }) => {
     const job = filteredJobs[index];
     if (!job) {
       return null;
     }
     return (
-      <tr
-        key={job.id}
-        onClick={() => handleRowClick(job)}
-        className="table-row"
-      >
-        <td>{renderPath(isSmallScreen, job.source_path)}</td>
-        <td className="d-none d-sm-table-cell">{job.destination_path}</td>
-        <td style={{ wordBreak: "keep-all" }}>{renderStatusCellContent(job)}</td>
-        <td style={{ wordBreak: "keep-all" }} title={formatDateDetailed(job.last_update)}>
+      <div className="tr row" style={{ ...style }}>
+        <div className="td col">{renderPath(isSmallScreen, job.source_path)}</div>
+        <div className="td col d-none d-sm-flex">{job.destination_path}</div>
+        <Dropdown show={selectedJobIndex === index} onSelect={handleDropdownItemClick}>
+          <Dropdown.Menu>
+            <Dropdown.Item>
+              <h5>Job Details</h5>
+            </Dropdown.Item>
+            <Dropdown.Item>ID: {job.id}</Dropdown.Item>
+            <Dropdown.Item>Source: {job.source_path}</Dropdown.Item>
+            <Dropdown.Item>Destination: {job.destination_path}</Dropdown.Item>
+            <Dropdown.Item>Status: {job.status}</Dropdown.Item>
+            <Dropdown.Item>Message: {job.status_message}</Dropdown.Item>
+          </Dropdown.Menu>
+        </Dropdown>
+        <div className="td col" style={{ wordBreak: "keep-all" }}>{renderStatusCellContent(job)}</div>
+        <div className="td col" style={{ wordBreak: "keep-all" }} title={formatDateDetailed(job.last_update)}>
           <div className="row-menu">
             <div className="row-date">
               {formatDateShort(job.last_update)}
             </div>
-            <Button
-              variant="link"
-              className="buttons-menu"
-              onClick={handleClick}
-              size="sm"
-            >
-              <MoreVert />
-            </Button>
-            <Menu
-              id="buttons-menu"
-              className="buttons-menu"
-              keepMounted
-              open={Boolean(buttonsMenu)}
-              onClose={handleClose}
-              style={{ top: anchorPosition.y, left: anchorPosition.x }}
-            >
-              <MenuItem title="Details" onClick={(event) => handleDetailedViewClick(event)}>
-                <Feed />
-              </MenuItem>
-              <MenuItem title="Delete" onClick={() => handleMenuOptionClick(selectedJob, 'delete')}>
-                <Delete />
-              </MenuItem>
-              <MenuItem title="Recreate" onClick={() => handleMenuOptionClick(selectedJob, 'recreate')}>
-                <Replay />
-              </MenuItem>
-            </Menu>
-            <Menu
-              id="details-menu"
-              className="details-menu"
-              anchorEl={detailsMenuAnchor}
-              keepMounted
-              open={Boolean(detailsMenuAnchor)}
-              onClose={handleCloseDetailsMenu}
-            >
-              {selectedJob && [
-                <MenuItem key="job-details">
-                  <Typography variant="h5" gutterBottom>
-                    Job Details
-                  </Typography>
-                </MenuItem>,
-                <MenuItem key="job-id">
-                  <Typography>ID: {selectedJob.id}</Typography>
-                </MenuItem>,
-                <MenuItem key="job-source">
-                  <Typography>Source: {selectedJob.source_path}</Typography>
-                </MenuItem>,
-                <MenuItem key="job-destination">
-                  <Typography>Destination: {selectedJob.destination_path}</Typography>
-                </MenuItem>,
-                <MenuItem key="job-status">
-                  <Typography>Status: {selectedJob.status}</Typography>
-                </MenuItem>,
-                <MenuItem key="job-message">
-                  <Typography>Message: {selectedJob.status_message}</Typography>
-                </MenuItem>,
-              ]}
-            </Menu>
+            <Dropdown onClick={(event) => handleDropdownClick(event, job)}>
+              <Dropdown.Toggle variant="link" className="buttons-menu" size="sm" id={`dropdown-basic-${index}`} />
+              <Dropdown.Menu>
+                <Dropdown.Item title="Details" onClick={() => handleButtonClick(index)}>
+                  <Feed />
+                </Dropdown.Item>
+                <Dropdown.Item title="Delete" onClick={() => handleMenuOptionClick(job, 'delete')}>
+                  <Delete />
+                </Dropdown.Item>
+                <Dropdown.Item title="Recreate" onClick={() => handleMenuOptionClick(job, 'recreate')}>
+                  <Replay />
+                </Dropdown.Item>
+              </Dropdown.Menu>
+            </Dropdown>
           </div>
-        </td>
-      </tr>
+        </div>
+      </div >
     );
+  };
+
+  interface FixScrollBottomProps {
+    style: React.CSSProperties;
+    children?: React.ReactNode;
+  }
+
+  const FixScrollBottom: React.FC<FixScrollBottomProps> = ({ style, children }) => {
+    return <div style={{ ...style, marginTop: '189px' }}>{children}</div>;
   };
 
   return (
@@ -467,7 +280,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
           </div>
         </div>
         <div className="tools">
-          <FormControlMui>
+          <FormControl>
             <InputLabel id="filter-status-select-label">Status</InputLabel>
             <Select
               multiple
@@ -486,7 +299,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
                 </MenuItem>
               ))}
             </Select>
-          </FormControlMui>
+          </FormControl>
           <Select
             value={selectedDateFilter ? selectedDateFilter : 'Last update'}
             onChange={(event) => setSelectedDateFilter(event.target.value)}
@@ -503,42 +316,43 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
           </Button>
         </div>
       </div>
-      <div className="job-list">
-        <VirtualTable
+      <div className="job-table">
+        <div className="thead">
+          <div className="tr row">
+            <div className="th col">
+              <span title="Source">
+                <Task />
+              </span>
+            </div>
+            <div className="th col d-none d-sm-flex">
+              <span title="Destination">
+                <VideoSettings />
+              </span>
+            </div>
+            <div className="th col">
+              <span title="Status">
+                <QuestionMark />
+              </span>
+            </div>
+            <div className="th col">
+              <span title="LastUpdate">
+                <CalendarMonth />
+              </span>
+            </div>
+          </div>
+        </div>
+        <FixedSizeList
           height={height}
           width="100%"
+          innerElementType={FixScrollBottom}
           itemCount={filteredJobs.length}
-          itemSize={105}
-          header={
-            <thead>
-              <tr>
-                <th>
-                  <span title="Source">
-                    <Task />
-                  </span>
-                </th>
-                <th className="d-none d-sm-table-cell">
-                  <span title="Destination">
-                    <VideoSettings />
-                  </span>
-                </th>
-                <th>
-                  <span title="Status">
-                    <QuestionMark />
-                  </span>
-                </th>
-                <th>
-                  <span title="LastUpdate">
-                    <CalendarMonth />
-                  </span>
-                </th>
-              </tr>
-            </thead>
-          }
-          row={Row}
-        />
+          overscanCount={20}
+          itemSize={63}
+        >
+          {Row}
+        </FixedSizeList>
       </div>
-    </div>
+    </div >
   );
 };
 
