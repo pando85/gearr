@@ -35,7 +35,7 @@ func (w *WebServer) addJob(c *gin.Context) {
 		return
 	}
 
-	video, err := w.scheduler.ScheduleJobRequest(w.ctx, &jobRequest)
+	job, err := w.scheduler.ScheduleJobRequest(w.ctx, &jobRequest)
 	if err != nil {
 		if err.Error() == "job already exists" {
 			c.Status(http.StatusConflict)
@@ -45,17 +45,17 @@ func (w *WebServer) addJob(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, video)
+	c.JSON(http.StatusOK, job)
 }
 
 func (w *WebServer) getJobs(c *gin.Context) {
-	videos, err := w.scheduler.GetJobs(w.ctx)
+	jobs, err := w.scheduler.GetJobs(w.ctx)
 	if err != nil {
 		webError(c, err, http.StatusInternalServerError)
 		return
 	}
 
-	c.JSON(http.StatusOK, videos)
+	c.JSON(http.StatusOK, jobs)
 }
 
 func (w *WebServer) getJobByID(c *gin.Context) {
@@ -65,13 +65,13 @@ func (w *WebServer) getJobByID(c *gin.Context) {
 		return
 	}
 
-	video, err := w.scheduler.GetJob(w.ctx, id)
+	job, err := w.scheduler.GetJob(w.ctx, id)
 	if err != nil {
 		webError(c, err, http.StatusInternalServerError)
 		return
 	}
 
-	c.JSON(http.StatusOK, video)
+	c.JSON(http.StatusOK, job)
 }
 
 func (w *WebServer) deleteJob(c *gin.Context) {
