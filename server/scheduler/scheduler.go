@@ -336,12 +336,12 @@ func (R *RuntimeScheduler) GetDownloadJobWriter(ctx context.Context, uuid string
 }
 
 func (R *RuntimeScheduler) GetUploadJobWriter(ctx context.Context, uuid string) (*UploadJobStream, error) {
-	video, err := R.isValidStremeableJob(ctx, uuid)
+	job, err := R.isValidStremeableJob(ctx, uuid)
 	if err != nil {
 		return nil, err
 	}
 
-	filePath := filepath.Join(R.config.UploadPath, video.DestinationPath)
+	filePath := filepath.Join(R.config.UploadPath, job.DestinationPath)
 	err = os.MkdirAll(filepath.Dir(filePath), os.ModePerm)
 	if err != nil {
 		return nil, err
@@ -350,7 +350,7 @@ func (R *RuntimeScheduler) GetUploadJobWriter(ctx context.Context, uuid string) 
 	uploadFile, err := os.OpenFile(temporalPath, os.O_TRUNC|os.O_CREATE|os.O_RDWR, os.ModePerm)
 	return &UploadJobStream{
 		&JobStream{
-			job:          video,
+			job:          job,
 			file:         uploadFile,
 			path:         filePath,
 			temporalPath: temporalPath,
@@ -359,11 +359,11 @@ func (R *RuntimeScheduler) GetUploadJobWriter(ctx context.Context, uuid string) 
 }
 
 func (R *RuntimeScheduler) GetChecksum(ctx context.Context, uuid string) (string, error) {
-	video, err := R.repo.GetJob(ctx, uuid)
+	job, err := R.repo.GetJob(ctx, uuid)
 	if err != nil {
 		return "", err
 	}
-	filePath := filepath.Join(R.config.DownloadPath, video.SourcePath)
+	filePath := filepath.Join(R.config.DownloadPath, job.SourcePath)
 	checksum := R.pathChecksumMap[filePath]
 	if checksum == "" {
 		return "", fmt.Errorf("%w: Checksum not found for %s", ErrorJobNotFound, filePath)
