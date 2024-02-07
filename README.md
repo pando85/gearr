@@ -1,11 +1,4 @@
-<h1 align="center">
-  <br>
-  <img src="https://raw.githubusercontent.com/pando85/gearr/master/server/web/ui/public/logo.svg" alt="logo" width="200">
-  <br>
-  Gearr
-  <br>
-  <br>
-</h1>
+# <img width="24px" src="./server/web/ui/public/logo.svg" alt="Gearr"></img> Gearr
 
 **Warning: Use at your own risk! Gearr is currently in alpha stage and has not undergone extensive testing.**
 
