@@ -1,4 +1,4 @@
-# <img width="24px" src="./server/web/ui/public/logo.svg" alt="Gearr"></img> Gearr
+# <img height="24px" src="./server/web/ui/public/logo.svg" alt="Gearr"></img> Gearr
 
 **Warning: Use at your own risk! Gearr is currently in alpha stage and has not undergone extensive testing.**
 
@@ -214,3 +214,10 @@ go run ./radarr/update/main.go --api-key XXXXXX --url https://radarr.example.com
 ```
 
 Then you can go to Radarr: `Edit Movies -> Select All -> Rename Files`
+
+## Roadmap
+
+I'm currently not developing it more but if I want to code something I will:
+
+- Remove RabbitMQ in flavour of a gRPC API to communicate agents just with the server.
+- Replace repository by an ORM with Postgres and SQlite support.
