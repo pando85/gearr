@@ -3,6 +3,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { FixedSizeList } from 'react-window';
 import { Button, Card, Dropdown } from 'react-bootstrap';
 import {
+  ArrowDownward,
+  ArrowUpward,
   Cached,
   CalendarMonth,
   Delete,
@@ -26,7 +28,7 @@ import useWebSocket from 'react-use-websocket';
 import { Job, JobUpdateNotification, JobUpdateNotificationClass } from './model';
 import { fetchJobs, deleteJob, createJob } from './api';
 import { RootState } from './store';
-import { STATUS_FILTER_OPTIONS, DATE_FILTER_OPTIONS, formatDateShort, formatDateDetailed, getDateFromFilterOption, getStatusColor, renderPath } from './utils';
+import { STATUS_FILTER_OPTIONS, DATE_FILTER_OPTIONS, formatDateShort, formatDateDetailed, getDateFromFilterOption, getStatusColor, renderPath, sortJobs } from './utils';
 import { updateJob, resetJobs } from './actions/JobActions';
 import './JobTable.css';
 
@@ -45,6 +47,8 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
   const [selectedJobIndex, setSelectedJobIndex] = useState<number | null>(null);
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth <= 768);
   const [height, setHeight] = useState(window.innerHeight);
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   // Redux
   const dispatch = useDispatch();
@@ -55,47 +59,20 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
   const wsURL = `${protocol}://${window.location.hostname}:${window.location.port}/ws/job?token=${token}`;
   const { lastMessage } = useWebSocket(wsURL);
 
-  // Effects
-  useEffect(() => {
-    if (lastMessage !== null) {
-      const JobUpdateNotification: JobUpdateNotification = new JobUpdateNotificationClass(JSON.parse(lastMessage.data));
-      dispatch(updateJob(JobUpdateNotification) as any);
-    }
-  }, [dispatch, lastMessage]);
-
-  useEffect(() => {
-    dispatch(fetchJobs(token, setShowJobTable, setErrorText) as any);
-  }, [dispatch, token, setShowJobTable, setErrorText]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsSmallScreen(window.innerWidth <= 768);
-      setHeight(window.innerHeight);
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
-
-  useEffect(() => {
-    const statusFilteredJobs = selectedStatusFilter.length > 0
-      ? jobs.filter((job) => selectedStatusFilter.includes(job.status))
-      : jobs;
-
-    const dateFilteredJobs = selectedDateFilter ? statusFilteredJobs.filter(
-      (job) => job.last_update >= getDateFromFilterOption(selectedDateFilter))
-      : statusFilteredJobs
-
-    const filteredJobs = nameFilter
-      ? dateFilteredJobs.filter((job) => job.source_path ? job.source_path.toLowerCase().includes(nameFilter.toLowerCase()) : false)
-      : dateFilteredJobs;
-    setFilteredJobs(filteredJobs);
-  }, [selectedStatusFilter, jobs, selectedDateFilter, nameFilter]);
-
   // Handlers
+  const toggleSortDirection = () => {
+    setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+  };
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      toggleSortDirection();
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
   const handleDeleteJob = async (jobId: string) => {
     await dispatch(deleteJob(token, setShowJobTable, setErrorText, jobId) as any);
   };
@@ -150,12 +127,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
                 </div>
               );
             }
-          } catch (error) {
-            return (
-              <div className="error-icon" title={job.status_message}>
-                <Error />
-              </div>
-            );
+          } catch (_) {
           }
         })()
       ) : (
@@ -163,8 +135,8 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
       );
     } else if (job.status === 'failed') {
       return (
-        <div className="error-icon" title={job.status_message}>
-          <Error />
+        <div title={job.status_message}>
+          <Error className="error-icon" />
         </div>
       );
     } else {
@@ -178,6 +150,46 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
       );
     }
   };
+
+  // Effects
+  useEffect(() => {
+    if (lastMessage !== null) {
+      const JobUpdateNotification: JobUpdateNotification = new JobUpdateNotificationClass(JSON.parse(lastMessage.data));
+      dispatch(updateJob(JobUpdateNotification) as any);
+    }
+  }, [dispatch, lastMessage]);
+
+  useEffect(() => {
+    dispatch(fetchJobs(token, setShowJobTable, setErrorText) as any);
+  }, [dispatch, token, setShowJobTable, setErrorText]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsSmallScreen(window.innerWidth <= 768);
+      setHeight(window.innerHeight);
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    const statusFilteredJobs = selectedStatusFilter.length > 0
+      ? jobs.filter((job) => selectedStatusFilter.includes(job.status))
+      : jobs;
+
+    const dateFilteredJobs = selectedDateFilter ? statusFilteredJobs.filter(
+      (job) => job.last_update >= getDateFromFilterOption(selectedDateFilter))
+      : statusFilteredJobs
+
+    const filteredJobs = nameFilter
+      ? dateFilteredJobs.filter((job) => job.source_path ? job.source_path.toLowerCase().includes(nameFilter.toLowerCase()) : false)
+      : dateFilteredJobs;
+    setFilteredJobs(sortJobs(sortColumn, sortDirection, filteredJobs));
+  }, [selectedStatusFilter, jobs, selectedDateFilter, nameFilter, sortDirection, sortColumn]);
 
   // Components
   const Row = ({ index, style }: { index: number, style: React.CSSProperties }) => {
@@ -204,7 +216,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
             </Card.Body>
           </Card>
         )}
-        <div className="td col" style={{ wordBreak: "keep-all" }}>{renderStatusCellContent(job)}</div>
+        <div className="td col row-status" style={{ wordBreak: "keep-all" }}>{renderStatusCellContent(job)}</div>
         <div className="td col" style={{ wordBreak: "keep-all" }} title={formatDateDetailed(job.last_update)}>
           <div className="row-menu">
             <div className="row-date">
@@ -238,6 +250,14 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
   const FixScrollBottom: React.FC<FixScrollBottomProps> = ({ style, children }) => {
     return <div style={{ ...style, marginTop: '189px' }}>{children}</div>;
   };
+
+  const ArrowIcon = ({ active, direction }: { active: boolean; direction: 'asc' | 'desc' }) => (
+    <span>
+      {active && (
+        <span>{direction === 'asc' ? <ArrowUpward /> : <ArrowDownward />}</span>
+      )}
+    </span>
+  );
 
   // JSX
   return (
@@ -297,24 +317,30 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
       <div className="job-table">
         <div className="thead">
           <div className="tr row">
-            <div className="th col">
+            <div className="th col" onClick={() => handleSort('source_path')}>
               <span title="Source">
                 <Task />
+                {sortColumn === 'source_path' && (
+                  <span>{sortDirection === 'asc' ? <ArrowUpward /> : <ArrowDownward />}</span>
+                )}
               </span>
             </div>
-            <div className="th col d-none d-sm-flex">
+            <div className="th col d-none d-sm-flex" onClick={() => handleSort('destination_path')}>
               <span title="Destination">
                 <VideoSettings />
+                <ArrowIcon active={sortColumn === 'destination_path'} direction={sortDirection} />
               </span>
             </div>
-            <div className="th col">
+            <div className="th col" onClick={() => handleSort('status')}>
               <span title="Status">
                 <QuestionMark />
+                <ArrowIcon active={sortColumn === 'status'} direction={sortDirection} />
               </span>
             </div>
-            <div className="th col">
+            <div className="th col" onClick={() => handleSort('last_update')}>
               <span title="LastUpdate">
                 <CalendarMonth />
+                <ArrowIcon active={sortColumn === 'last_update'} direction={sortDirection} />
               </span>
             </div>
           </div>

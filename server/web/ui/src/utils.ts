@@ -1,3 +1,4 @@
+import { Job } from './model';
 
 export const STATUS_FILTER_OPTIONS = [
     'progressing',
@@ -93,4 +94,21 @@ export const renderPath = (isSmallScreen: boolean, path: string) => {
     } else {
         return path;
     }
+};
+
+export const sortJobs = (sortColumn: string | null, sortDirection: 'asc' | 'desc', jobs: Job[]) => {
+    if (!sortColumn) return jobs;
+
+    const sortedJobs = [...jobs].sort((a, b) => {
+        const valueA: any = a[sortColumn as keyof Job];
+        const valueB: any = b[sortColumn as keyof Job];
+
+        if (typeof valueA === 'string' && typeof valueB === 'string') {
+            return sortDirection === 'asc' ? valueA.localeCompare(valueB) : valueB.localeCompare(valueA);
+        } else {
+            return sortDirection === 'asc' ? valueA - valueB : valueB - valueA;
+        }
+    });
+
+    return sortedJobs;
 };

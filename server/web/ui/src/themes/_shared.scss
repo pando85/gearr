@@ -268,6 +268,20 @@ code {
   display: table-cell;
 }
 
+.row-status {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.progress {
+  min-width: 100px;
+}
+
+.error-icon {
+  color: #dc3545 !important;
+}
+
 .row-menu {
   display: flex;
 }
@@ -370,6 +384,15 @@ table,
   table-layout: fixed;
 }
 
+.job-table th,
+.job-table td,
+.job-table .th,
+.job-table .td {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 th,
 td,
 .th,
@@ -378,10 +401,6 @@ td,
   border-top: none !important;
   border-bottom: 1px solid $table-border-color !important;
   word-break: break-word;
-}
-
-.progress {
-  min-width: 100px;
 }
 
 ul {
