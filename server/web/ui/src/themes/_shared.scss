@@ -256,6 +256,10 @@ code {
   align-items: center;
 }
 
+.card {
+  z-index: 1000;
+}
+
 .d-none {
   display: none;
 }

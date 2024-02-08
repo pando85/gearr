@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { FixedSizeList } from 'react-window';
-import { Button, Dropdown } from 'react-bootstrap';
+import { Button, Card, Dropdown } from 'react-bootstrap';
 import {
   Cached,
   CalendarMonth,
@@ -189,18 +189,21 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
       <div className="tr row" style={{ ...style }}>
         <div className="td col">{renderPath(isSmallScreen, job.source_path)}</div>
         <div className="td col d-none d-sm-flex">{renderPath(false, job.destination_path)}</div>
-        <Dropdown show={selectedJobIndex === index} onSelect={handleDropdownItemClick}>
-          <Dropdown.Menu>
-            <Dropdown.Item>
-              <h5>Job Details</h5>
-            </Dropdown.Item>
-            <Dropdown.Item>ID: {job.id}</Dropdown.Item>
-            <Dropdown.Item>Source: {job.source_path}</Dropdown.Item>
-            <Dropdown.Item>Destination: {job.destination_path}</Dropdown.Item>
-            <Dropdown.Item>Status: {job.status}</Dropdown.Item>
-            <Dropdown.Item>Message: {job.status_message}</Dropdown.Item>
-          </Dropdown.Menu>
-        </Dropdown>
+        {selectedJobIndex === index && (
+          <Card style={{ width: '18rem', position: 'absolute', top: '50px', right: '20px' }}>
+            <Card.Body>
+              <Card.Title>Job Details</Card.Title>
+              <Card.Text>
+                <p>ID: {job.id}</p>
+                <p>Source: {job.source_path}</p>
+                <p>Destination: {job.destination_path}</p>
+                <p>Status: {job.status}</p>
+                <p>Message: {job.status_message}</p>
+              </Card.Text>
+              <Button variant="secondary" onClick={() => handleDropdownItemClick()}>Close</Button>
+            </Card.Body>
+          </Card>
+        )}
         <div className="td col" style={{ wordBreak: "keep-all" }}>{renderStatusCellContent(job)}</div>
         <div className="td col" style={{ wordBreak: "keep-all" }} title={formatDateDetailed(job.last_update)}>
           <div className="row-menu">
