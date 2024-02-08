@@ -193,7 +193,7 @@ detection to create the RabbitMQ queue.
 ## Add movies from Radarr
 
 ```bash
-go run ./radarr/add/main.go --api-key XXXXXX --url https://radarr.example.com --movies 5 --gearr-url 'https://gearr.example.com' --gearr-token XXXXXX
+go run ./integrations/radarr/add/main.go --api-key XXXXXX --url https://radarr.example.com --movies 5 --gearr-url 'https://gearr.example.com' --gearr-token XXXXXX
 ```
 
 Feel free to customize the parameters based on your Radarr and Gearr setup.
@@ -210,7 +210,7 @@ find ${MOVIES_DIR} -name '*_encoded.mkv'
 Then execute:
 
 ```
-go run ./radarr/update/main.go --api-key XXXXXX --url https://radarr.example.com "${FIND_OUTPUT}"
+go run ./integrations/radarr/update/main.go --api-key XXXXXX --url https://radarr.example.com "${FIND_OUTPUT}"
 ```
 
 Then you can go to Radarr: `Edit Movies -> Select All -> Rename Files`
