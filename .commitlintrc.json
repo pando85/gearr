@@ -23,6 +23,7 @@
       "always",
       [
         "ci",
+	"deps",
 	"docker",
         "radarr",
         "server",
