@@ -6,7 +6,7 @@ require (
 	github.com/avast/retry-go v2.7.0+incompatible
 	github.com/gin-gonic/contrib v0.0.0-20221130124618-7e01895a63f2
 	github.com/gin-gonic/gin v1.9.1
-	github.com/google/uuid v1.1.1
+	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.1
 	github.com/isayme/go-amqp-reconnect v0.0.0-20210303120416-fc811b0bcda2
 	github.com/jedib0t/go-pretty/v6 v6.4.3
