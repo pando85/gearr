@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/spf13/pflag"
 	"golift.io/starr"
@@ -29,8 +30,9 @@ func getSize(m *radarr.Movie) int64 {
 }
 
 func isNotX265OrH265(m *radarr.Movie) bool {
+	videoCodec := strings.ToLower(m.MovieFile.MediaInfo.VideoCodec)
 	return m.MovieFile != nil && m.MovieFile.MediaInfo != nil &&
-		(m.MovieFile.MediaInfo.VideoCodec != "x265" && m.MovieFile.MediaInfo.VideoCodec != "h265")
+		(videoCodec != "x265" && videoCodec != "h265" && videoCodec != "hevc")
 }
 
 func HumanReadableSize(size int64) string {
