@@ -7,7 +7,8 @@ require (
 	github.com/gin-gonic/contrib v0.0.0-20221130124618-7e01895a63f2
 	github.com/gin-gonic/gin v1.9.1
 	github.com/google/uuid v1.1.1
-	github.com/isayme/go-amqp-reconnect v0.0.0-20180930040740-e71660afb5ca
+	github.com/gorilla/websocket v1.5.1
+	github.com/isayme/go-amqp-reconnect v0.0.0-20210303120416-fc811b0bcda2
 	github.com/jedib0t/go-pretty/v6 v6.4.3
 	github.com/lib/pq v1.5.2
 	github.com/rakyll/statik v0.1.7
@@ -31,7 +32,6 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.14.0 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
-	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.4 // indirect
