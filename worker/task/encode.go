@@ -322,6 +322,10 @@ func FFProbeFrameRate(FFProbeFrameRate string) (frameRate int, err error) {
 		return 0, err
 	}
 
+	if rate == 0 {
+		return 0, errors.New("rate cannot be 0")
+	}
+
 	return frameRatio / rate, nil
 }
 
