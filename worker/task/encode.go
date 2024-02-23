@@ -635,7 +635,12 @@ func (J *EncodeWorker) updateTaskStatus(encode *model.WorkTaskEncode, notificati
 		Message:          message,
 	}
 	J.Manager.EventNotification(event)
-	J.terminal.Log("[%s] %s has been %s: %s", event.Id.String(), event.NotificationType, event.Status, event.Message)
+
+	if event.Message != "" {
+		J.terminal.Log("[%s] %s has been %s: %s", event.Id.String(), event.NotificationType, event.Status, event.Message)
+	} else {
+		J.terminal.Log("[%s] %s has been %s", event.Id.String(), event.NotificationType, event.Status)
+	}
 
 	J.saveTaskStatusDisk(&model.TaskStatus{
 		LastState: &event,
