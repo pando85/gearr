@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.3](https://github.com/pando85/gearr/tree/v0.1.3) - 2024-02-23
+
+### Added
+
+* Add stale bot
+
+### Build
+
+* Update dependency sass to v1.71.1
+* Update dependency react-virtualized-auto-sizer to v1.0.23
+* Update dependency @types/node to v20.11.20
+
+### Fixed
+
+* Exclude hevc video codec
+* Handle rate equal to zero case
+* Correct way of define video profile in ffmpeg
+* Update favicon with logo
+
 ## [v0.1.2](https://github.com/pando85/gearr/tree/v0.1.2) - 2024-02-20
 
 ### Build
