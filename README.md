@@ -190,7 +190,9 @@ docker run -it -d --restart unless-stopped \
 **Warning:** The PGS agent must be started in advance if PGS is detected. It should run before
 detection to create the RabbitMQ queue.
 
-## Add movies from Radarr
+## Integrations
+
+### Add movies from Radarr
 
 ```bash
 go run ./integrations/radarr/add/main.go --api-key XXXXXX --url https://radarr.example.com --movies 5 --gearr-url 'https://gearr.example.com' --gearr-token XXXXXX
@@ -198,7 +200,7 @@ go run ./integrations/radarr/add/main.go --api-key XXXXXX --url https://radarr.e
 
 Feel free to customize the parameters based on your Radarr and Gearr setup.
 
-## Update movies in Radarr
+### Update movies in Radarr
 
 In your radarr server:
 
@@ -209,11 +211,19 @@ find ${MOVIES_DIR} -name '*_encoded.mkv'
 
 Then execute:
 
-```
+```bash
 go run ./integrations/radarr/update/main.go --api-key XXXXXX --url https://radarr.example.com "${FIND_OUTPUT}"
 ```
 
 Then you can go to Radarr: `Edit Movies -> Select All -> Rename Files`
+
+### Add episodes from Sonarr
+
+```bash
+go run ./integrations/sonarr/add/main.go --api-key XXXXXX --url https://sonarr.example.com --series 5  --episodes 10 --gearr-url 'https://gearr.example.com' --gearr-token XXXXXX
+```
+
+Feel free to customize the parameters based on your Radarr and Gearr setup.
 
 ## Roadmap
 

@@ -16,11 +16,11 @@ import (
 	"golift.io/starr/radarr"
 )
 
-type MovieBySize []*radarr.Movie
+type MoviesList []*radarr.Movie
 
-func (s MovieBySize) Len() int           { return len(s) }
-func (s MovieBySize) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-func (s MovieBySize) Less(i, j int) bool { return getSize(s[i]) > getSize(s[j]) }
+func (s MoviesList) Len() int           { return len(s) }
+func (s MoviesList) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s MoviesList) Less(i, j int) bool { return getSize(s[i]) > getSize(s[j]) }
 
 func getSize(m *radarr.Movie) int64 {
 	if m.MovieFile != nil {
@@ -163,7 +163,7 @@ func main() {
 		panic(err)
 	}
 
-	var filteredMovies MovieBySize
+	var filteredMovies MoviesList
 	for _, m := range movies {
 		if isNotX265OrH265(m) {
 			filteredMovies = append(filteredMovies, m)

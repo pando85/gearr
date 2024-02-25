@@ -27,6 +27,7 @@
 	"docker",
         "radarr",
         "server",
+        "sonarr",
 	"ui",
         "worker"
       ]
