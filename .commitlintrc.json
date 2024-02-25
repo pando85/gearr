@@ -23,12 +23,13 @@
       "always",
       [
         "ci",
-	"deps",
-	"docker",
+        "deps",
+        "docker",
+        "integrations",
         "radarr",
         "server",
         "sonarr",
-	"ui",
+        "ui",
         "worker"
       ]
     ],

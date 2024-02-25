@@ -1,15 +1,12 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"sort"
 	"strings"
+
+	"gearr/integrations/common"
 
 	"github.com/spf13/pflag"
 	"golift.io/starr"
@@ -29,125 +26,23 @@ func getSize(serie *sonarr.Series) int64 {
 	return 0
 }
 
+func isNotX265OrH265Serie(serie *sonarr.Series, s *sonarr.Sonarr) bool {
+	episodeFiles, err := s.GetSeriesEpisodeFiles(serie.ID)
+	if err != nil {
+		fmt.Printf("Cannot fetch episodes from serie: %s", serie.Title)
+		os.Exit(1)
+	}
+	for _, e := range episodeFiles {
+		if e.MediaInfo != nil && isNotX265OrH265(e.MediaInfo.VideoCodec) {
+			return true
+		}
+	}
+	return false
+}
+
 func isNotX265OrH265(videoCodec string) bool {
 	c := strings.ToLower(videoCodec)
 	return (c != "x265" && c != "h265" && c != "hevc")
-}
-
-func isNotX265OrH265Serie(serie *sonarr.Series, s *sonarr.Sonarr) (bool, error) {
-	episodeFiles, err := s.GetSeriesEpisodeFiles(serie.ID)
-	if err != nil {
-		return false, errors.New(fmt.Sprintf("Cannot fetch episodes from serie: %s", serie.Title))
-	}
-	for _, e := range episodeFiles {
-		if e.MediaInfo != nil {
-			return isNotX265OrH265(e.MediaInfo.VideoCodec), nil
-		}
-
-	}
-	return false, nil
-}
-
-func HumanReadableSize(size int64) string {
-	if size == 0 {
-		return "N/A"
-	}
-
-	const unit = 1024
-	if size < unit {
-		return fmt.Sprintf("%d B", size)
-	}
-	div, exp := int64(unit), 0
-	for n := size / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.2f %cB", float64(size)/float64(div), "KMGTPE"[exp])
-}
-
-type ScheduledItem struct {
-	SourcePath      string      `json:"source_path"`
-	DestinationPath string      `json:"destination_path"`
-	ID              string      `json:"id"`
-	Events          interface{} `json:"events"`
-}
-
-type FailedItem struct {
-	SourcePath      string `json:"source_path"`
-	DestinationPath string `json:"destination_path"`
-	ForceCompleted  bool   `json:"forceCompleted"`
-	ForceFailed     bool   `json:"forceFailed"`
-	ForceExecuting  bool   `json:"forceExecuting"`
-	ForceQueued     bool   `json:"forceQueued"`
-	Error           string `json:"error"`
-}
-
-type Response struct {
-	Scheduled []ScheduledItem `json:"scheduled"`
-	Failed    []FailedItem    `json:"failed"`
-	Skipped   interface{}     `json:"skipped"`
-}
-
-func PrintGearrResponse(jsonStr []byte) error {
-	var response Response
-	if err := json.Unmarshal(jsonStr, &response); err != nil {
-		return err
-	}
-
-	switch {
-	case len(response.Scheduled) > 0:
-		fmt.Println("Episode successfully queued.")
-	case len(response.Failed) > 0:
-		fmt.Println("Episode was not queued.")
-	default:
-		return errors.New("Episode was neither queued nor failed.")
-	}
-
-	return nil
-}
-
-func AddEpisodeToGearrQueue(path string, url string, token string) error {
-	payload := map[string]string{
-		"source_path": path,
-	}
-
-	payloadJSON, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payloadJSON))
-	if err != nil {
-		return err
-	}
-
-	authHeader := fmt.Sprintf("Bearer %s", token)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", authHeader)
-
-	client := http.Client{}
-
-	fmt.Println("Adding episode to gearr queue")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	err = PrintGearrResponse(body)
-	if resp.StatusCode != http.StatusOK {
-		fmt.Fprintf(os.Stderr, "Failed with status %s and message: %s", resp.Status, body)
-	}
-
-	fmt.Println()
-	fmt.Println()
-	return nil
 }
 
 func main() {
@@ -179,12 +74,7 @@ func main() {
 
 	var filteredSeries SeriesList
 	for _, serie := range series {
-		isNotX265, err := isNotX265OrH265Serie(serie, s)
-		if err != nil {
-			fmt.Println("error:", err)
-			os.Exit(1)
-		}
-		if isNotX265 {
+		if isNotX265OrH265Serie(serie, s) {
 			filteredSeries = append(filteredSeries, serie)
 		}
 	}
@@ -220,11 +110,11 @@ func main() {
 			}
 			fmt.Printf("Codec: %s\n", e.MediaInfo.VideoCodec)
 
-			fmt.Printf("Size: %s\n", HumanReadableSize(e.Size))
+			fmt.Printf("Size: %s\n", common.HumanReadableSize(e.Size))
 			fmt.Printf("Full Path: %s\n\n", e.Path)
 
 			if !*dryRun {
-				err := AddEpisodeToGearrQueue(e.Path, gearrPostURL, *gearrToken)
+				err := common.AddToGearrQueue(e.Path, gearrPostURL, *gearrToken, "episode")
 				if err != nil {
 					fmt.Println("error:", err)
 					os.Exit(1)
