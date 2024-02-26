@@ -27,9 +27,11 @@ func getSize(m *radarr.Movie) int64 {
 }
 
 func isNotX265OrH265(m *radarr.Movie) bool {
+	if m.MovieFile == nil || m.MovieFile.MediaInfo == nil {
+		return false
+	}
 	videoCodec := strings.ToLower(m.MovieFile.MediaInfo.VideoCodec)
-	return m.MovieFile != nil && m.MovieFile.MediaInfo != nil &&
-		common.IsNotCodec(videoCodec, []string{"x265", "h265", "hevc"})
+	return common.IsNotCodec(videoCodec, []string{"x265", "h265", "hevc"})
 }
 
 func main() {
