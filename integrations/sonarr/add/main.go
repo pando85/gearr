@@ -50,6 +50,7 @@ func main() {
 	sonarrURL := pflag.StringP("url", "u", "", "Sonarr server URL")
 	numSeries := pflag.Int("series", 10, "Number of series to retrieve")
 	numEpisodes := pflag.Int("episodes", 1000, "Number of episodes to retrieve")
+	maxSize := pflag.Int64("max-size", 3000000000, "Number of episodes to retrieve")
 	gearrURL := pflag.String("gearr-url", "", "Gearr server URL")
 	gearrToken := pflag.String("gearr-token", "", "Gearr web server token")
 	dryRun := pflag.Bool("dry-run", false, "Dry run mode doesn't add episodes to gearr queue")
@@ -99,13 +100,16 @@ func main() {
 
 		var filteredEpisodes []*sonarr.EpisodeFile
 		for _, e := range episodeFiles {
-			if e.MediaInfo != nil && isNotX265OrH265(e.MediaInfo.VideoCodec) {
+			if e.MediaInfo == nil || isNotX265OrH265(e.MediaInfo.VideoCodec) || e.Size > *maxSize {
 				filteredEpisodes = append(filteredEpisodes, e)
 			}
 		}
 
+		fmt.Printf("Number of episodes transcodeables %d from %d\n", len(filteredEpisodes), len(episodeFiles))
+
 		for i, e := range filteredEpisodes {
 			if i >= *numEpisodes {
+				fmt.Print("Max episodes added.")
 				break
 			}
 			fmt.Printf("Codec: %s\n", e.MediaInfo.VideoCodec)
