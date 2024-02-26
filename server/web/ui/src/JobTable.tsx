@@ -199,8 +199,8 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
     }
     return (
       <div className="tr row" style={{ ...style }}>
-        <div className="td col">{renderPath(job.source_path, isSmallScreen, 20)}</div>
-        <div className="td col d-none d-sm-flex">{renderPath(job.destination_path, false, 60)}</div>
+        <div className="td col" title={job.source_path}>{renderPath(job.source_path, isSmallScreen, 20)}</div>
+        <div className="td col d-none d-sm-flex" title={job.destination_path}>{renderPath(job.destination_path, false, 60)}</div>
         {selectedJobIndex === index && (
           <Card style={{ width: '18rem', position: 'absolute', top: '50px', right: '20px' }}>
             <Card.Body>
