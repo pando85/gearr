@@ -87,12 +87,14 @@ export const getStatusColor = (status: string): string => {
     }
 };
 
-const MAX_LENGTH = 20;
-
-export const renderPath = (isSmallScreen: boolean, path: string) => {
-    if (isSmallScreen || path.length > MAX_LENGTH) {
-        const shortPath = (path.split('/').pop() || '').substring(0, MAX_LENGTH);
-        return shortPath ? shortPath : path;
+export const renderPath = (path: string, isSmallScreen: boolean, maxLength: number) => {
+    if (isSmallScreen) {
+        const fileName = path.split('/').pop() || '';
+        if (path.length > maxLength) {
+            return fileName.substring(0, maxLength) + '...';
+        } else {
+            return fileName;
+        }
     } else {
         return path;
     }
