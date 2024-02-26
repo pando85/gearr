@@ -87,14 +87,18 @@ export const getStatusColor = (status: string): string => {
     }
 };
 
-export const renderPath = (path: string, isSmallScreen: boolean, maxLength: number) => {
+export const renderPath = (path: string, maxLength: number) => {
+    const fileName = path.split('/').pop() || '';
+    if (path.length > maxLength) {
+        return fileName.substring(0, maxLength) + '...';
+    } else {
+        return fileName;
+    }
+};
+
+export const renderPathSmallScreen = (path: string, isSmallScreen: boolean, maxLength: number) => {
     if (isSmallScreen) {
-        const fileName = path.split('/').pop() || '';
-        if (path.length > maxLength) {
-            return fileName.substring(0, maxLength) + '...';
-        } else {
-            return fileName;
-        }
+        renderPath(path, maxLength)
     } else {
         return path;
     }

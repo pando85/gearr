@@ -28,7 +28,7 @@ import useWebSocket from 'react-use-websocket';
 import { Job, JobUpdateNotification, JobUpdateNotificationClass } from './model';
 import { fetchJobs, deleteJob, createJob } from './api';
 import { RootState } from './store';
-import { STATUS_FILTER_OPTIONS, DATE_FILTER_OPTIONS, formatDateShort, formatDateDetailed, getDateFromFilterOption, getStatusColor, renderPath, sortJobs } from './utils';
+import { STATUS_FILTER_OPTIONS, DATE_FILTER_OPTIONS, formatDateShort, formatDateDetailed, getDateFromFilterOption, getStatusColor, renderPath, sortJobs, renderPathSmallScreen } from './utils';
 import { updateJob, resetJobs } from './actions/JobActions';
 import './JobTable.css';
 
@@ -199,8 +199,8 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
     }
     return (
       <div className="tr row" style={{ ...style }}>
-        <div className="td col" title={job.source_path}>{renderPath(job.source_path, isSmallScreen, 20)}</div>
-        <div className="td col d-none d-sm-flex" title={job.destination_path}>{renderPath(job.destination_path, false, 60)}</div>
+        <div className="td col" title={job.source_path}>{renderPathSmallScreen(job.source_path, isSmallScreen, 20)}</div>
+        <div className="td col d-none d-sm-flex" title={job.destination_path}>{renderPath(job.destination_path, 60)}</div>
         {selectedJobIndex === index && (
           <Card style={{ width: '18rem', position: 'absolute', top: '50px', right: '20px' }}>
             <Card.Body>
