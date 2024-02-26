@@ -1,27 +1,27 @@
 .MuiTableCell-head {
-    color: #C8C3BC !important;
+  color: #c8c3bc !important;
 }
 
 .MuiTableCell-body {
-    color: #C8C3BC !important;
+  color: #c8c3bc !important;
 }
 
 .MuiButton-label {
-    color: #f8f6f2 !important;
+  color: #f8f6f2 !important;
 }
 
 .jobTableContainer {
-    padding: 20px;
-    width: 100%;
+  padding: 20px;
+  width: 100%;
 }
 
 .jobTable {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 20px;
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
 }
 
 .tableRow {
-    cursor: pointer;
-    transition: background-color 0.3s;
+  cursor: pointer;
+  transition: background-color 0.3s;
 }
