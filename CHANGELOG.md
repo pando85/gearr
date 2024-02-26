@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.4](https://github.com/pando85/gearr/tree/v0.1.4) - 2024-02-26
+
+### Added
+
+* Add sonarr integration
+* Change encode FFMPEG CRF from 28 to 21
+* Add max size flag to sonarr episodes
+
+### Build
+
+* Update dependency @types/react to v18.2.58
+
+### Fixed
+
+* Remove unnecessary colon in log message
+* Render short path max 20 chars
+* Continue even when MovieFile or MediaInfo is nil
+
+### Refactor
+
+* Add common code to a library
+
 ## [v0.1.3](https://github.com/pando85/gearr/tree/v0.1.3) - 2024-02-23
 
 ### Added
