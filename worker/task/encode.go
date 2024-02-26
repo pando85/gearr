@@ -992,7 +992,7 @@ func (F *FFMPEGGenerator) setAudioFilters(container *ContainerData) {
 func (F *FFMPEGGenerator) setVideoFilters(container *ContainerData) {
 	// TODO: Make ffmpeg parameters configurable
 	videoFilterParameters := "\"scale='min(1920,iw)':-1:force_original_aspect_ratio=decrease\""
-	videoEncoderQuality := "-pix_fmt yuv420p10le -c:v libx265 -crf 28 -profile:v main10"
+	videoEncoderQuality := "-pix_fmt yuv420p10le -c:v libx265 -crf 21 -profile:v main10"
 	//TODO HDR??
 	videoHDR := ""
 	F.VideoFilter = fmt.Sprintf("-map 0:%d -map_chapters -1 -flags +global_header -filter:v %s %s %s", container.Video.Id, videoFilterParameters, videoHDR, videoEncoderQuality)
