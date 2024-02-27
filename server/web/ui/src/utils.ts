@@ -98,7 +98,7 @@ export const renderPath = (path: string, maxLength: number) => {
 
 export const renderPathSmallScreen = (path: string, isSmallScreen: boolean, maxLength: number) => {
     if (isSmallScreen) {
-        renderPath(path, maxLength)
+        return renderPath(path, maxLength);
     } else {
         return path;
     }
