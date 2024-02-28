@@ -3,6 +3,7 @@ interface Job {
     source_path: string;
     destination_path: string;
     status: string;
+    status_phase: string;
     status_message: string;
     last_update: Date;
 }
@@ -13,6 +14,7 @@ class JobClass implements Job {
         this.source_path = responseData.source_path || '';
         this.destination_path = responseData.destination_path || '';
         this.status = responseData.status || 'queued';
+        this.status_phase = responseData.status_phase || '';
         this.status_message = responseData.status_message || '';
         this.last_update = new Date(responseData.last_update || Date.now());
     }
@@ -21,6 +23,7 @@ class JobClass implements Job {
     source_path: string;
     destination_path: string;
     status: string;
+    status_phase: string;
     status_message: string;
     last_update: Date;
 }
@@ -28,6 +31,7 @@ class JobClass implements Job {
 interface JobUpdateNotification {
     id: string;
     status: string;
+    status_phase: string;
     message: string;
     event_time: Date;
     source_path: string;
@@ -39,6 +43,7 @@ class JobUpdateNotificationClass implements JobUpdateNotification {
     constructor(responseData: Partial<JobUpdateNotification>) {
         this.id = responseData.id || '';
         this.status = responseData.status || '';
+        this.status_phase = responseData.status_phase || '';
         this.message = responseData.message || '';
         this.event_time = new Date(responseData.event_time || Date.now());
         this.source_path = responseData.source_path || '';
@@ -47,6 +52,7 @@ class JobUpdateNotificationClass implements JobUpdateNotification {
 
     id: string;
     status: string;
+    status_phase: string;
     message: string;
     event_time: Date;
     source_path: string;
@@ -54,4 +60,4 @@ class JobUpdateNotificationClass implements JobUpdateNotification {
 }
 
 export type { Job, JobUpdateNotification };
-export {JobClass, JobUpdateNotificationClass};
+export { JobClass, JobUpdateNotificationClass };

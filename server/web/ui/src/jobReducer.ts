@@ -86,6 +86,7 @@ const jobReducer: Reducer<JobState, JobActionTypes> = (state = initialState, act
 
             if (updatedJobIndex !== -1) {
                 state.jobs[updatedJobIndex].status = action.payload.status;
+                state.jobs[updatedJobIndex].status_phase = action.payload.status_phase;
                 state.jobs[updatedJobIndex].status_message = action.payload.message;
                 state.jobs[updatedJobIndex].last_update = action.payload.event_time;
                 const updatedJobs = [...state.jobs];
@@ -97,6 +98,8 @@ const jobReducer: Reducer<JobState, JobActionTypes> = (state = initialState, act
             } else {
                 const newJob: Job = new JobClass({
                     id: action.payload.id,
+                    status: action.payload.status,
+                    status_phase: action.payload.status_phase,
                     source_path: action.payload.source_path,
                     destination_path: action.payload.destination_path,
                 });

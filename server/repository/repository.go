@@ -261,12 +261,13 @@ func (S *SQLRepository) getJob(ctx context.Context, tx Transaction, uuid string)
 		return nil, err
 	}
 	job.Events = taskEvents
-	last_update, status, statusMessage, _ := S.getJobStatus(ctx, tx, job.Id.String())
+	lastUpdate, status, statusPhase, statusMessage, _ := S.getJobStatus(ctx, tx, job.Id.String())
 
-	if last_update != nil {
-		job.LastUpdate = last_update
+	if lastUpdate != nil {
+		job.LastUpdate = lastUpdate
 	}
 	job.Status = status
+	job.StatusPhase = statusPhase
 	job.StatusMessage = statusMessage
 
 	return &job, nil
@@ -283,7 +284,7 @@ func (S *SQLRepository) deleteJob(tx Transaction, uuid string) error {
 
 func (S *SQLRepository) getJobs(ctx context.Context, tx Transaction) (*[]model.Job, error) {
 	query := fmt.Sprintf(`
-    SELECT v.id, v.source_path, v.destination_path, vs.event_time, vs.status, vs.message
+    SELECT v.id, v.source_path, v.destination_path, vs.event_time, vs.status, vs.notification_type, vs.message
     FROM jobs v
     INNER JOIN job_status vs ON v.id = vs.job_id
 `)
@@ -296,7 +297,7 @@ func (S *SQLRepository) getJobs(ctx context.Context, tx Transaction) (*[]model.J
 	jobs := []model.Job{}
 	for rows.Next() {
 		job := model.Job{}
-		rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath, &job.LastUpdate, &job.Status, &job.StatusMessage)
+		rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath, &job.LastUpdate, &job.Status, &job.StatusPhase, &job.StatusMessage)
 		jobs = append(jobs, job)
 	}
 
@@ -320,21 +321,22 @@ func (S *SQLRepository) getTaskEvents(ctx context.Context, tx Transaction, uuid 
 	return taskEvents, nil
 }
 
-func (S *SQLRepository) getJobStatus(ctx context.Context, tx Transaction, uuid string) (*time.Time, string, string, error) {
+func (S *SQLRepository) getJobStatus(ctx context.Context, tx Transaction, uuid string) (*time.Time, string, model.NotificationType, string, error) {
 	var last_update time.Time
 	var status string
+	var statusPhase model.NotificationType
 	var message string
 
-	rows, err := tx.QueryContext(ctx, "SELECT event_time, status, message FROM job_status WHERE job_id=$1", uuid)
+	rows, err := tx.QueryContext(ctx, "SELECT event_time, status, notification_type, message FROM job_status WHERE job_id=$1", uuid)
 	if err != nil {
-		return &last_update, status, message, err
+		return &last_update, status, statusPhase, message, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		rows.Scan(&last_update, &status, &message)
+		rows.Scan(&last_update, &status, &statusPhase, &message)
 	}
-	return &last_update, status, message, nil
+	return &last_update, status, statusPhase, message, nil
 }
 
 func (S *SQLRepository) getJobByPath(ctx context.Context, tx Transaction, path string) (*model.Job, error) {

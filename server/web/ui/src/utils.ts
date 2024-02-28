@@ -77,13 +77,12 @@ export const getDateFromFilterOption = (filterOption: string) => {
 }
 
 export const getStatusColor = (status: string): string => {
-    switch (status) {
-        case 'completed':
-            return 'green';
-        case 'failed':
-            return 'red';
-        default:
-            return 'grey';
+    if (status === 'completed') {
+        return 'green';
+    } else if (status === 'failed') {
+        return 'red';
+    } else {
+        return 'grey';
     }
 };
 

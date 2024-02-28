@@ -121,10 +121,11 @@ func (R *RuntimeScheduler) schedule(ctx context.Context) {
 
 			if jobEvent.EventType != model.PingEvent {
 				jobUpdateNotification := model.JobUpdateNotification{
-					Id:        jobEvent.Id,
-					Status:    jobEvent.Status,
-					Message:   jobEvent.Message,
-					EventTime: jobEvent.EventTime,
+					Id:          jobEvent.Id,
+					Status:      jobEvent.Status,
+					StatusPhase: jobEvent.NotificationType,
+					Message:     jobEvent.Message,
+					EventTime:   jobEvent.EventTime,
 				}
 				R.sendUpdateJobsNotification(&jobUpdateNotification)
 			}
@@ -268,6 +269,9 @@ func (R *RuntimeScheduler) ScheduleJobRequest(ctx context.Context, jobRequest *m
 
 	jobUpdateNotification := model.JobUpdateNotification{
 		Id:              job.Id,
+		Status:          "queued",
+		StatusPhase:     "Job",
+		EventTime:       time.Now(),
 		SourcePath:      job.SourcePath,
 		DestinationPath: job.DestinationPath,
 	}
