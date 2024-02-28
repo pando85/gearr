@@ -140,12 +140,14 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
         </div>
       );
     } else {
+      const message = job.status_phase !== 'Job' ? job.status_phase.toLowerCase() : job.status;
+
       return (
         <Button
           variant="contained"
           style={{ backgroundColor: getStatusColor(job.status) }}
         >
-          {job.status}
+          {message}
         </Button>
       );
     }
@@ -209,6 +211,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
                 <p>ID: {job.id}</p>
                 <p>Source: {job.source_path}</p>
                 <p>Destination: {job.destination_path}</p>
+                <p>Status Phase: {job.status_phase}</p>
                 <p>Status: {job.status}</p>
                 <p>Message: {job.status_message}</p>
               </Card.Text>

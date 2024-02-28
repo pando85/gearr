@@ -50,13 +50,14 @@ type Identity interface {
 	getUUID() uuid.UUID
 }
 type Job struct {
-	SourcePath      string     `json:"source_path,omitempty"`
-	DestinationPath string     `json:"destination_path,omitempty"`
-	Id              uuid.UUID  `json:"id"`
-	Events          TaskEvents `json:"events,omitempty"`
-	Status          string     `json:"status,omitempty"`
-	StatusMessage   string     `json:"status_message,omitempty"`
-	LastUpdate      *time.Time `json:"last_update,omitempty"`
+	SourcePath      string           `json:"source_path,omitempty"`
+	DestinationPath string           `json:"destination_path,omitempty"`
+	Id              uuid.UUID        `json:"id"`
+	Events          TaskEvents       `json:"events,omitempty"`
+	Status          string           `json:"status,omitempty"`
+	StatusPhase     NotificationType `json:"status_phase,omitempty"`
+	StatusMessage   string           `json:"status_message,omitempty"`
+	LastUpdate      *time.Time       `json:"last_update,omitempty"`
 }
 
 type JobEventQueue struct {
@@ -123,6 +124,7 @@ func (V TaskPGS) getUUID() uuid.UUID {
 type JobUpdateNotification struct {
 	Id              uuid.UUID          `json:"id"`
 	Status          NotificationStatus `json:"status"`
+	StatusPhase     NotificationType   `json:"status_phase"`
 	Message         string             `json:"message"`
 	EventTime       time.Time          `json:"event_time"`
 	SourcePath      string             `json:"source_path,omitempty"`
