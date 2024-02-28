@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.8](https://github.com/pando85/gearr/tree/v0.1.8) - 2024-02-28
+
+### Build
+
+* Update dependency @emotion/react to v11.11.4
+* Update dependency @types/node to v20.11.21
+* Update dependency @types/node to v20.11.22
+
+### Fixed
+
+* Add status phase to show better status in UI
+
 ## [v0.1.7](https://github.com/pando85/gearr/tree/v0.1.7) - 2024-02-27
 
 ### Build
