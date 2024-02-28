@@ -114,7 +114,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
   };
 
   const renderStatusCellContent = (job: Job) => {
-    if (job.status === 'progressing') {
+    if (job.status === 'progressing' && job.status_phase === 'Job') {
       return job.status_message ? (
         (() => {
           try {
