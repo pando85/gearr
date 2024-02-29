@@ -29,7 +29,7 @@ func getSize(serie *sonarr.Series) int64 {
 func isNotX265OrH265Serie(serie *sonarr.Series, s *sonarr.Sonarr) bool {
 	episodeFiles, err := s.GetSeriesEpisodeFiles(serie.ID)
 	if err != nil {
-		fmt.Printf("Cannot fetch episodes from serie: %s", serie.Title)
+		fmt.Printf("cannot fetch episodes from serie: %s", serie.Title)
 		os.Exit(1)
 	}
 	for _, e := range episodeFiles {
@@ -82,7 +82,7 @@ func main() {
 
 	sort.Sort(filteredSeries)
 
-	fmt.Printf("Number of filtered series: %d\n", len(filteredSeries))
+	fmt.Printf("number of filtered series: %d\n", len(filteredSeries))
 
 	for i, serie := range filteredSeries {
 		if i >= *numSeries {
@@ -94,7 +94,7 @@ func main() {
 
 		episodeFiles, err := s.GetSeriesEpisodeFiles(serie.ID)
 		if err != nil {
-			fmt.Printf("Cannot fetch episodes from serie: %s", serie.Title)
+			fmt.Printf("cannot fetch episodes from serie: %s", serie.Title)
 			os.Exit(1)
 		}
 
@@ -105,17 +105,17 @@ func main() {
 			}
 		}
 
-		fmt.Printf("Number of episodes transcodeables %d from %d\n", len(filteredEpisodes), len(episodeFiles))
+		fmt.Printf("number of episodes transcodeables %d from %d\n", len(filteredEpisodes), len(episodeFiles))
 
 		for i, e := range filteredEpisodes {
 			if i >= *numEpisodes {
-				fmt.Print("Max episodes added.")
+				fmt.Print("max episodes added.")
 				break
 			}
-			fmt.Printf("Codec: %s\n", e.MediaInfo.VideoCodec)
+			fmt.Printf("codec: %s\n", e.MediaInfo.VideoCodec)
 
-			fmt.Printf("Size: %s\n", common.HumanReadableSize(e.Size))
-			fmt.Printf("Full Path: %s\n\n", e.Path)
+			fmt.Printf("size: %s\n", common.HumanReadableSize(e.Size))
+			fmt.Printf("full Path: %s\n\n", e.Path)
 
 			if !*dryRun {
 				err := common.AddToGearrQueue(e.Path, gearrPostURL, *gearrToken, "episode")

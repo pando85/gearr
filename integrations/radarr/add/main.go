@@ -45,7 +45,7 @@ func main() {
 	pflag.Parse()
 
 	if *apiKey == "" || *radarrURL == "" || *gearrURL == "" || *gearrToken == "" {
-		fmt.Println("Both API key and Radarr URL are required.")
+		fmt.Println("both API key and Radarr URL are required.")
 		pflag.PrintDefaults()
 		return
 	}
@@ -69,7 +69,7 @@ func main() {
 
 	sort.Sort(filteredMovies)
 
-	fmt.Printf("Number of filtered movies: %d\n", len(filteredMovies))
+	fmt.Printf("number of filtered movies: %d\n", len(filteredMovies))
 
 	for i, m := range filteredMovies {
 		if i >= *numMovies {
@@ -80,10 +80,10 @@ func main() {
 		fmt.Printf("File Path: %s\n", m.Path)
 
 		if m.MovieFile != nil {
-			fmt.Printf("Codec: %s\n", m.MovieFile.MediaInfo.VideoCodec)
+			fmt.Printf("codec: %s\n", m.MovieFile.MediaInfo.VideoCodec)
 
-			fmt.Printf("Size: %s\n", common.HumanReadableSize(getSize(m)))
-			fmt.Printf("Full Path: %s\n\n", m.MovieFile.Path)
+			fmt.Printf("size: %s\n", common.HumanReadableSize(getSize(m)))
+			fmt.Printf("full Path: %s\n\n", m.MovieFile.Path)
 
 			if !*dryRun {
 				err := common.AddToGearrQueue(m.MovieFile.Path, gearrPostURL, *gearrToken, "movie")
