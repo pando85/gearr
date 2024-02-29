@@ -72,7 +72,7 @@ func AddToGearrQueue(path string, url string, token string, itemType string) err
 
 	client := http.Client{}
 
-	fmt.Printf("adding %s %s to Gearr queue\n", itemType, path)
+	fmt.Printf("adding %s to Gearr queue\n", itemType)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -88,6 +88,8 @@ func AddToGearrQueue(path string, url string, token string, itemType string) err
 	err = PrintGearrResponse(body)
 	if resp.StatusCode != http.StatusOK {
 		fmt.Fprintf(os.Stderr, "failed with status %s and message: %s", resp.Status, body)
+	} else {
+		fmt.Printf("added %s %s to Gearr queue\n", itemType, path)
 	}
 
 	fmt.Println()
