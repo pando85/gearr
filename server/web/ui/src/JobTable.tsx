@@ -114,24 +114,20 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
   };
 
   const renderStatusCellContent = (job: Job) => {
-    if (job.status === 'progressing' && job.status_phase === 'Job') {
-      return job.status_message ? (
-        (() => {
-          try {
-            const messageObj = JSON.parse(job.status_message);
-            if (messageObj.progress !== undefined) {
-              const progress = parseFloat(messageObj.progress);
-              return (
-                <div className="progress" title={`${progress.toFixed(2)}%`}>
-                  <div className="progress-bar" style={{ width: `${progress}%` }} />
-                </div>
-              );
-            }
-          } catch (_) {
-          }
-        })()
-      ) : (
-        <span />
+    if (job.status === 'progressing' && job.status_phase === 'FFMPEG') {
+      const progress = (() => {
+        try {
+          const messageObj = JSON.parse(job.status_message);
+          return messageObj.progress !== undefined ? parseFloat(messageObj.progress) : 0;
+        } catch (_) {
+          return 0;
+        }
+      })();
+
+      return (
+        <div className="progress" title={`${progress.toFixed(2)}%`}>
+          <div className="progress-bar" style={{ width: `${progress}%` }} />
+        </div>
       );
     } else if (job.status === 'failed') {
       return (
