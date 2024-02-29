@@ -41,11 +41,11 @@ func PrintGearrResponse(jsonStr []byte) error {
 
 	switch {
 	case len(response.Scheduled) > 0:
-		fmt.Println("Item successfully queued.")
+		fmt.Println("item successfully queued.")
 	case len(response.Failed) > 0:
-		fmt.Println("Item was not queued.")
+		fmt.Println("item was not queued.")
 	default:
-		return fmt.Errorf("Item was neither queued nor failed")
+		return fmt.Errorf("item was neither queued nor failed")
 	}
 
 	return nil
@@ -72,7 +72,7 @@ func AddToGearrQueue(path string, url string, token string, itemType string) err
 
 	client := http.Client{}
 
-	fmt.Printf("Adding %s to gearr queue\n", itemType)
+	fmt.Printf("adding %s %s to Gearr queue\n", itemType, path)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -87,7 +87,7 @@ func AddToGearrQueue(path string, url string, token string, itemType string) err
 
 	err = PrintGearrResponse(body)
 	if resp.StatusCode != http.StatusOK {
-		fmt.Fprintf(os.Stderr, "Failed with status %s and message: %s", resp.Status, body)
+		fmt.Fprintf(os.Stderr, "failed with status %s and message: %s", resp.Status, body)
 	}
 
 	fmt.Println()
