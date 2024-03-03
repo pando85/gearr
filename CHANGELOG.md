@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.11](https://github.com/pando85/gearr/tree/v0.1.11) - 2024-03-03
+
+### Added
+
+* Add renovate automerge for minor and patch versions
+
+### Build
+
+* Update dependency @types/node to v20.11.23
+* Update dependency @types/react to v18.2.61
+* Update dependency @types/node to v20.11.24
+* Update dependency @types/react-bootstrap to v0.32.36
+
+### Fixed
+
+* Lowercase for initial log messages
+* Explicitily log when added
+* Render source path less than 60 chars and fix `...` conditional
+
 ## [v0.1.10](https://github.com/pando85/gearr/tree/v0.1.10) - 2024-02-29
 
 ### Fixed
