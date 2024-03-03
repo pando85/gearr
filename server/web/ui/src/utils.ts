@@ -88,7 +88,7 @@ export const getStatusColor = (status: string): string => {
 
 export const renderPath = (path: string, maxLength: number) => {
     const fileName = path.split('/').pop() || '';
-    if (path.length > maxLength) {
+    if (fileName.length > maxLength) {
         return fileName.substring(0, maxLength) + '...';
     } else {
         return fileName;
@@ -99,7 +99,7 @@ export const renderPathSmallScreen = (path: string, isSmallScreen: boolean, maxL
     if (isSmallScreen) {
         return renderPath(path, maxLength);
     } else {
-        return path;
+        return renderPath(path, 60);
     }
 };
 
