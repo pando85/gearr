@@ -4,6 +4,9 @@
 
 Gearr is an open-source video transcoding software designed to efficiently convert videos to the x265 format. It leverages the powerful ffmpeg library under the hood to ensure high-quality transcoding. Gearr also supports distributed transcoding across multiple agents, facilitating faster processing of video files.
 
+
+Gearr is a fork of the original [segator/transcoderd](https://github.com/segator/transcoderd) repo. The decision to fork was made as the original author is no longer maintaining the project. Gearr aims to improve upon the original by adding new features and enhancements, providing a more robust and up-to-date video transcoding solution.
+
 ## Features
 
 - **x265 Transcoding:** Convert videos to the x265 format for improved compression and quality.
