@@ -55,7 +55,7 @@
     ]
   },
   "devDependencies": {
-    "http-proxy-middleware": "^2.0.6",
+    "http-proxy-middleware": "^3.0.0",
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@types/node": "^20.11.5",
     "@types/react": "^18.2.48",
