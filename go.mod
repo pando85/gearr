@@ -18,7 +18,7 @@ require (
 	github.com/streadway/amqp v1.1.0
 	golift.io/starr v1.0.0
 	gopkg.in/errgo.v2 v2.1.0
-	gopkg.in/vansante/go-ffprobe.v2 v2.2.0
+	gopkg.in/vansante/go-ffprobe.v2 v2.2.1
 )
 
 require (
