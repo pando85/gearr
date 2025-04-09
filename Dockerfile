@@ -1,5 +1,5 @@
 # target build source: https://github.com/markus-perl/ffmpeg-build-script/blob/v1.48/Dockerfile
-ARG BASE_IMAGE=ubuntu:22.04@sha256:77906da86b60585ce12215807090eb327e7386c8fafb5402369e421f44eff17e
+ARG BASE_IMAGE=ubuntu:24.04@sha256:1e622c5f073b4f6bfad6632f2616c7f59ef256e96fe78bf6a595d1dc4376ac02
 FROM ${BASE_IMAGE} AS build
 
 ARG FFMPEG_BUILD_SCRIPT_VERSION=1.48
