@@ -2,7 +2,7 @@ module gearr
 
 go 1.23.0
 
-toolchain go1.24.2
+toolchain go1.24.3
 
 require (
 	github.com/avast/retry-go v3.0.0+incompatible
