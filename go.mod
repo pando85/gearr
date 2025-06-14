@@ -7,7 +7,7 @@ toolchain go1.24.4
 require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/gin-gonic/contrib v0.0.0-20240508051311-c1c6bf0061b0
-	github.com/gin-gonic/gin v1.10.0
+	github.com/gin-gonic/gin v1.10.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/isayme/go-amqp-reconnect v0.0.0-20210303120416-fc811b0bcda2
