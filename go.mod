@@ -18,7 +18,7 @@ require (
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	github.com/streadway/amqp v1.1.0
-	golift.io/starr v1.1.0
+	golift.io/starr v1.2.1
 	gopkg.in/errgo.v2 v2.1.0
 	gopkg.in/vansante/go-ffprobe.v2 v2.2.1
 )
