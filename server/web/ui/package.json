@@ -23,7 +23,7 @@
     "react-router-dom": "^7.0.0",
     "react-scripts": "^5.0.1",
     "react-use-websocket": "^4.5.0",
-    "react-virtualized-auto-sizer": "^1.0.21",
+    "react-virtualized-auto-sizer": "^2.0.0",
     "react-window": "^1.8.10",
     "reactstrap": "^9.2.2",
     "redux-thunk": "^3.1.0",
