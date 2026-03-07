@@ -50,7 +50,6 @@ push-images: push-image-server push-image-worker
 push-images:		## build and push container images
 
 DOCKER_BUILD_ARG := --cache-to type=inline
-DOCKER_BUILD_ARG += --cache-from $(IMAGE_NAME):latest-build
 DOCKER_BUILD_ARG += --cache-from $(IMAGE_NAME):latest-base
 
 .PHONY: image-%
