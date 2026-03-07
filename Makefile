@@ -35,7 +35,7 @@ build-%:
 	@echo "Building dist/gearr-$*"
 	@if [ "$*" = "server" ]; then \
 		cd server/web/ui && \
-			npm install && \
+			npm install --legacy-peer-deps && \
 			npm run build || exit 1; \
 		cd -; \
 	fi

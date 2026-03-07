@@ -11,8 +11,9 @@
     "@fortawesome/react-fontawesome": "^3.0.0",
     "@mui/icons-material": "^7.0.0",
     "@mui/material": "^7.0.0",
+    "@testing-library/dom": "^10.0.0",
     "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^14.0.0",
+    "@testing-library/react": "^16.0.0",
     "@testing-library/user-event": "^14.0.0",
     "axios": "^1.6.5",
     "bootstrap": "^4.4.1",
@@ -24,7 +25,7 @@
     "react-scripts": "^5.0.1",
     "react-use-websocket": "^4.5.0",
     "react-virtualized-auto-sizer": "^2.0.0",
-    "react-window": "^1.8.10",
+    "react-window": "^2.0.0",
     "reactstrap": "^9.2.2",
     "redux-thunk": "^3.1.0",
     "sass": "^1.70.0",
@@ -55,17 +56,17 @@
     ]
   },
   "devDependencies": {
-    "http-proxy-middleware": "^3.0.0",
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "@rollup/plugin-node-resolve": "^16.0.3",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-bootstrap": "^1.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/react-virtualized": "^9.21.29",
-    "@types/react-window": "^1.8.8",
     "@types/redux": "^3.6.0",
     "@types/redux-thunk": "^2.1.0",
     "@types/sass": "^1.45.0",
+    "http-proxy-middleware": "^3.0.0",
     "typescript": "^5.0.0"
   }
 }
