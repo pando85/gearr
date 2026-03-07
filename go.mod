@@ -12,7 +12,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/isayme/go-amqp-reconnect v0.0.0-20210303120416-fc811b0bcda2
 	github.com/jedib0t/go-pretty/v6 v6.7.8
-	github.com/lib/pq v1.10.9
+	github.com/lib/pq v1.11.2
 	github.com/rakyll/statik v0.1.8
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/pflag v1.0.10
