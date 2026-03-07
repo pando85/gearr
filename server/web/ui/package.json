@@ -62,7 +62,6 @@
     "@types/react-bootstrap": "^1.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/react-virtualized": "^9.21.29",
-    "@types/react-window": "^2.0.0",
     "@types/redux": "^3.6.0",
     "@types/redux-thunk": "^2.1.0",
     "@types/sass": "^1.45.0",
