@@ -6,7 +6,7 @@ toolchain go1.25.5
 
 require (
 	github.com/avast/retry-go v3.0.0+incompatible
-	github.com/gin-gonic/contrib v0.0.0-20250521004450-2b1292699c15
+	github.com/gin-gonic/contrib v0.0.0-20260101091603-d12f07a9136b
 	github.com/gin-gonic/gin v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
