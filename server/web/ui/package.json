@@ -55,8 +55,8 @@
     ]
   },
   "devDependencies": {
-    "http-proxy-middleware": "^3.0.0",
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "@rollup/plugin-node-resolve": "^16.0.3",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-bootstrap": "^1.0.0",
@@ -66,6 +66,7 @@
     "@types/redux": "^3.6.0",
     "@types/redux-thunk": "^2.1.0",
     "@types/sass": "^1.45.0",
+    "http-proxy-middleware": "^3.0.0",
     "typescript": "^5.0.0"
   }
 }

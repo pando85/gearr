@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { FixedSizeList } from 'react-window';
+import { List, RowComponentProps } from 'react-window';
 import { Button, Card, Dropdown } from 'react-bootstrap';
 import {
   ArrowDownward,
@@ -31,6 +31,68 @@ import { RootState } from './store';
 import { STATUS_FILTER_OPTIONS, DATE_FILTER_OPTIONS, formatDateShort, formatDateDetailed, getDateFromFilterOption, getStatusColor, renderPath, sortJobs, renderPathSmallScreen } from './utils';
 import { updateJob, resetJobs } from './actions/JobActions';
 import './JobTable.css';
+
+interface RowProps {
+  jobs: Job[];
+  isSmallScreen: boolean;
+  selectedJobIndex: number | null;
+  onButtonClick: (index: number) => void;
+  onDropdownItemClick: () => void;
+  onDropdownClick: (e: React.MouseEvent<HTMLElement>, job: Job) => void;
+  onMenuOptionClick: (job: Job | null, option: string) => void;
+  renderStatusCellContent: (job: Job) => React.ReactNode;
+}
+
+const Row = ({ index, style, jobs, isSmallScreen, selectedJobIndex, onButtonClick, onDropdownItemClick, onDropdownClick, onMenuOptionClick, renderStatusCellContent }: RowComponentProps<RowProps>) => {
+  const job = jobs[index];
+  if (!job) {
+    return null;
+  }
+  return (
+    <div className="tr row" style={{ ...style }}>
+      <div className="td col" title={job.source_path}>{renderPathSmallScreen(job.source_path, isSmallScreen, 20)}</div>
+      <div className="td col d-none d-sm-flex" title={job.destination_path}>{renderPath(job.destination_path, 60)}</div>
+      {selectedJobIndex === index && (
+        <Card style={{ width: '18rem', position: 'absolute', top: '50px', right: '20px' }}>
+          <Card.Body>
+            <Card.Title>Job Details</Card.Title>
+            <Card.Text>
+              <p>ID: {job.id}</p>
+              <p>Source: {job.source_path}</p>
+              <p>Destination: {job.destination_path}</p>
+              <p>Status Phase: {job.status_phase}</p>
+              <p>Status: {job.status}</p>
+              <p>Message: {job.status_message}</p>
+            </Card.Text>
+            <Button variant="secondary" onClick={() => onDropdownItemClick()}>Close</Button>
+          </Card.Body>
+        </Card>
+      )}
+      <div className="td col row-status" style={{ wordBreak: "keep-all" }}>{renderStatusCellContent(job)}</div>
+      <div className="td col" style={{ wordBreak: "keep-all" }} title={formatDateDetailed(job.last_update)}>
+        <div className="row-menu">
+          <div className="row-date">
+            {formatDateShort(job.last_update)}
+          </div>
+          <Dropdown onClick={(event) => onDropdownClick(event, job)}>
+            <Dropdown.Toggle variant="link" className="buttons-menu" size="sm" id={`dropdown-basic-${index}`} />
+            <Dropdown.Menu>
+              <Dropdown.Item title="Details" onClick={() => onButtonClick(index)}>
+                <Feed />
+              </Dropdown.Item>
+              <Dropdown.Item title="Delete" onClick={() => onMenuOptionClick(job, 'delete')}>
+                <Delete />
+              </Dropdown.Item>
+              <Dropdown.Item title="Recreate" onClick={() => onMenuOptionClick(job, 'recreate')}>
+                <Replay />
+              </Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface JobTableProps {
   token: string;
@@ -189,66 +251,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
     setFilteredJobs(sortJobs(sortColumn, sortDirection, filteredJobs));
   }, [selectedStatusFilter, jobs, selectedDateFilter, nameFilter, sortDirection, sortColumn]);
 
-  // Components
-  const Row = ({ index, style }: { index: number, style: React.CSSProperties }) => {
-    const job = filteredJobs[index];
-    if (!job) {
-      return null;
-    }
-    return (
-      <div className="tr row" style={{ ...style }}>
-        <div className="td col" title={job.source_path}>{renderPathSmallScreen(job.source_path, isSmallScreen, 20)}</div>
-        <div className="td col d-none d-sm-flex" title={job.destination_path}>{renderPath(job.destination_path, 60)}</div>
-        {selectedJobIndex === index && (
-          <Card style={{ width: '18rem', position: 'absolute', top: '50px', right: '20px' }}>
-            <Card.Body>
-              <Card.Title>Job Details</Card.Title>
-              <Card.Text>
-                <p>ID: {job.id}</p>
-                <p>Source: {job.source_path}</p>
-                <p>Destination: {job.destination_path}</p>
-                <p>Status Phase: {job.status_phase}</p>
-                <p>Status: {job.status}</p>
-                <p>Message: {job.status_message}</p>
-              </Card.Text>
-              <Button variant="secondary" onClick={() => handleDropdownItemClick()}>Close</Button>
-            </Card.Body>
-          </Card>
-        )}
-        <div className="td col row-status" style={{ wordBreak: "keep-all" }}>{renderStatusCellContent(job)}</div>
-        <div className="td col" style={{ wordBreak: "keep-all" }} title={formatDateDetailed(job.last_update)}>
-          <div className="row-menu">
-            <div className="row-date">
-              {formatDateShort(job.last_update)}
-            </div>
-            <Dropdown onClick={(event) => handleDropdownClick(event, job)}>
-              <Dropdown.Toggle variant="link" className="buttons-menu" size="sm" id={`dropdown-basic-${index}`} />
-              <Dropdown.Menu>
-                <Dropdown.Item title="Details" onClick={() => handleButtonClick(index)}>
-                  <Feed />
-                </Dropdown.Item>
-                <Dropdown.Item title="Delete" onClick={() => handleMenuOptionClick(job, 'delete')}>
-                  <Delete />
-                </Dropdown.Item>
-                <Dropdown.Item title="Recreate" onClick={() => handleMenuOptionClick(job, 'recreate')}>
-                  <Replay />
-                </Dropdown.Item>
-              </Dropdown.Menu>
-            </Dropdown>
-          </div>
-        </div>
-      </div >
-    );
-  };
-
-  interface FixScrollBottomProps {
-    style: React.CSSProperties;
-    children?: React.ReactNode;
-  }
-
-  const FixScrollBottom: React.FC<FixScrollBottomProps> = ({ style, children }) => {
-    return <div style={{ ...style, marginTop: '189px' }}>{children}</div>;
-  };
+  
 
   const ArrowIcon = ({ active, direction }: { active: boolean; direction: 'asc' | 'desc' }) => (
     <span>
@@ -344,16 +347,23 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
             </div>
           </div>
         </div>
-        <FixedSizeList
-          height={height}
-          width="100%"
-          innerElementType={FixScrollBottom}
-          itemCount={filteredJobs.length}
+<List
+          style={{ height, width: '100%' }}
+          rowComponent={Row}
+          rowCount={filteredJobs.length}
+          rowHeight={63}
           overscanCount={20}
-          itemSize={63}
-        >
-          {Row}
-        </FixedSizeList>
+          rowProps={{
+            jobs: filteredJobs,
+            isSmallScreen,
+            selectedJobIndex,
+            onButtonClick: handleButtonClick,
+            onDropdownItemClick: handleDropdownItemClick,
+            onDropdownClick: handleDropdownClick,
+            onMenuOptionClick: handleMenuOptionClick,
+            renderStatusCellContent,
+          }}
+        />
       </div>
     </div >
   );
