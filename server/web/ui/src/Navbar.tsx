@@ -19,7 +19,7 @@ interface CollapseNavProps {
 
 const CollapseNav: React.FC<CollapseNavProps> = ({ isOpen, className, id }) => (
   <Collapse className={className} id={id} isOpen={isOpen} navbar style={{ justifyContent: 'space-between' }}>
-    <Nav className="ml-0" navbar>
+    <Nav className="ms-0" navbar>
       <NavItem>
         <NavLink tag={Link} to="/jobs">
           Jobs
@@ -45,12 +45,12 @@ const Navigation: React.FC = () => {
 
   return (
     <Navbar className="top-bar" dark color="dark" expand="md" fixed="top">
-      <NavbarToggler onClick={toggle} className="mr-2" />
+      <NavbarToggler onClick={toggle} className="me-2" />
       <Link className="link pt-0 navbar-brand" to='/jobs'>
         <img src="/logo.svg" alt="Gearr" className="d-inline-block align-top logo" />
-        <span className="d-none d-sm-inline">Gearr</span>
+        <span className="d-none d-sm-block">Gearr</span>
       </Link>
-      <CollapseNav isOpen={isOpen} className="d-none d-sm-inline" />
+      <CollapseNav isOpen={isOpen} className="d-none d-sm-block" />
       <ThemeToggle />
       <CollapseNav isOpen={isOpen} className="high-level" id="large" />
     </Navbar>
