@@ -49,16 +49,19 @@ RUN ldd /usr/bin/ffmpeg && \
     ldd /usr/bin/ffplay
 
 FROM base as server
-COPY ./dist/gearr-server /app/gearr-server
-
-ENTRYPOINT ["/app/gearr-server"]
+WORKDIR /app
+COPY ./dist/gearr-server ./
+RUN chmod +x ./gearr-server
+ENTRYPOINT ["./gearr-server"]
 
 FROM base as worker
-COPY ./dist/gearr-worker /app/gearr-worker
-
-ENTRYPOINT ["/app/gearr-worker"]
+WORKDIR /app
+COPY ./dist/gearr-worker ./
+RUN chmod +x ./gearr-worker
+ENTRYPOINT ["./gearr-worker"]
 
 FROM tentacule/pgstosrt as worker-pgs
-COPY ./dist/gearr-worker /app/gearr-worker
-
-ENTRYPOINT ["/app/gearr-worker"]
+WORKDIR /app
+COPY ./dist/gearr-worker ./
+RUN chmod +x ./gearr-worker
+ENTRYPOINT ["./gearr-worker"]
