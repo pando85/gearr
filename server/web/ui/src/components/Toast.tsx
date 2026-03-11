@@ -1,6 +1,6 @@
 import React, { useEffect, createContext, useContext, useState, useCallback } from 'react';
-import { CheckCircle, Error, Warning, Info, Close } from '@mui/icons-material';
-import './styles/Toast.css';
+import { CheckCircle, Error as ErrorIcon, Warning, Info, Close } from '@mui/icons-material';
+import '../styles/Toast.css';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -30,7 +30,7 @@ export const useToast = (): ToastContextValue => {
 const ToastIcon: React.FC<{ type: ToastType }> = ({ type }) => {
   const icons: Record<ToastType, React.ReactNode> = {
     success: <CheckCircle className="toast-icon" />,
-    error: <Error className="toast-icon" />,
+    error: <ErrorIcon className="toast-icon" />,
     warning: <Warning className="toast-icon" />,
     info: <Info className="toast-icon" />,
   };

@@ -28,11 +28,6 @@ const App: React.FC = () => {
     setErrorText('');
   };
 
-  const handleLogout = () => {
-    setToken('');
-    setIsAuthenticated(false);
-  };
-
   const [userTheme, setUserTheme] = useLocalStorage<themeSetting>('user-prefers-color-scheme', 'auto');
   const browserHasThemes = useMedia('(prefers-color-scheme)');
   const browserWantsDarkTheme = useMedia('(prefers-color-scheme: dark)');

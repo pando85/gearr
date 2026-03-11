@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { WbSunny, DarkMode, SettingsBrightness, Menu, Close, GitHub, Work, People } from '@mui/icons-material';
 import { useTheme } from '../contexts/ThemeContext';
 import { themeSetting } from '../contexts/ThemeContext';
-import './styles/Navbar.css';
+import '../styles/Navbar.css';
 
 const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

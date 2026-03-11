@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Visibility, VisibilityOff, ErrorOutline } from '@mui/icons-material';
-import './styles/LoginPage.css';
+import '../styles/LoginPage.css';
 
 interface LoginPageProps {
   onLogin: (token: string) => void;

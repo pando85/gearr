@@ -9,8 +9,8 @@ import {
   ArrowForward 
 } from '@mui/icons-material';
 import { Job } from '../model';
-import { formatDateShort, getStatusColor } from '../utils';
-import './styles/Dashboard.css';
+import { formatDateShort } from '../utils';
+import '../styles/Dashboard.css';
 
 interface DashboardProps {
   jobs: Job[];

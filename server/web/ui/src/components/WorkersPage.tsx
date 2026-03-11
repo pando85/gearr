@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { People, Schedule, Storage, Dns } from '@mui/icons-material';
-import './styles/WorkersPage.css';
+import { People, Schedule, Dns } from '@mui/icons-material';
+import '../styles/WorkersPage.css';
 
 interface Worker {
   name: string;
