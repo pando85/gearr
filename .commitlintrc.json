@@ -8,6 +8,7 @@
       "always",
       [
         "build",
+        "chore",
         "docs",
         "feat",
         "fix",
@@ -23,6 +24,7 @@
       "always",
       [
         "ci",
+        "config",
         "deps",
         "docker",
         "integrations",
