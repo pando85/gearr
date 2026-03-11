@@ -6,7 +6,6 @@ import {
   Refresh,
   ArrowUpward,
   ArrowDownward,
-  MoreVert,
   Delete,
   Replay,
   Info,
@@ -20,7 +19,7 @@ import { RootState } from '../store';
 import { STATUS_FILTER_OPTIONS, DATE_FILTER_OPTIONS, formatDateShort, formatDateDetailed, getDateFromFilterOption, sortJobs } from '../utils';
 import { updateJob, resetJobs } from '../actions/JobActions';
 import { useToast } from './Toast';
-import './styles/JobsPage.css';
+import '../styles/JobsPage.css';
 
 interface JobsPageProps {
   token: string;
