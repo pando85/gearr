@@ -1,0 +1,240 @@
+.workers-page {
+  padding: 1.5rem 0;
+}
+
+.workers-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.workers-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.workers-title-icon {
+  color: var(--color-primary);
+}
+
+.workers-count {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border-radius: var(--radius-full);
+}
+
+.workers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.worker-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  transition: box-shadow var(--transition-normal), border-color var(--transition-normal);
+}
+
+.worker-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-color-hover);
+}
+
+.worker-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.worker-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.worker-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+  border-radius: var(--radius-lg);
+  font-size: 1.25rem;
+}
+
+[data-theme="dark"] .worker-icon {
+  background-color: rgba(99, 102, 241, 0.2);
+}
+
+.worker-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.worker-id {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+}
+
+.worker-status {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  border-radius: var(--radius-full);
+}
+
+.worker-status.online {
+  background-color: var(--color-success-light);
+  color: #166534;
+}
+
+[data-theme="dark"] .worker-status.online {
+  background-color: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+
+.worker-status.offline {
+  background-color: var(--color-error-light);
+  color: #991b1b;
+}
+
+[data-theme="dark"] .worker-status.offline {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+.worker-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+.worker-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.worker-detail {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.worker-detail:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.worker-detail-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.worker-detail-label svg {
+  font-size: 1rem;
+  color: var(--text-tertiary);
+}
+
+.worker-detail-value {
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.workers-empty {
+  padding: 4rem 2rem;
+  text-align: center;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+}
+
+.workers-empty-icon {
+  font-size: 3rem;
+  color: var(--text-tertiary);
+  margin-bottom: 1rem;
+}
+
+.workers-empty-title {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.workers-empty-text {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.workers-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.worker-skeleton {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+}
+
+.worker-skeleton-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.worker-skeleton-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-lg);
+}
+
+.worker-skeleton-text {
+  height: 16px;
+  border-radius: var(--radius-sm);
+}
+
+.worker-skeleton-line {
+  height: 12px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .workers-grid {
+    grid-template-columns: 1fr;
+  }
+}

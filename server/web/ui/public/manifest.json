@@ -1,0 +1,17 @@
+{
+  "short_name": "Gearr",
+  "name": "Gearr - Video Transcoding Dashboard",
+  "description": "Video transcoding management dashboard for x265 encoding",
+  "icons": [
+    {
+      "src": "logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#6366f1",
+  "background_color": "#0f172a",
+  "categories": ["utilities", "productivity"]
+}
