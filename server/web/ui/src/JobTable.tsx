@@ -308,7 +308,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
               </MenuItem>
             ))}
           </Select>
-          <Button variant="link" className="float-right" style={{ marginLeft: 'auto' }} onClick={handleReload}>
+          <Button variant="link" className="float-end" style={{ marginLeft: 'auto' }} onClick={handleReload}>
             <Cached />
           </Button>
         </div>

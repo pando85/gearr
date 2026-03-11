@@ -45,7 +45,7 @@ const Navigation: React.FC = () => {
 
   return (
     <Navbar className="top-bar" dark color="dark" expand="md" fixed="top">
-      <NavbarToggler onClick={toggle} className="mr-2" />
+      <NavbarToggler onClick={toggle} className="me-2" />
       <Link className="link pt-0 navbar-brand" to='/jobs'>
         <img src="/logo.svg" alt="Gearr" className="d-inline-block align-top logo" />
         <span className="d-none d-sm-inline">Gearr</span>

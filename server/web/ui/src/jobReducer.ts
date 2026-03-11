@@ -25,7 +25,7 @@ const initialState: JobState = {
     loading: true,
 };
 
-const jobReducer: Reducer<JobState, JobActionTypes> = (state = initialState, action) => {
+const jobReducer: Reducer<JobState> = (state = initialState, action: JobActionTypes) => {
     switch (action.type) {
         case FETCH_JOBS_REQUEST:
             return {

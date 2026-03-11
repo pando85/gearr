@@ -71,7 +71,7 @@ const App: React.FC = () => {
                   {errorText && (
                     <Alert key="danger" variant="danger" >
                       <div className="d-flex align-items-center">
-                        <div className="mr-2">
+                        <div className="me-2">
                           <ErrorOutline />
                         </div>
                         <div>
