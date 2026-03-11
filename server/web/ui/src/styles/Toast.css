@@ -1,0 +1,130 @@
+.toast-container {
+  position: fixed;
+  bottom: var(--spacing-lg);
+  right: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  z-index: var(--z-index-toast);
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  min-width: 320px;
+  max-width: 420px;
+  padding: var(--spacing-md);
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-lg);
+  pointer-events: auto;
+  animation: slideUp var(--transition-normal);
+}
+
+.toast.toast-success {
+  border-left: 4px solid var(--color-success);
+}
+
+.toast.toast-error {
+  border-left: 4px solid var(--color-error);
+}
+
+.toast.toast-warning {
+  border-left: 4px solid var(--color-warning);
+}
+
+.toast.toast-info {
+  border-left: 4px solid var(--color-info);
+}
+
+.toast-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.toast-success .toast-icon {
+  color: var(--color-success);
+}
+
+.toast-error .toast-icon {
+  color: var(--color-error);
+}
+
+.toast-warning .toast-icon {
+  color: var(--color-warning);
+}
+
+.toast-info .toast-icon {
+  color: var(--color-info);
+}
+
+.toast-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.toast-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.toast-message {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  word-wrap: break-word;
+}
+
+.toast-close {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.toast-close:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-hover);
+}
+
+.toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background-color: var(--color-primary);
+  border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);
+  animation: toast-progress linear forwards;
+}
+
+@keyframes toast-progress {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+@media (max-width: 480px) {
+  .toast-container {
+    left: var(--spacing-md);
+    right: var(--spacing-md);
+    bottom: var(--spacing-md);
+  }
+
+  .toast {
+    min-width: auto;
+    max-width: none;
+  }
+}
