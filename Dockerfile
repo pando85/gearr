@@ -33,7 +33,7 @@ RUN curl -sLO \
     find workspace -mindepth 1 -maxdepth 1 -type d ! -name 'bin' -exec rm -rf {} \; && \
     find workspace/bin -mindepth 1 -maxdepth 1 -type f ! -name 'ff*' -exec rm -f {} \;
 
-FROM debian:trixie-20240110-slim as base
+FROM ubuntu:24.04 as base
 
 RUN apt-get update \
     && apt-get install -y \
