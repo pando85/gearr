@@ -24,7 +24,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/avast/retry-go"
+	"github.com/avast/retry-go/v4"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/vansante/go-ffprobe.v2"
 )

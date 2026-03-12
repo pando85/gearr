@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/avast/retry-go"
+	"github.com/avast/retry-go/v4"
 	"github.com/google/uuid"
 	"github.com/isayme/go-amqp-reconnect/rabbitmq"
 	log "github.com/sirupsen/logrus"
