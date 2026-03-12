@@ -5,17 +5,17 @@
   "dependencies": {
     "@emotion/react": "^11.11.3",
     "@emotion/styled": "^11.11.0",
-    "@forevolve/bootstrap-dark": "^4.0.0",
     "@fortawesome/fontawesome-svg-core": "^7.0.0",
     "@fortawesome/free-solid-svg-icons": "^7.0.0",
     "@fortawesome/react-fontawesome": "^3.0.0",
     "@mui/icons-material": "^7.0.0",
     "@mui/material": "^7.0.0",
+    "@testing-library/dom": "^10.0.0",
     "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^14.0.0",
+    "@testing-library/react": "^16.0.0",
     "@testing-library/user-event": "^14.0.0",
     "axios": "^1.6.5",
-    "bootstrap": "^4.4.1",
+    "bootstrap": "^5.0.0",
     "react": "^19.0.0",
     "react-bootstrap": "^2.10.0",
     "react-dom": "^19.0.0",
@@ -34,7 +34,8 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "postinstall": "node patch-schema-utils.js"
   },
   "eslintConfig": {
     "extends": [
@@ -55,7 +56,6 @@
     ]
   },
   "devDependencies": {
-    "http-proxy-middleware": "^3.0.0",
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
@@ -66,6 +66,21 @@
     "@types/redux": "^3.6.0",
     "@types/redux-thunk": "^2.1.0",
     "@types/sass": "^1.45.0",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "ajv-keywords": "^5.1.0",
+    "glob": "^13.0.6",
+    "http-proxy-middleware": "^3.0.0",
     "typescript": "^5.0.0"
+  },
+  "overrides": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "ajv-keywords": "^5.1.0",
+    "schema-utils": {
+      "ajv": "$ajv",
+      "ajv-formats": "$ajv-formats",
+      "ajv-keywords": "$ajv-keywords"
+    }
   }
 }
