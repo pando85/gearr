@@ -11,6 +11,7 @@
     "@fortawesome/react-fontawesome": "^3.0.0",
     "@mui/icons-material": "^7.0.0",
     "@mui/material": "^7.0.0",
+    "@testing-library/dom": "^10.0.0",
     "@testing-library/jest-dom": "^6.0.0",
     "@testing-library/react": "^16.0.0",
     "@testing-library/user-event": "^14.0.0",
@@ -42,6 +43,15 @@
       "react-app/jest"
     ]
   },
+  "jest": {
+    "moduleNameMapper": {
+      "^react-router-dom$": "<rootDir>/node_modules/react-router-dom/dist/index.js",
+      "^react-router/dom$": "<rootDir>/node_modules/react-router/dist/development/dom-export.js"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(axios|react-router|react-router-dom)/)"
+    ]
+  },
   "browserslist": {
     "production": [
       ">0.2%",
@@ -55,8 +65,8 @@
     ]
   },
   "devDependencies": {
-    "http-proxy-middleware": "^3.0.0",
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "@types/jest": "^30.0.0",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-bootstrap": "^1.0.0",
@@ -66,6 +76,7 @@
     "@types/redux": "^3.6.0",
     "@types/redux-thunk": "^2.1.0",
     "@types/sass": "^1.45.0",
+    "http-proxy-middleware": "^3.0.0",
     "typescript": "^5.0.0"
   }
 }
