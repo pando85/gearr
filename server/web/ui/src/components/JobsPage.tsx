@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { FixedSizeList } from 'react-window';
+import { List, type RowComponentProps } from 'react-window';
 import {
   Search,
   Refresh,
@@ -39,7 +39,6 @@ const JobsPage: React.FC<JobsPageProps> = ({ token, setShowJobTable, setErrorTex
   const [sortColumn, setSortColumn] = useState<string | null>('last_update');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [height, setHeight] = useState(window.innerHeight - 200);
 
   const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
   const wsURL = `${protocol}://${window.location.hostname}:${window.location.port}/ws/job?token=${token}`;
@@ -89,14 +88,6 @@ const JobsPage: React.FC<JobsPageProps> = ({ token, setShowJobTable, setErrorTex
   useEffect(() => {
     dispatch(fetchJobs(token, setShowJobTable, setErrorText) as any);
   }, [dispatch, token, setShowJobTable, setErrorText]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setHeight(window.innerHeight - 200);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   useEffect(() => {
     let result = jobs;
@@ -165,7 +156,7 @@ const JobsPage: React.FC<JobsPageProps> = ({ token, setShowJobTable, setErrorTex
     return fileName;
   };
 
-  const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
+  const Row = ({ index, style, filteredJobs }: RowComponentProps<{ filteredJobs: Job[] }>) => {
     const job = filteredJobs[index];
     if (!job) return null;
 
@@ -279,14 +270,12 @@ const JobsPage: React.FC<JobsPageProps> = ({ token, setShowJobTable, setErrorTex
         </div>
 
         {filteredJobs.length > 0 ? (
-          <FixedSizeList
-            height={height}
-            width="100%"
-            itemCount={filteredJobs.length}
-            itemSize={56}
-          >
-            {Row}
-          </FixedSizeList>
+          <List
+            rowComponent={Row}
+            rowCount={filteredJobs.length}
+            rowHeight={56}
+            rowProps={{ filteredJobs }}
+          />
         ) : (
           <div className="jobs-empty">
             <Assignment className="jobs-empty-icon" />
