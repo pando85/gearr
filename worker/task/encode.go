@@ -634,7 +634,9 @@ func (J *EncodeWorker) updateTaskStatus(encode *model.WorkTaskEncode, notificati
 		Status:           status,
 		Message:          message,
 	}
-	J.Manager.EventNotification(event)
+	if err := J.Manager.EventNotification(event); err != nil {
+		J.terminal.Error("failed to send event notification: %v", err)
+	}
 
 	if event.Message != "" {
 		J.terminal.Log("[%s] %s has been %s: %s", event.Id.String(), event.NotificationType, event.Status, event.Message)

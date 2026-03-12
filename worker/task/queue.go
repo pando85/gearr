@@ -110,21 +110,28 @@ func (Q *RabbitMQClient) start(ctx context.Context) {
 func (Q *RabbitMQClient) stop() {
 	log.Info("waiting for jobs to cancel")
 }
-func (Q *RabbitMQClient) EventNotification(event model.TaskEvent) {
-	//TODO maybe we should set the queueName always?
+func (Q *RabbitMQClient) EventNotification(event model.TaskEvent) error {
 	err := Q.publishMessage(Q.brokerConfig.TaskEventQueueName, event)
 	if err != nil {
-		log.Panic(err)
+		return err
 	}
 
 	log.Debugf("[job %s] %s has been %s", event.Id.String(), event.NotificationType, event.Status)
+	return nil
 }
 func (Q *RabbitMQClient) RequestPGSJob(pgsJob model.TaskPGS) <-chan *model.TaskPGSResponse {
 	pgsJobControl := NewPGSJobControl(pgsJob)
 	pgsJob.ReplyTo = Q.workerUniqueQueue
 	log.Debugf("pgsJobControl %s", pgsJobControl.task.Id)
 	if err := Q.publishMessage(Q.brokerConfig.TaskPGSToSrtQueueName, pgsJob); err != nil {
-		log.Panic(err)
+		log.Errorf("failed to publish PGS job: %v", err)
+		pgsJobControl.response <- &model.TaskPGSResponse{
+			Id:    pgsJob.Id,
+			PGSID: pgsJob.PGSID,
+			Err:   err.Error(),
+		}
+		close(pgsJobControl.response)
+		return pgsJobControl.response
 	}
 	log.Debugf("published job %s to queue %+v", pgsJob.Id, Q.brokerConfig.TaskPGSToSrtQueueName)
 

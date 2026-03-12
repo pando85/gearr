@@ -275,7 +275,7 @@ func (v *Job) AddEvent(eventType EventType, notificationType NotificationType, n
 }
 
 type Manager interface {
-	EventNotification(event TaskEvent)
+	EventNotification(event TaskEvent) error
 	ResponsePGSJob(response TaskPGSResponse) error
 	RequestPGSJob(pgsJob TaskPGS) <-chan *TaskPGSResponse
 }
