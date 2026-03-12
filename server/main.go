@@ -34,8 +34,7 @@ type CmdLineOpts struct {
 }
 
 var (
-	opts                CmdLineOpts
-	ApplicationFileName string
+	opts CmdLineOpts
 )
 
 func init() {
@@ -119,6 +118,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
+	wg.Add(1)
 	go func() {
 		shutdownHandler(ctx, sigs, cancel)
 		wg.Done()
