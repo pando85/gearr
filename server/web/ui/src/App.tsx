@@ -1,51 +1,34 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import Alert from 'react-bootstrap/Alert';
-import { Visibility, VisibilityOff, ErrorOutline } from '@mui/icons-material';
 
-import JobTable from './JobTable';
-import WorkerTable from './WorkerTable';
+import LoginPage from './components/LoginPage';
+import Navbar from './components/Navbar';
+import JobsPage from './components/JobsPage';
+import WorkersPage from './components/WorkersPage';
+import Dashboard from './components/Dashboard';
+import { ToastProvider } from './components/Toast';
 import useMedia from './hooks/useMedia';
-import Navigation from './Navbar';
-import { ThemeContext, themeName, themeSetting } from './contexts/ThemeContext';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { Theme, themeLocalStorageKey } from './Theme';
-
+import { ThemeContext, themeName, themeSetting } from './contexts/ThemeContext';
+import { Theme } from './Theme';
+import { useSelector } from 'react-redux';
+import { RootState } from './store';
+import './styles/design-system.css';
 
 const App: React.FC = () => {
   const [token, setToken] = useState<string>('');
-  const [showToken, setShowToken] = useState<boolean>(false);
-  const [showJobTable, setShowJobTable] = useState<boolean>(false);
-  const [errorText, setErrorText] = useState<string>("");
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [errorText, setErrorText] = useState<string>('');
 
-  const handleTokenInput = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setToken(event.target.value);
+  const jobs = useSelector((state: RootState) => state.jobs);
+
+  const handleLogin = (newToken: string) => {
+    setToken(newToken);
+    setIsAuthenticated(true);
+    setErrorText('');
   };
 
-  const handleTokenSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (token) {
-      setShowJobTable(true);
-    }
-  };
-
-  const handleToggleShowToken = () => {
-    setShowToken((prevShowToken) => !prevShowToken);
-  };
-
-  const Jobs: React.FC = () => (
-    <div className="content-container">
-      {showJobTable && <JobTable token={token} setShowJobTable={setShowJobTable} setErrorText={setErrorText} />}
-    </div>
-  );
-
-  const Workers: React.FC = () => (
-    <div className="content-container">
-      {showJobTable && <WorkerTable token={token} setShowJobTable={setShowJobTable} setErrorText={setErrorText} />}
-    </div>
-  );
-
-  const [userTheme, setUserTheme] = useLocalStorage<themeSetting>(themeLocalStorageKey, 'auto');
+  const [userTheme, setUserTheme] = useLocalStorage<themeSetting>('user-prefers-color-scheme', 'auto');
   const browserHasThemes = useMedia('(prefers-color-scheme)');
   const browserWantsDarkTheme = useMedia('(prefers-color-scheme: dark)');
 
@@ -58,64 +41,48 @@ const App: React.FC = () => {
 
   return (
     <ThemeContext.Provider
-      value={{ theme: theme, userPreference: userTheme, setTheme: (t: themeSetting) => setUserTheme(t) }}
+      value={{ theme, userPreference: userTheme, setTheme: (t: themeSetting) => setUserTheme(t) }}
     >
       <Theme />
-      <Router>
-        <div className="page">
-          <Navigation />
-          {!showJobTable && (
-            <div className="centered-container">
-              <div className="auth-form">
-                <form className="token-input" onSubmit={handleTokenSubmit}>
-                  {errorText && (
-                    <Alert key="danger" variant="danger" >
-                      <div className="d-flex align-items-center">
-<div className="me-2">
-                          <ErrorOutline />
-                        </div>
-                        <div>
-                          <span>Login failed</span>
-                          <div>{errorText}</div>
-
-                        </div>
-                      </div>
-                    </Alert>
-                  )}
-                  <div className="field">
-                    <label className="is-label">Token</label>
-                    <div className="password-input-container">
-                      <input
-                        className="password-input"
-                        type={showToken ? 'text' : 'password'}
-                        value={token}
-                        onChange={handleTokenInput}
-                      />
-                      <div className="password-input-suffix">
-                        {showToken ? (
-                          <VisibilityOff className="eye-icon" onClick={handleToggleShowToken} />
-                        ) : (
-                          <Visibility className="eye-icon" onClick={handleToggleShowToken} />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <button className="btn btn-primary is-label" type="submit">Sign In</button>
-                </form>
-              </div>
-            </div>
-          )}
-          {showJobTable && (
-          <Routes>
-            <Route path="/" element={<Navigate to="/jobs" replace />} />
-            <Route path="/jobs" element={<Jobs />} />
-            <Route path="/workers" element={<Workers />} />
-          </Routes>
-          )}
-        </div>
-      </Router>
-    </ThemeContext.Provider >
-
+      <ToastProvider>
+        <Router>
+          <div className="page">
+            {isAuthenticated && <Navbar />}
+            {!isAuthenticated ? (
+              <LoginPage onLogin={handleLogin} errorText={errorText} />
+            ) : (
+              <Routes>
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route 
+                  path="/dashboard" 
+                  element={<Dashboard jobs={jobs} />} 
+                />
+                <Route 
+                  path="/jobs" 
+                  element={
+                    <JobsPage 
+                      token={token} 
+                      setShowJobTable={setIsAuthenticated} 
+                      setErrorText={setErrorText} 
+                    />
+                  } 
+                />
+                <Route 
+                  path="/workers" 
+                  element={
+                    <WorkersPage 
+                      token={token} 
+                      setShowJobTable={setIsAuthenticated} 
+                      setErrorText={setErrorText} 
+                    />
+                  } 
+                />
+              </Routes>
+            )}
+          </div>
+        </Router>
+      </ToastProvider>
+    </ThemeContext.Provider>
   );
 };
 

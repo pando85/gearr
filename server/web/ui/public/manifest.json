@@ -1,15 +1,20 @@
 {
   "short_name": "Gearr",
-  "name": "Gearr App",
+  "name": "Gearr - Video Encoding Management",
+  "description": "A modern web interface for managing video encoding jobs",
   "icons": [
     {
       "src": "logo.svg",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/svg+xml"
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     }
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#6366f1",
+  "background_color": "#ffffff",
+  "orientation": "portrait-primary",
+  "categories": ["productivity", "utilities"],
+  "lang": "en-US"
 }
