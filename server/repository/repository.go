@@ -167,13 +167,15 @@ func (S *SQLRepository) getWorker(ctx context.Context, db Transaction, name stri
 	worker := model.Worker{}
 	found := false
 	if rows.Next() {
-		rows.Scan(&worker.Name, &worker.Ip, &worker.QueueName, &worker.LastSeen)
+		if err := rows.Scan(&worker.Name, &worker.Ip, &worker.QueueName, &worker.LastSeen); err != nil {
+			return nil, err
+		}
 		found = true
 	}
 	if !found {
 		return nil, fmt.Errorf("%w, %s", ErrElementNotFound, name)
 	}
-	return &worker, err
+	return &worker, nil
 }
 
 func (S *SQLRepository) GetWorkers(ctx context.Context) (*[]model.Worker, error) {
@@ -194,7 +196,9 @@ func (S *SQLRepository) getWorkers(ctx context.Context, db Transaction) (*[]mode
 	workers := []model.Worker{}
 	for rows.Next() {
 		worker := model.Worker{}
-		rows.Scan(&worker.Name, &worker.Ip, &worker.QueueName, &worker.LastSeen)
+		if err := rows.Scan(&worker.Name, &worker.Ip, &worker.QueueName, &worker.LastSeen); err != nil {
+			return nil, err
+		}
 		workers = append(workers, worker)
 	}
 
@@ -245,13 +249,15 @@ func (S *SQLRepository) getJob(ctx context.Context, tx Transaction, uuid string)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	job := model.Job{}
 	found := false
 	if rows.Next() {
-		rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath)
+		if err := rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath); err != nil {
+			return nil, err
+		}
 		found = true
 	}
-	rows.Close()
 	if !found {
 		return nil, fmt.Errorf("%w, %s", ErrElementNotFound, uuid)
 	}
@@ -297,7 +303,9 @@ func (S *SQLRepository) getJobs(ctx context.Context, tx Transaction) (*[]model.J
 	jobs := []model.Job{}
 	for rows.Next() {
 		job := model.Job{}
-		rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath, &job.LastUpdate, &job.Status, &job.StatusPhase, &job.StatusMessage)
+		if err := rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath, &job.LastUpdate, &job.Status, &job.StatusPhase, &job.StatusMessage); err != nil {
+			return nil, err
+		}
 		jobs = append(jobs, job)
 	}
 
@@ -314,7 +322,9 @@ func (S *SQLRepository) getTaskEvents(ctx context.Context, tx Transaction, uuid 
 	var taskEvents []*model.TaskEvent
 	for rows.Next() {
 		event := model.TaskEvent{}
-		rows.Scan(&event.Id, &event.EventID, &event.WorkerName, &event.EventTime, &event.EventType, &event.NotificationType, &event.Status, &event.Message)
+		if err := rows.Scan(&event.Id, &event.EventID, &event.WorkerName, &event.EventTime, &event.EventType, &event.NotificationType, &event.Status, &event.Message); err != nil {
+			return nil, err
+		}
 		taskEvents = append(taskEvents, &event)
 	}
 	log.Debugf("task events: %+v", taskEvents)
@@ -334,7 +344,9 @@ func (S *SQLRepository) getJobStatus(ctx context.Context, tx Transaction, uuid s
 	defer rows.Close()
 
 	for rows.Next() {
-		rows.Scan(&last_update, &status, &statusPhase, &message)
+		if err := rows.Scan(&last_update, &status, &statusPhase, &message); err != nil {
+			return &last_update, status, statusPhase, message, err
+		}
 	}
 	return &last_update, status, statusPhase, message, nil
 }
@@ -346,6 +358,7 @@ func (S *SQLRepository) getJobByPath(ctx context.Context, tx Transaction, path s
 		log.Errorf("no job founds by path: %s", path)
 		return nil, err
 	}
+	defer rows.Close()
 
 	log.Debugf("rows: %+v", rows)
 
@@ -353,11 +366,12 @@ func (S *SQLRepository) getJobByPath(ctx context.Context, tx Transaction, path s
 
 	found := false
 	if rows.Next() {
-		rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath)
+		if err := rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath); err != nil {
+			return nil, err
+		}
 		found = true
 	}
 	log.Debugf("job: %+v", job)
-	rows.Close()
 	if !found {
 		return nil, nil
 	}
@@ -401,12 +415,14 @@ func (S *SQLRepository) addNewTaskEvent(ctx context.Context, tx Transaction, eve
 	if err != nil {
 		return err
 	}
+	defer rows.Close()
 
 	jobEventID := -1
 	if rows.Next() {
-		rows.Scan(&jobEventID)
+		if err := rows.Scan(&jobEventID); err != nil {
+			return err
+		}
 	}
-	rows.Close()
 	if jobEventID+1 != event.EventID {
 		return fmt.Errorf("EventID for %s not match,lastReceived %d, new %d", event.Id.String(), jobEventID, event.EventID)
 	}
@@ -436,14 +452,16 @@ func (S *SQLRepository) getTimeoutJobs(ctx context.Context, tx Transaction, time
 		"(SELECT job_id,max(job_event_id) as job_event_id  FROM job_events WHERE notification_type='Job'  group by job_id) as m "+
 		"on m.job_id=v.job_id and m.job_event_id=v.job_event_id WHERE status='started' and v.event_time < $1::timestamptz", timeoutDate)
 
-	//2020-05-17 20:50:41.428531 +00:00
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	var taskEvents []*model.TaskEvent
 	for rows.Next() {
 		event := model.TaskEvent{}
-		rows.Scan(&event.Id, &event.EventID, &event.WorkerName, &event.EventTime, &event.EventType, &event.NotificationType, &event.Status, &event.Message)
+		if err := rows.Scan(&event.Id, &event.EventID, &event.WorkerName, &event.EventTime, &event.EventType, &event.NotificationType, &event.Status, &event.Message); err != nil {
+			return nil, err
+		}
 		taskEvents = append(taskEvents, &event)
 	}
 	return taskEvents, nil
