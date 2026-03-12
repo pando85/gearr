@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { FixedSizeList } from 'react-window';
+import { List, type RowComponentProps } from 'react-window';
 import { Button, Card, Dropdown } from 'react-bootstrap';
 import {
   ArrowDownward,
@@ -46,7 +46,6 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
   const [selectedDateFilter, setSelectedDateFilter] = useState<string>('');
   const [selectedJobIndex, setSelectedJobIndex] = useState<number | null>(null);
   const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth <= 768);
-  const [height, setHeight] = useState(window.innerHeight);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
@@ -164,7 +163,6 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
   useEffect(() => {
     const handleResize = () => {
       setIsSmallScreen(window.innerWidth <= 768);
-      setHeight(window.innerHeight);
     };
 
     window.addEventListener('resize', handleResize);
@@ -190,7 +188,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
   }, [selectedStatusFilter, jobs, selectedDateFilter, nameFilter, sortDirection, sortColumn]);
 
   // Components
-  const Row = ({ index, style }: { index: number, style: React.CSSProperties }) => {
+  const Row = ({ index, style, filteredJobs }: RowComponentProps<{ filteredJobs: Job[] }>) => {
     const job = filteredJobs[index];
     if (!job) {
       return null;
@@ -239,15 +237,6 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
         </div>
       </div >
     );
-  };
-
-  interface FixScrollBottomProps {
-    style: React.CSSProperties;
-    children?: React.ReactNode;
-  }
-
-  const FixScrollBottom: React.FC<FixScrollBottomProps> = ({ style, children }) => {
-    return <div style={{ ...style, marginTop: '189px' }}>{children}</div>;
   };
 
   const ArrowIcon = ({ active, direction }: { active: boolean; direction: 'asc' | 'desc' }) => (
@@ -308,7 +297,7 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
               </MenuItem>
             ))}
           </Select>
-          <Button variant="link" className="float-right" style={{ marginLeft: 'auto' }} onClick={handleReload}>
+<Button variant="link" className="float-end" style={{ marginLeft: 'auto' }} onClick={handleReload}>
             <Cached />
           </Button>
         </div>
@@ -344,16 +333,13 @@ const JobTable: React.FC<JobTableProps> = ({ token, setShowJobTable, setErrorTex
             </div>
           </div>
         </div>
-        <FixedSizeList
-          height={height}
-          width="100%"
-          innerElementType={FixScrollBottom}
-          itemCount={filteredJobs.length}
-          overscanCount={20}
-          itemSize={63}
-        >
-          {Row}
-        </FixedSizeList>
+<List
+          rowComponent={Row}
+          rowCount={filteredJobs.length}
+          rowHeight={63}
+          rowProps={{ filteredJobs }}
+          style={{ paddingTop: '189px' }}
+        />
       </div>
     </div >
   );

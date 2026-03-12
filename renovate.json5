@@ -1,22 +1,30 @@
 {
-  $schema: "https://docs.renovatebot.com/renovate-schema.json",
-  extends: ["config:recommended"],
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    'config:recommended',
+  ],
   packageRules: [
     {
-      matchPackagePatterns: ".*",
-      commitMessagePrefix: "build(deps): ",
+      commitMessagePrefix: 'build(deps): ',
+      matchPackageNames: [
+        '/.*/',
+      ],
     },
     {
-      matchUpdateTypes: ["minor"],
-      matchCurrentVersion: "!/^0/",
+      matchUpdateTypes: [
+        'minor',
+      ],
+      matchCurrentVersion: '!/^0/',
       automerge: true,
-      automergeType: "pr",
+      automergeType: 'pr',
       platformAutomerge: true,
     },
     {
-      matchUpdateTypes: ["patch"],
+      matchUpdateTypes: [
+        'patch',
+      ],
       automerge: true,
-      automergeType: "pr",
+      automergeType: 'pr',
       platformAutomerge: true,
     },
   ],
