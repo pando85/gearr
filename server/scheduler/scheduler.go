@@ -380,39 +380,7 @@ func (R *RuntimeScheduler) GetWorkers(ctx context.Context) (*[]model.Worker, err
 }
 
 func (S *RuntimeScheduler) stop() {
-
 }
-
-/*
-	func init() {
-		f, _ := os.Open("/mnt/d/encode_public_videos.csv")
-		fileScanner := bufio.NewScanner(f)
-		fileScanner.Split(bufio.ScanLines)
-		i := 0
-		for fileScanner.Scan() {
-			i++
-			line := fileScanner.Text()
-			if strings.Contains(line, "265") {
-				continue
-			}
-			if strings.Contains(line, "[ ]") {
-				continue
-			}
-			if !x264ex.MatchString(line) {
-				fmt.Printf("264: %d FAIL on %s\n\r", i, line)
-			}
-
-			if strings.Contains(strings.ToLower(line), "aac") {
-				continue
-			}
-			if !ac3ex.MatchString(line) {
-				fmt.Printf("AC3: %d FAIL on %s\n\r", i, line)
-			}
-			formatTargetName(line)
-
-		}
-	}
-*/
 func formatTargetName(path string) string {
 	p := x264ex.ReplaceAllString(path, "x265")
 	p = ac3ex.ReplaceAllString(p, "AAC")

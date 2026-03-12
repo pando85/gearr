@@ -83,27 +83,10 @@ func init() {
 		log.Panic(err)
 	}
 
-	//Fix Paths
 	opts.Scheduler.DownloadPath = filepath.Clean(opts.Scheduler.DownloadPath)
 	opts.Scheduler.UploadPath = filepath.Clean(opts.Scheduler.UploadPath)
 	helper.CheckPath(opts.Scheduler.DownloadPath)
 	helper.CheckPath(opts.Scheduler.UploadPath)
-	/*
-	   scheduleTimeDuration, err := time.ParseDuration(opts.ScheduleTime)
-
-	   	if err!=nil {
-	   		log.Panic(err)
-	   	}
-
-	   jobTimeout, err := time.ParseDuration(opts.JobTimeout)
-
-	   	if err!=nil {
-	   		log.Panic(err)
-	   	}
-
-	   opts.Scheduler.ScheduleTime = scheduleTimeDuration
-	   opts.Scheduler.JobTimeout = jobTimeout
-	*/
 }
 
 func usage() {

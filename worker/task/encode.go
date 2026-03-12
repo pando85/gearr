@@ -431,7 +431,6 @@ func (J *EncodeWorker) FFMPEG(job *model.WorkTaskEncode, videoContainer *Contain
 
 	isClosed := false
 	defer func() {
-		// close(ffmpegProgressChan)
 		isClosed = true
 	}()
 
@@ -536,7 +535,6 @@ func (J *EncodeWorker) UploadJob(task *model.WorkTaskEncode, track *TaskTracks) 
 		reader := NewProgressTrackStream(track, encodedFile)
 
 		client := &http.Client{}
-		//go printProgress(J.ctx, reader, fileSize, wg, "Uploading")
 		req, err := http.NewRequestWithContext(J.ctx, "POST", task.TaskEncode.UploadURL, reader)
 		if err != nil {
 			return err
@@ -555,7 +553,6 @@ func (J *EncodeWorker) UploadJob(task *model.WorkTaskEncode, track *TaskTracks) 
 		if err != nil {
 			return err
 		}
-		//wg.Wait()
 		if resp.StatusCode != 201 {
 			return fmt.Errorf("invalid status code %d", resp.StatusCode)
 		}
@@ -943,7 +940,6 @@ func (J *EncodeWorker) encodeVideo(job *model.WorkTaskEncode, track *TaskTracks)
 	}()
 	err = J.FFMPEG(job, videoContainer, FFMPEGProgressChan)
 	if err != nil {
-		//<-time.After(time.Minute*30)
 		J.updateTaskStatus(job, model.FFMPEGSNotification, model.FailedNotificationStatus, err.Error())
 		return err
 	}
@@ -968,10 +964,6 @@ func (J *EncodeWorker) encodeVideo(job *model.WorkTaskEncode, track *TaskTracks)
 	J.updateTaskStatus(job, model.FFMPEGSNotification, model.CompletedNotificationStatus, "")
 	return nil
 }
-
-/*func (J *EncodeWorker) isQueueFull() bool {
-	return len(J.encodeChan) >= MAX_PREFETCHED_JOBS || len(J.downloadChan) > 0
-}*/
 
 type FFMPEGGenerator struct {
 	inputPaths     []string

@@ -73,7 +73,6 @@ func (P *PGSWorker) Prepare(workData []byte, queueManager model.Manager) error {
 
 func (P *PGSWorker) Execute() (err error) {
 	log.Infof("converting PGS to SRT for job %s stream %d", P.task.Id.String(), P.task.PGSID)
-	//TODO events??
 	inputFilePath := filepath.Join(P.tempPath, strconv.Itoa(P.task.PGSID)+".sup")
 	outputFileName := strconv.Itoa(P.task.PGSID) + ".srt"
 	outputFilePath := filepath.Join(P.tempPath, outputFileName)
@@ -103,7 +102,6 @@ func (P *PGSWorker) Execute() (err error) {
 	}
 
 	language := calculateTesseractLanguage(P.task.PGSLanguage)
-	//<-time.After(time.Minute*30)
 	PGSToSrtCommand := command.NewCommand(P.workerConfig.DotnetPath, fmt.Sprintf("%s", P.workerConfig.PGSTOSrtDLLPath), "--input", inputFilePath, "--output", outputFilePath, "--tesseractlanguage", language, "--tesseractdata", P.workerConfig.TesseractDataPath).
 		SetWorkDir(P.tempPath)
 	log.Debugf("pgstosrt command: %s", PGSToSrtCommand.GetFullCommand())

@@ -203,7 +203,6 @@ func (e TaskEvent) IsUploading() bool {
 }
 
 func (W *WorkTaskEncode) Clean() error {
-	//log.Warnf("[%s] cleaning up task workspace", W.TaskEncode.Id.String())
 	err := os.RemoveAll(W.WorkDir)
 	if err != nil {
 		return err
