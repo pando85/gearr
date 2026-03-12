@@ -49,7 +49,7 @@ func (cs *Slice) Delete(item interface{}) {
 	}
 	if foundIndex != -1 {
 		cs.items[foundIndex] = cs.items[len(cs.items)-1]
-		cs.items[len(cs.items)-1] = ""
+		cs.items[len(cs.items)-1] = nil
 		cs.items = cs.items[:len(cs.items)-1]
 	}
 }

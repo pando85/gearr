@@ -21,8 +21,8 @@ func (cm *Map) Set(key string, value interface{}) {
 }
 
 func (cm *Map) Get(key string) (interface{}, bool) {
-	cm.Lock()
-	defer cm.Unlock()
+	cm.RLock()
+	defer cm.RUnlock()
 
 	value, ok := cm.items[key]
 
