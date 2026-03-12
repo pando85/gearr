@@ -16,6 +16,7 @@ RUN apt-get update \
         python-is-python3 \
         ninja-build \
         meson \
+        git \
     && apt-get clean; rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/* \
     && update-ca-certificates
 
