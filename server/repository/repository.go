@@ -417,11 +417,15 @@ func (S *SQLRepository) addNewTaskEvent(ctx context.Context, tx Transaction, eve
 	}
 	defer rows.Close()
 
-	jobEventID := -1
+	var maxEventID sql.NullInt64
 	if rows.Next() {
-		if err := rows.Scan(&jobEventID); err != nil {
+		if err := rows.Scan(&maxEventID); err != nil {
 			return err
 		}
+	}
+	jobEventID := -1
+	if maxEventID.Valid {
+		jobEventID = int(maxEventID.Int64)
 	}
 	if jobEventID+1 != event.EventID {
 		return fmt.Errorf("EventID for %s not match,lastReceived %d, new %d", event.Id.String(), jobEventID, event.EventID)
