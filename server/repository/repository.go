@@ -89,13 +89,13 @@ type SQLServerConfig struct {
 }
 
 func NewSQLRepository(config SQLServerConfig) (*SQLRepository, error) {
-	connectionString := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s", config.Host, config.Port, config.User, config.Password, config.Database, config.SSLMode)
+	connectionString := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s binary_parameters=yes", config.Host, config.Port, config.User, config.Password, config.Database, config.SSLMode)
 	db, err := sql.Open(config.Driver, connectionString)
 	if err != nil {
 		return nil, err
 	}
 	db.SetMaxOpenConns(5)
-	db.SetConnMaxLifetime(0)
+	db.SetConnMaxLifetime(5 * time.Minute)
 	db.SetMaxIdleConns(5)
 	/*	go func(){
 		for {
