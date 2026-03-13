@@ -97,12 +97,12 @@ run-all:
 .PHONY: down
 down:		## stop all containers from docker-compose
 down:
-	@docker-compose down --volumes
+	@docker compose down --volumes
 
 .PHONY: logs
 logs:	## show logs
 logs:
-	@docker-compose logs -f
+	@docker compose logs -f
 
 .PHONY: demo-files
 demo-files:		## download demo file
