@@ -81,7 +81,6 @@ image-% push-image-%: build-%
 	fi; \
 	docker buildx build \
 		$${DOCKER_BUILD_ARG} \
-		--cache-from $(IMAGE_NAME):latest-$* \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
 		-f Dockerfile \
 		--target $* \
