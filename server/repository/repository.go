@@ -89,13 +89,7 @@ type SQLServerConfig struct {
 }
 
 func NewSQLRepository(config SQLServerConfig) (*SQLRepository, error) {
-	var connectionString string
-	if config.Driver == "pgx" {
-		connectionString = fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s", config.User, config.Password, config.Host, config.Port, config.Database, config.SSLMode)
-	} else {
-		connectionString = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s", config.Host, config.Port, config.User, config.Password, config.Database, config.SSLMode)
-	}
-	log.Debugf("Database connection: driver=%s, host=%s, port=%d, dbname=%s", config.Driver, config.Host, config.Port, config.Database)
+	connectionString := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s&default_query_exec_mode=simple_protocol", config.User, config.Password, config.Host, config.Port, config.Database, config.SSLMode)
 	db, err := sql.Open(config.Driver, connectionString)
 	if err != nil {
 		return nil, err
@@ -361,15 +355,11 @@ func (S *SQLRepository) getJobStatus(ctx context.Context, tx Transaction, uuid s
 }
 
 func (S *SQLRepository) getJobByPath(ctx context.Context, tx Transaction, path string) (*model.Job, error) {
-	log.Debugf("get job by path: %s", path)
 	rows, err := tx.QueryContext(ctx, "SELECT * FROM jobs WHERE source_path=$1", path)
 	if err != nil {
-		log.Errorf("no job founds by path: %s", path)
 		return nil, err
 	}
 	defer rows.Close()
-
-	log.Debugf("rows: %+v", rows)
 
 	job := model.Job{}
 
@@ -380,13 +370,11 @@ func (S *SQLRepository) getJobByPath(ctx context.Context, tx Transaction, path s
 		}
 		found = true
 	}
-	log.Debugf("job: %+v", job)
 	if !found {
 		return nil, nil
 	}
 
 	taskEvents, err := S.getTaskEvents(ctx, tx, job.Id.String())
-	log.Debugf("taskEvents: %+v", taskEvents)
 	if err != nil {
 		return nil, err
 	}
@@ -407,7 +395,6 @@ func (S *SQLRepository) PingServerUpdate(ctx context.Context, name string, queue
 	if err != nil {
 		return err
 	}
-	log.Debugf("PingServerUpdate: name=%s (len=%d), ip=%s (len=%d), queueName=%s (len=%d)", name, len(name), ip, len(ip), queueName, len(queueName))
 	_, err = conn.ExecContext(ctx, "INSERT INTO workers (name, ip,queue_name,last_seen ) VALUES ($1,$2,$3,$4) ON CONFLICT (name) DO UPDATE SET ip = $2, queue_name=$3, last_seen=$4;", name, ip, queueName, time.Now())
 	return err
 }
@@ -425,11 +412,11 @@ func (S *SQLRepository) addNewTaskEvent(ctx context.Context, tx Transaction, eve
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
 
 	var maxEventID sql.NullInt64
 	if rows.Next() {
 		if err := rows.Scan(&maxEventID); err != nil {
+			rows.Close()
 			return err
 		}
 	}
@@ -438,9 +425,11 @@ func (S *SQLRepository) addNewTaskEvent(ctx context.Context, tx Transaction, eve
 		jobEventID = int(maxEventID.Int64)
 	}
 	if jobEventID+1 != event.EventID {
+		rows.Close()
 		return fmt.Errorf("EventID for %s not match,lastReceived %d, new %d", event.Id.String(), jobEventID, event.EventID)
 	}
 
+	rows.Close()
 	_, err = tx.ExecContext(ctx, "INSERT INTO job_events (job_id, job_event_id,worker_name,event_time,event_type,notification_type,status,message)"+
 		" VALUES ($1,$2,$3,$4,$5,$6,$7,$8)", event.Id.String(), event.EventID, event.WorkerName, time.Now(), event.EventType, event.NotificationType, event.Status, strings.TrimSpace(event.Message))
 	return err
@@ -450,17 +439,12 @@ func (S *SQLRepository) AddJob(ctx context.Context, job *model.Job) error {
 	if err != nil {
 		return err
 	}
-	log.Debugf("AddJob: job=%s, conn=%T", job.Id.String(), conn)
 	return S.addJob(ctx, conn, job)
 }
 
 func (S *SQLRepository) addJob(ctx context.Context, tx Transaction, job *model.Job) error {
-	log.Debugf("addJob: inserting job %s, source=%s, dest=%s", job.Id.String(), job.SourcePath, job.DestinationPath)
 	_, err := tx.ExecContext(ctx, "INSERT INTO jobs (id, source_path,destination_path)"+
 		" VALUES ($1,$2,$3)", job.Id.String(), job.SourcePath, job.DestinationPath)
-	if err != nil {
-		log.Errorf("addJob error: %v", err)
-	}
 	return err
 }
 

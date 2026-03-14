@@ -211,12 +211,16 @@ func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *m
 		downloadURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/job/%s/download", R.config.Domain.String(), job.Id.String()))
 		uploadURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/job/%s/upload", R.config.Domain.String(), job.Id.String()))
 		checksumURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/job/%s/checksum", R.config.Domain.String(), job.Id.String()))
+		latestEvent := job.Events.GetLatest()
+		if latestEvent == nil {
+			return fmt.Errorf("no events found for job %s", job.Id.String())
+		}
 		task := &model.TaskEncode{
 			Id:          job.Id,
 			DownloadURL: downloadURL.String(),
 			UploadURL:   uploadURL.String(),
 			ChecksumURL: checksumURL.String(),
-			EventID:     job.Events.GetLatest().EventID,
+			EventID:     latestEvent.EventID,
 		}
 		return R.queue.PublishJobRequest(task)
 	})
