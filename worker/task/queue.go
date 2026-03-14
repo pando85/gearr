@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/avast/retry-go/v4"
+	"github.com/avast/retry-go/v5"
 	"github.com/google/uuid"
 	"github.com/isayme/go-amqp-reconnect/rabbitmq"
 	log "github.com/sirupsen/logrus"
@@ -246,12 +246,17 @@ func (Q *RabbitMQClient) declareQueue(queueName string) (rabbitmq.Channel, amqp.
 	}
 
 	log.Debugf("declare queue: %s", queueName)
-	err = retry.Do(func() error {
+	err = retry.New(
+		retry.Delay(time.Second*1),
+		retry.Attempts(10),
+		retry.LastErrorOnly(true),
+		retry.OnRetry(func(n uint, err error) {
+			Q.printer.Error("error on declare queue %s:%v", queueName, err)
+		}),
+	).Do(func() error {
 		queue, err = channel.QueueDeclare(queueName, true, false, false, false, nil)
 		return err
-	}, retry.Delay(time.Second*1), retry.Attempts(10), retry.LastErrorOnly(true), retry.OnRetry(func(n uint, err error) {
-		Q.printer.Error("error on declare queue %s:%v", queueName, err)
-	}))
+	})
 
 	if err != nil {
 		log.Panic(err)
@@ -332,11 +337,16 @@ func (Q *RabbitMQClient) encodeQueueProcessor(ctx context.Context, taskQueueName
 
 func (Q *RabbitMQClient) controlPGSJobExecution(jobWorker *JobWorker) {
 	defer func() {
-		err := retry.Do(func() error {
+		err := retry.New(
+			retry.Delay(time.Second*1),
+			retry.Attempts(3600),
+			retry.LastErrorOnly(true),
+			retry.OnRetry(func(n uint, err error) {
+				Q.printer.Error("error %s for %d time on cleaning working path for worker %s", err.Error(), n, jobWorker.pgsWorker.GetID())
+			}),
+		).Do(func() error {
 			return jobWorker.pgsWorker.Clean()
-		}, retry.Delay(time.Second*1), retry.Attempts(3600), retry.LastErrorOnly(true), retry.OnRetry(func(n uint, err error) {
-			Q.printer.Error("error %s for %d time on cleaning working path for worker %s", err.Error(), n, jobWorker.pgsWorker.GetID())
-		}))
+		})
 		if err != nil {
 			panic(err)
 		}
@@ -369,7 +379,14 @@ func (Q *RabbitMQClient) publishMessageTtl(queueName string, obj interface{}, tt
 }
 func (Q *RabbitMQClient) publishAMQPMessage(queueName string, message amqp.Publishing) error {
 	log.Debugf("starting publish messages to queue %s", queueName)
-	return retry.Do(func() error {
+	return retry.New(
+		retry.Delay(time.Second*1),
+		retry.Attempts(3600),
+		retry.LastErrorOnly(true),
+		retry.OnRetry(func(n uint, err error) {
+			Q.printer.Warn("error %s on publish AMQP Message %s", err.Error(), string(message.Body))
+		}),
+	).Do(func() error {
 		channel, err := Q.connection.Channel()
 		if err != nil {
 			return err
@@ -377,9 +394,7 @@ func (Q *RabbitMQClient) publishAMQPMessage(queueName string, message amqp.Publi
 		defer channel.Close()
 		log.Debugf("publishing message to queue %s", queueName)
 		return channel.Publish("", queueName, false, false, message)
-	}, retry.Delay(time.Second*1), retry.Attempts(3600), retry.LastErrorOnly(true), retry.OnRetry(func(n uint, err error) {
-		Q.printer.Warn("error %s on publish AMQP Message %s", err.Error(), string(message.Body))
-	}))
+	})
 }
 
 type TaskPGSJobControl struct {
