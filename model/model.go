@@ -203,7 +203,6 @@ func (e TaskEvent) IsUploading() bool {
 }
 
 func (W *WorkTaskEncode) Clean() error {
-	//log.Warnf("[%s] cleaning up task workspace", W.TaskEncode.Id.String())
 	err := os.RemoveAll(W.WorkDir)
 	if err != nil {
 		return err
@@ -275,7 +274,7 @@ func (v *Job) AddEvent(eventType EventType, notificationType NotificationType, n
 }
 
 type Manager interface {
-	EventNotification(event TaskEvent)
+	EventNotification(event TaskEvent) error
 	ResponsePGSJob(response TaskPGSResponse) error
 	RequestPGSJob(pgsJob TaskPGS) <-chan *TaskPGSResponse
 }

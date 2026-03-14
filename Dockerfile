@@ -12,6 +12,7 @@ RUN apt-get update \
         curl \
         ca-certificates \
         libva-dev \
+        zlib1g-dev \
         python3 \
         python-is-python3 \
         ninja-build \

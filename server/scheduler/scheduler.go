@@ -211,12 +211,16 @@ func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *m
 		downloadURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/job/%s/download", R.config.Domain.String(), job.Id.String()))
 		uploadURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/job/%s/upload", R.config.Domain.String(), job.Id.String()))
 		checksumURL, _ := url.Parse(fmt.Sprintf("%s/api/v1/job/%s/checksum", R.config.Domain.String(), job.Id.String()))
+		latestEvent := job.Events.GetLatest()
+		if latestEvent == nil {
+			return fmt.Errorf("no events found for job %s", job.Id.String())
+		}
 		task := &model.TaskEncode{
 			Id:          job.Id,
 			DownloadURL: downloadURL.String(),
 			UploadURL:   uploadURL.String(),
 			ChecksumURL: checksumURL.String(),
-			EventID:     job.Events.GetLatest().EventID,
+			EventID:     latestEvent.EventID,
 		}
 		return R.queue.PublishJobRequest(task)
 	})
@@ -380,39 +384,7 @@ func (R *RuntimeScheduler) GetWorkers(ctx context.Context) (*[]model.Worker, err
 }
 
 func (S *RuntimeScheduler) stop() {
-
 }
-
-/*
-	func init() {
-		f, _ := os.Open("/mnt/d/encode_public_videos.csv")
-		fileScanner := bufio.NewScanner(f)
-		fileScanner.Split(bufio.ScanLines)
-		i := 0
-		for fileScanner.Scan() {
-			i++
-			line := fileScanner.Text()
-			if strings.Contains(line, "265") {
-				continue
-			}
-			if strings.Contains(line, "[ ]") {
-				continue
-			}
-			if !x264ex.MatchString(line) {
-				fmt.Printf("264: %d FAIL on %s\n\r", i, line)
-			}
-
-			if strings.Contains(strings.ToLower(line), "aac") {
-				continue
-			}
-			if !ac3ex.MatchString(line) {
-				fmt.Printf("AC3: %d FAIL on %s\n\r", i, line)
-			}
-			formatTargetName(line)
-
-		}
-	}
-*/
 func formatTargetName(path string) string {
 	p := x264ex.ReplaceAllString(path, "x265")
 	p = ac3ex.ReplaceAllString(p, "AAC")

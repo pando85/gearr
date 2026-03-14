@@ -34,8 +34,7 @@ type CmdLineOpts struct {
 }
 
 var (
-	opts                CmdLineOpts
-	ApplicationFileName string
+	opts CmdLineOpts
 )
 
 func init() {
@@ -84,27 +83,10 @@ func init() {
 		log.Panic(err)
 	}
 
-	//Fix Paths
 	opts.Scheduler.DownloadPath = filepath.Clean(opts.Scheduler.DownloadPath)
 	opts.Scheduler.UploadPath = filepath.Clean(opts.Scheduler.UploadPath)
 	helper.CheckPath(opts.Scheduler.DownloadPath)
 	helper.CheckPath(opts.Scheduler.UploadPath)
-	/*
-	   scheduleTimeDuration, err := time.ParseDuration(opts.ScheduleTime)
-
-	   	if err!=nil {
-	   		log.Panic(err)
-	   	}
-
-	   jobTimeout, err := time.ParseDuration(opts.JobTimeout)
-
-	   	if err!=nil {
-	   		log.Panic(err)
-	   	}
-
-	   opts.Scheduler.ScheduleTime = scheduleTimeDuration
-	   opts.Scheduler.JobTimeout = jobTimeout
-	*/
 }
 
 func usage() {
@@ -119,6 +101,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
+	wg.Add(1)
 	go func() {
 		shutdownHandler(ctx, sigs, cancel)
 		wg.Done()

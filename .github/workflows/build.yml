@@ -29,12 +29,6 @@ jobs:
         with:
           go-version: 1.26
 
-      - name: Install Compose
-        uses: ndeloof/install-compose-action@v0.0.1
-        with:
-          version: v2.23.3
-          legacy: true
-
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v4
         with:

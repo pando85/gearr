@@ -17,13 +17,13 @@ func BrokerFlags() {
 }
 
 func DatabaseFlags() {
-	pflag.String("database.Driver", "postgres", "DB Driver")
-	pflag.String("database.Host", "localhost", "DB Host")
+	pflag.String("database.driver", "pgx", "DB Driver")
+	pflag.String("database.host", "localhost", "DB Host")
 	pflag.Int("database.port", 5432, "DB Port")
-	pflag.String("database.User", "postgres", "DB User")
-	pflag.String("database.Password", "postgres", "DB Password")
-	pflag.String("database.Database", "gearr", "DB Database")
-	pflag.String("database.SSLMode", "disable", "DB Scheme")
+	pflag.String("database.user", "postgres", "DB User")
+	pflag.String("database.password", "postgres", "DB Password")
+	pflag.String("database.database", "gearr", "DB Database")
+	pflag.String("database.sslmode", "disable", "DB Scheme")
 }
 
 func LogLevelFlags() {

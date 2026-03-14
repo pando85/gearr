@@ -55,7 +55,7 @@ func main() {
 	c := starr.New(*apiKey, *radarrURL, 0)
 	r := radarr.New(c)
 
-	movies, err := r.GetMovie(0)
+	movies, err := r.GetMovie(nil)
 	if err != nil {
 		panic(err)
 	}

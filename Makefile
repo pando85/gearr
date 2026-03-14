@@ -50,8 +50,6 @@ push-images: push-image-server push-image-worker
 push-images:		## build and push container images
 
 DOCKER_BUILD_ARG := --cache-to type=inline
-DOCKER_BUILD_ARG += --cache-from $(IMAGE_NAME):latest-build
-DOCKER_BUILD_ARG += --cache-from $(IMAGE_NAME):latest-base
 
 .PHONY: image-%
 .PHONY: push-image-%
@@ -73,7 +71,6 @@ image-% push-image-%: build-%
 	else \
 		docker buildx build \
 		$${DOCKER_BUILD_ARG} \
-		--cache-from $(IMAGE_NAME):latest-worker-pgs \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-worker-pgs \
 		--target worker-pgs \
 		-f Dockerfile \
@@ -81,7 +78,6 @@ image-% push-image-%: build-%
 	fi; \
 	docker buildx build \
 		$${DOCKER_BUILD_ARG} \
-		--cache-from $(IMAGE_NAME):latest-$* \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
 		-f Dockerfile \
 		--target $* \
@@ -97,12 +93,12 @@ run-all:
 .PHONY: down
 down:		## stop all containers from docker-compose
 down:
-	@docker-compose down --volumes
+	@docker compose down --volumes
 
 .PHONY: logs
 logs:	## show logs
 logs:
-	@docker-compose logs -f
+	@docker compose logs -f
 
 .PHONY: demo-files
 demo-files:		## download demo file
