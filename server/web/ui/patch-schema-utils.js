@@ -13,8 +13,9 @@ paths.forEach(path => {
     
     let content = fs.readFileSync(path, 'utf8');
     const isV4 = pkgVersion.startsWith('4.');
+    const isV2orV3 = pkgVersion.startsWith('2.') || pkgVersion.startsWith('3.');
     
-    if (isV4 && !content.includes('ajv-formats')) {
+    if ((isV4 || isV2orV3) && !content.includes('ajv-formats')) {
       content = content.replace(
         'var _ajvKeywords = _interopRequireDefault(require("ajv-keywords"));',
         'var _ajvKeywords = _interopRequireDefault(require("ajv-keywords"));\nvar _ajvFormats = _interopRequireDefault(require("ajv-formats"));'
@@ -33,8 +34,10 @@ paths.forEach(path => {
       );
       fs.writeFileSync(path, content);
       console.log('Patched: ' + path + ' (v' + pkgVersion + ')');
-    } else if (!isV4) {
-      console.log('Skipped: ' + path + ' (v' + pkgVersion + ' - uses ajv@6)');
+    } else if (!isV4 && !isV2orV3) {
+      console.log('Skipped: ' + path + ' (v' + pkgVersion + ' - unknown version)');
+    } else if (content.includes('ajv-formats')) {
+      console.log('Skipped: ' + path + ' (v' + pkgVersion + ' - already patched)');
     }
   }
 });
