@@ -5,7 +5,6 @@ go 1.25.7
 toolchain go1.26.1
 
 require (
-	github.com/avast/retry-go/v4 v4.7.0
 	github.com/avast/retry-go/v5 v5.0.0
 	github.com/gin-gonic/contrib v0.0.0-20260101091603-d12f07a9136b
 	github.com/gin-gonic/gin v1.12.0
@@ -14,7 +13,6 @@ require (
 	github.com/isayme/go-amqp-reconnect v0.0.0-20210303120416-fc811b0bcda2
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/jedib0t/go-pretty/v6 v6.7.8
-	github.com/lib/pq v1.11.2
 	github.com/rakyll/statik v0.1.8
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/pflag v1.0.10

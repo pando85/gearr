@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/avast/retry-go/v4"
+	"github.com/avast/retry-go/v5"
 	"github.com/rakyll/statik/fs"
 	log "github.com/sirupsen/logrus"
 )
@@ -43,7 +43,11 @@ func CheckPath(path string) {
 }
 
 func GetPublicIP() (publicIP string) {
-	retry.Do(func() error {
+	retry.New(
+		retry.Delay(time.Millisecond*100),
+		retry.Attempts(360),
+		retry.LastErrorOnly(true),
+	).Do(func() error {
 		randomIndex := rand.Intn(len(STUNServers))
 		resp, err := http.Get(STUNServers[randomIndex])
 		if err != nil {
@@ -56,7 +60,7 @@ func GetPublicIP() (publicIP string) {
 		}
 		publicIP = strings.TrimSpace(string(publicIPBytes))
 		return nil
-	}, retry.Delay(time.Millisecond*100), retry.Attempts(360), retry.LastErrorOnly(true))
+	})
 	return publicIP
 }
 

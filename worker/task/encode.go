@@ -24,7 +24,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/avast/retry-go/v4"
+	"github.com/avast/retry-go/v5"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/vansante/go-ffprobe.v2"
 )
@@ -185,7 +185,17 @@ func (J *EncodeWorker) AcceptJobs() bool {
 }
 
 func (J *EncodeWorker) downloadFile(job *model.WorkTaskEncode, track *TaskTracks) error {
-	err := retry.Do(func() error {
+	err := retry.New(
+		retry.Delay(time.Second*5),
+		retry.Attempts(180),
+		retry.LastErrorOnly(true),
+		retry.OnRetry(func(n uint, err error) {
+			J.terminal.Error("error on downloading job %s", err.Error())
+		}),
+		retry.RetryIf(func(err error) bool {
+			return !(errors.Is(err, context.Canceled) || errors.Is(err, ErrorJobNotFound))
+		}),
+	).Do(func() error {
 		track.UpdateValue(0)
 		resp, err := http.Get(job.TaskEncode.DownloadURL)
 		if err != nil {
@@ -236,15 +246,7 @@ func (J *EncodeWorker) downloadFile(job *model.WorkTaskEncode, track *TaskTracks
 
 		track.UpdateValue(size)
 		return nil
-	}, retry.Delay(time.Second*5),
-		retry.Attempts(180), // 15 min
-		retry.LastErrorOnly(true),
-		retry.OnRetry(func(n uint, err error) {
-			J.terminal.Error("error on downloading job %s", err.Error())
-		}),
-		retry.RetryIf(func(err error) bool {
-			return !(errors.Is(err, context.Canceled) || errors.Is(err, ErrorJobNotFound))
-		}))
+	})
 
 	return err
 }
@@ -252,7 +254,17 @@ func (J *EncodeWorker) downloadFile(job *model.WorkTaskEncode, track *TaskTracks
 func (J *EncodeWorker) calculateChecksum(checksumURL string) (string, error) {
 	var bodyString string
 
-	err := retry.Do(func() error {
+	err := retry.New(
+		retry.Delay(time.Second*5),
+		retry.Attempts(10),
+		retry.LastErrorOnly(true),
+		retry.OnRetry(func(n uint, err error) {
+			J.terminal.Error("error %s on calculate checksum of downloaded job %s", err.Error(), checksumURL)
+		}),
+		retry.RetryIf(func(err error) bool {
+			return !errors.Is(err, context.Canceled)
+		}),
+	).Do(func() error {
 		respSha256, err := http.Get(checksumURL)
 		if err != nil {
 			return err
@@ -269,15 +281,7 @@ func (J *EncodeWorker) calculateChecksum(checksumURL string) (string, error) {
 		}
 		bodyString = string(bodyBytes)
 		return nil
-	}, retry.Delay(time.Second*5),
-		retry.Attempts(10),
-		retry.LastErrorOnly(true),
-		retry.OnRetry(func(n uint, err error) {
-			J.terminal.Error("error %s on calculate checksum of downloaded job %s", err.Error(), checksumURL)
-		}),
-		retry.RetryIf(func(err error) bool {
-			return !errors.Is(err, context.Canceled)
-		}))
+	})
 
 	if err != nil {
 		return "", err
@@ -515,7 +519,18 @@ func (P *ProgressTrackReader) SumSha() []byte {
 
 func (J *EncodeWorker) UploadJob(task *model.WorkTaskEncode, track *TaskTracks) error {
 	J.updateTaskStatus(task, model.UploadNotification, model.ProgressingNotificationStatus, "")
-	err := retry.Do(func() error {
+	err := retry.New(
+		retry.Delay(time.Second*5),
+		retry.RetryIf(func(err error) bool {
+			return !errors.Is(err, context.Canceled)
+		}),
+		retry.DelayType(retry.FixedDelay),
+		retry.Attempts(17280),
+		retry.LastErrorOnly(true),
+		retry.OnRetry(func(n uint, err error) {
+			J.terminal.Error("error on uploading job %s", err.Error())
+		}),
+	).Do(func() error {
 		track.UpdateValue(0)
 		encodedFile, err := os.Open(task.TargetFilePath)
 		if err != nil {
@@ -558,16 +573,7 @@ func (J *EncodeWorker) UploadJob(task *model.WorkTaskEncode, track *TaskTracks) 
 		}
 		track.UpdateValue(fileSize)
 		return nil
-	}, retry.Delay(time.Second*5),
-		retry.RetryIf(func(err error) bool {
-			return !errors.Is(err, context.Canceled)
-		}),
-		retry.DelayType(retry.FixedDelay),
-		retry.Attempts(17280),
-		retry.LastErrorOnly(true),
-		retry.OnRetry(func(n uint, err error) {
-			J.terminal.Error("error on uploading job %s", err.Error())
-		}))
+	})
 
 	if err != nil {
 		J.updateTaskStatus(task, model.UploadNotification, model.FailedNotificationStatus, "")
