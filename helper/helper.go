@@ -21,7 +21,7 @@ import (
 var (
 	ApplicationFileName  string
 	ValidVideoExtensions = []string{"mp4", "mpg", "m4a", "m4v", "f4v", "f4a", "m4b", "m4r", "f4b", "mov ", "ogg", "oga", "ogv", "ogx ", "wmv", "wma", "asf ", "webm", "avi", "flv", "vob ", "mkv"}
-	STUNServers          = []string{"https://api.ipify.org?format=text", "https://ifconfig.me", "https://ident.me/", "https://myexternalip.com/raw"}
+	STUNServers          = []string{"https://api.ipify.org", "https://ident.me", "https://icanhazip.com", "https://ifconfig.io/ip"}
 	workingDirectory     = filepath.Join(os.TempDir(), "gearr")
 	ffmpegPath           = "ffmpeg"
 	mkvExtractPath       = "mkvextract"
@@ -54,7 +54,7 @@ func GetPublicIP() (publicIP string) {
 		if err != nil {
 			return err
 		}
-		publicIP = string(publicIPBytes)
+		publicIP = strings.TrimSpace(string(publicIPBytes))
 		return nil
 	}, retry.Delay(time.Millisecond*100), retry.Attempts(360), retry.LastErrorOnly(true))
 	return publicIP

@@ -10,7 +10,7 @@ import (
 
 	_ "embed"
 
-	_ "github.com/lib/pq"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -90,9 +90,13 @@ type SQLServerConfig struct {
 
 func NewSQLRepository(config SQLServerConfig) (*SQLRepository, error) {
 	connectionString := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s", config.Host, config.Port, config.User, config.Password, config.Database, config.SSLMode)
+	log.Debugf("Database connection: driver=%s, host=%s, port=%d, dbname=%s", config.Driver, config.Host, config.Port, config.Database)
 	db, err := sql.Open(config.Driver, connectionString)
 	if err != nil {
 		return nil, err
+	}
+	if err = db.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 	db.SetMaxOpenConns(5)
 	db.SetConnMaxLifetime(5 * time.Minute)
@@ -398,6 +402,7 @@ func (S *SQLRepository) PingServerUpdate(ctx context.Context, name string, queue
 	if err != nil {
 		return err
 	}
+	log.Debugf("PingServerUpdate: name=%s (len=%d), ip=%s (len=%d), queueName=%s (len=%d)", name, len(name), ip, len(ip), queueName, len(queueName))
 	_, err = conn.ExecContext(ctx, "INSERT INTO workers (name, ip,queue_name,last_seen ) VALUES ($1,$2,$3,$4) ON CONFLICT (name) DO UPDATE SET ip = $2, queue_name=$3, last_seen=$4;", name, ip, queueName, time.Now())
 	return err
 }
@@ -440,12 +445,17 @@ func (S *SQLRepository) AddJob(ctx context.Context, job *model.Job) error {
 	if err != nil {
 		return err
 	}
+	log.Debugf("AddJob: job=%s, conn=%T", job.Id.String(), conn)
 	return S.addJob(ctx, conn, job)
 }
 
 func (S *SQLRepository) addJob(ctx context.Context, tx Transaction, job *model.Job) error {
+	log.Debugf("addJob: inserting job %s, source=%s, dest=%s", job.Id.String(), job.SourcePath, job.DestinationPath)
 	_, err := tx.ExecContext(ctx, "INSERT INTO jobs (id, source_path,destination_path)"+
 		" VALUES ($1,$2,$3)", job.Id.String(), job.SourcePath, job.DestinationPath)
+	if err != nil {
+		log.Errorf("addJob error: %v", err)
+	}
 	return err
 }
 

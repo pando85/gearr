@@ -2,9 +2,14 @@ version: "3"
 
 services:
   server:
-    image: ghcr.io/pando85/gearr:latest-server
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: server
+    restart: on-failure
     environment:
       LOG_LEVEL: DEBUG
+      DATABASE_DRIVER: pgx
       BROKER_HOST: rabbitmq
       BROKER_USER: rabbit
       BROKER_PASSWORD: rabbit_password
@@ -41,7 +46,11 @@ services:
       - "5672:5672"
 
   worker:
-    image: ghcr.io/pando85/gearr:latest-worker
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    restart: on-failure
     command:
       - --log-level
       - debug
@@ -62,7 +71,11 @@ services:
       - server
 
   worker-pgs:
-    image: ghcr.io/pando85/gearr:latest-worker-pgs
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker-pgs
+    restart: on-failure
     command:
       - --log-level
       - debug
