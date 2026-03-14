@@ -38,3 +38,20 @@ paths.forEach(path => {
     }
   }
 });
+
+const babelLoaderPaths = glob.sync('./node_modules/**/babel-loader/lib/index.js');
+
+babelLoaderPaths.forEach(path => {
+  if (fs.existsSync(path)) {
+    let content = fs.readFileSync(path, 'utf8');
+    
+    if (content.includes('const validateOptions = require("schema-utils");')) {
+      content = content.replace(
+        'const validateOptions = require("schema-utils");',
+        'const { validate: validateOptions } = require("schema-utils");'
+      );
+      fs.writeFileSync(path, content);
+      console.log('Patched babel-loader: ' + path);
+    }
+  }
+});
