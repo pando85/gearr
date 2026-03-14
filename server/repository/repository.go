@@ -89,7 +89,12 @@ type SQLServerConfig struct {
 }
 
 func NewSQLRepository(config SQLServerConfig) (*SQLRepository, error) {
-	connectionString := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s", config.Host, config.Port, config.User, config.Password, config.Database, config.SSLMode)
+	var connectionString string
+	if config.Driver == "pgx" {
+		connectionString = fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s", config.User, config.Password, config.Host, config.Port, config.Database, config.SSLMode)
+	} else {
+		connectionString = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s", config.Host, config.Port, config.User, config.Password, config.Database, config.SSLMode)
+	}
 	log.Debugf("Database connection: driver=%s, host=%s, port=%d, dbname=%s", config.Driver, config.Host, config.Port, config.Database)
 	db, err := sql.Open(config.Driver, connectionString)
 	if err != nil {

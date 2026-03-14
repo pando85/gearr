@@ -18,7 +18,7 @@ services:
       DATABASE_PASSWORD: postgres_password
       DATABASE_DATABASE: gearr
       SCHEDULER_DOMAIN: http://server:8080
-      SCHEDULER_MINFILESIZE: "100"
+      SCHEDULER_MINFILESIZE: "10000000"
       WEB_TOKEN: super-secret-token
     volumes:
       - ./demo-files:/data/current:ro
