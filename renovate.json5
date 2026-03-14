@@ -27,5 +27,11 @@
       automergeType: 'pr',
       platformAutomerge: true,
     },
+    {
+      matchPackageNames: [
+        'fork-ts-checker-webpack-plugin',
+      ],
+      allowedVersions: '<9.0.0',
+    },
   ],
 }
