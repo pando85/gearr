@@ -49,7 +49,7 @@ images:		## build container images
 push-images: push-image-server push-image-worker
 push-images:		## build and push container images
 
-DOCKER_BUILD_ARG := --cache-to type=inline
+DOCKER_BUILD_ARG := --no-cache --cache-to type=inline
 
 .PHONY: image-%
 .PHONY: push-image-%
