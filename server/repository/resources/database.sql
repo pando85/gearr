@@ -207,3 +207,19 @@ CREATE TABLE IF NOT EXISTS job_actions (
 
 CREATE INDEX IF NOT EXISTS idx_job_actions_pending ON job_actions (worker_name, consumed, created_at) 
     WHERE consumed = false;
+
+CREATE TABLE IF NOT EXISTS file_processing (
+    id SERIAL PRIMARY KEY,
+    path TEXT NOT NULL UNIQUE,
+    detected_at TIMESTAMP NOT NULL,
+    source VARCHAR(20) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    message TEXT,
+    job_id VARCHAR(255),
+    created_at TIMESTAMP DEFAULT NOW(),
+    FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_file_processing_time ON file_processing(detected_at DESC);
+CREATE INDEX IF NOT EXISTS idx_file_processing_source ON file_processing(source);
+CREATE INDEX IF NOT EXISTS idx_file_processing_status ON file_processing(status);

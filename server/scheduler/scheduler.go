@@ -4,24 +4,19 @@ import (
 	"context"
 	"fmt"
 	"gearr/helper"
+	"gearr/helper/codec"
 	"gearr/model"
 	"gearr/server/queue"
 	"gearr/server/repository"
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
-)
-
-var (
-	x264ex = regexp.MustCompile(`(?i)(((x|h)264)|mpeg-4|mpeg-1|mpeg-2|mpeg|xvid|divx|vc-1|av1|vp8|vp9|wmv3|mp43)`)
-	ac3ex  = regexp.MustCompile(`(?i)(ac3|eac3|pcm|flac|mp2|dts|mp2|mp3|truehd|wma|vorbis|opus|mpeg audio)`)
 )
 
 type Scheduler interface {
@@ -386,10 +381,5 @@ func (R *RuntimeScheduler) GetWorkers(ctx context.Context) (*[]model.Worker, err
 func (S *RuntimeScheduler) stop() {
 }
 func formatTargetName(path string) string {
-	p := x264ex.ReplaceAllString(path, "x265")
-	p = ac3ex.ReplaceAllString(p, "AAC")
-	extension := filepath.Ext(p)
-	p = strings.Replace(p, extension, ".mkv", 1)
-
-	return p
+	return codec.FormatTargetName(path)
 }

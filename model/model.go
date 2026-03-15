@@ -282,3 +282,28 @@ type Manager interface {
 type BrokerClient interface {
 	Manager
 }
+
+type FileProcessingSource string
+type FileProcessingStatus string
+
+const (
+	ScannerSource FileProcessingSource = "scanner"
+	WatcherSource FileProcessingSource = "watcher"
+
+	QueuedStatus  FileProcessingStatus = "queued"
+	SkippedStatus FileProcessingStatus = "skipped"
+	InvalidStatus FileProcessingStatus = "invalid"
+	X265Status    FileProcessingStatus = "x265"
+	ErrorStatus   FileProcessingStatus = "error"
+)
+
+type FileProcessing struct {
+	Id         int                  `json:"id"`
+	Path       string               `json:"path"`
+	DetectedAt time.Time            `json:"detected_at"`
+	Source     FileProcessingSource `json:"source"`
+	Status     FileProcessingStatus `json:"status"`
+	Message    string               `json:"message,omitempty"`
+	JobId      *uuid.UUID           `json:"job_id,omitempty"`
+	CreatedAt  time.Time            `json:"created_at"`
+}
