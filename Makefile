@@ -49,20 +49,24 @@ images:		## build container images
 push-images: push-image-server push-image-worker
 push-images:		## build and push container images
 
-DOCKER_BUILD_ARG := --no-cache --cache-to type=inline
+DOCKER_BUILD_ARG := --cache-to type=inline
+CACHE_FROM := --cache-from $(IMAGE_NAME):$(IMAGE_VERSION)-base --cache-from $(IMAGE_NAME):latest-base
 
 .PHONY: image-%
 .PHONY: push-image-%
 image-% push-image-%: build-%
-	@export DOCKER_BUILD_ARG="$(DOCKER_BUILD_ARG) $(if $(findstring push,$@),--push,--load)"; \
+	@export CACHE_FROM="$(CACHE_FROM)"; \
+	export DOCKER_BUILD_ARG="$(DOCKER_BUILD_ARG) $(if $(findstring push,$@),--push,--load)"; \
 	if [ "$*" = "server" ]; then \
 		docker buildx build \
+		$${CACHE_FROM} \
 		$${DOCKER_BUILD_ARG} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-build \
 		--target build \
 		-f Dockerfile \
 		. ; \
 		docker buildx build \
+		$${CACHE_FROM} \
 		$${DOCKER_BUILD_ARG} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-base \
 		--target base \
@@ -70,6 +74,7 @@ image-% push-image-%: build-%
 		. ; \
 	else \
 		docker buildx build \
+		$${CACHE_FROM} \
 		$${DOCKER_BUILD_ARG} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-worker-pgs \
 		--target worker-pgs \
@@ -77,14 +82,21 @@ image-% push-image-%: build-%
 		. ; \
 	fi; \
 	docker buildx build \
+		$${CACHE_FROM} \
 		$${DOCKER_BUILD_ARG} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
 		-f Dockerfile \
 		--target $* \
 		. ;
 
+.PHONY: pull-cache
+pull-cache:		## pull cache images from registry
+	@docker pull $(IMAGE_NAME):latest-base 2>/dev/null || true
+	@docker pull $(IMAGE_NAME):latest-server 2>/dev/null || true
+	@docker pull $(IMAGE_NAME):latest-worker 2>/dev/null || true
+
 .PHONY: run-all
-run-all: images
+run-all: pull-cache images
 run-all: export NOT_RUN_FRONT=true
 run-all:	## run all services in local using docker-compose
 run-all:
