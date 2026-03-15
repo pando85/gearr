@@ -50,9 +50,19 @@ push-images: push-image-server push-image-worker
 push-images:		## build and push container images
 
 DOCKER_BUILD_ARG := --cache-to type=inline
+CACHE_TYPE ?= registry
+CACHE_MODE ?= min
+
+ifeq ($(CACHE_TYPE),gha)
+CACHE_FROM_BASE := --cache-from type=gha
+CACHE_FROM_SERVER := --cache-from type=gha
+CACHE_FROM_WORKER := --cache-from type=gha
+DOCKER_BUILD_ARG := --cache-to type=gha,mode=$(CACHE_MODE)
+else
 CACHE_FROM_BASE := --cache-from type=registry,ref=$(IMAGE_NAME):latest-base
 CACHE_FROM_SERVER := --cache-from type=registry,ref=$(IMAGE_NAME):latest-server
 CACHE_FROM_WORKER := --cache-from type=registry,ref=$(IMAGE_NAME):latest-worker
+endif
 
 .PHONY: image-%
 .PHONY: push-image-%
