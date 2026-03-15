@@ -8,7 +8,7 @@ Gearr is an open-source video transcoding software designed to efficiently conve
 
 - **x265 Transcoding:** Convert videos to the x265 format for improved compression and quality.
 - **Distributed Transcoding:** Utilize multiple agents to distribute transcoding tasks, speeding up the process.
-- **Queue system:** Connect to a RabbitMQ server to manage transcoding job queues.
+- **Queue system:** PostgreSQL-based message queue for managing transcoding job queues.
 - **PGS Subtitle Conversion:** Extract PGS subtitles from video files and convert them to STR format for wider compatibility.
 
 ## Container Images
@@ -188,7 +188,7 @@ docker run -it -d --restart unless-stopped \
 ```
 
 **Warning:** The PGS agent must be started in advance if PGS is detected. It should run before
-detection to create the RabbitMQ queue.
+detection to ensure proper queue processing.
 
 ## Integrations
 
@@ -229,5 +229,4 @@ Feel free to customize the parameters based on your Radarr and Gearr setup.
 
 I'm currently not developing it more but if I want to code something I will:
 
-- Remove RabbitMQ in flavour of a gRPC API to communicate agents just with the server.
 - Replace repository by an ORM with Postgres and SQlite support.
