@@ -230,3 +230,4 @@ Feel free to customize the parameters based on your Radarr and Gearr setup.
 I'm currently not developing it more but if I want to code something I will:
 
 - Replace repository by an ORM with Postgres and SQlite support.
+
