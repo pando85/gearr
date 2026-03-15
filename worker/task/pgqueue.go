@@ -56,7 +56,7 @@ func NewBrokerClientPostgres(dbConfig repository.SQLServerConfig, workerConfig C
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	uniqueID := fmt.Sprintf("%s-%d", workerConfig.Name, rnd.Intn(5000000))
 
-	pgsJobControls := &concurrent.Map{}
+	pgsJobControls := concurrent.NewMap()
 	pgsJobControls.Set("_init", nil)
 
 	return &PostgresClient{

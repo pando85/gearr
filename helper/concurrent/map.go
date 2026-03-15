@@ -13,6 +13,12 @@ type MapItem struct {
 	Value interface{}
 }
 
+func NewMap() *Map {
+	return &Map{
+		items: make(map[string]interface{}),
+	}
+}
+
 func (cm *Map) Set(key string, value interface{}) {
 	cm.Lock()
 	defer cm.Unlock()
