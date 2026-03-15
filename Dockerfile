@@ -6,7 +6,9 @@ ARG FFMPEG_BUILD_SCRIPT_VERSION=1.58.1
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update \
     && apt-get -y --no-install-recommends install \
         build-essential \
         curl \
@@ -18,7 +20,8 @@ RUN apt-get update \
         ninja-build \
         meson \
         git \
-    && apt-get clean; rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/* \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/* \
     && update-ca-certificates
 
 WORKDIR /app
@@ -36,7 +39,9 @@ RUN curl -sLO \
 
 FROM ubuntu:24.04 AS base
 
-RUN apt-get update \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update \
     && apt-get install -y \
         ca-certificates \
         mkvtoolnix \
