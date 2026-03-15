@@ -45,6 +45,9 @@ type Repository interface {
 	EnqueueJobAction(ctx context.Context, jobID string, workerName string, action model.JobAction) error
 	DequeueJobActions(ctx context.Context, workerName string) ([]*model.JobEvent, error)
 	GetDB() *sql.DB
+	AddFileProcessing(ctx context.Context, fp *model.FileProcessing) error
+	GetFileProcessingByPath(ctx context.Context, path string) (*model.FileProcessing, error)
+	GetRecentFileProcessings(ctx context.Context, limit int, source model.FileProcessingSource) ([]*model.FileProcessing, error)
 }
 
 type Transaction interface {
@@ -747,4 +750,112 @@ func (S *SQLRepository) DequeueJobActions(ctx context.Context, workerName string
 		actions = append(actions, &action)
 	}
 	return actions, nil
+}
+
+func (S *SQLRepository) AddFileProcessing(ctx context.Context, fp *model.FileProcessing) error {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return err
+	}
+
+	var jobID interface{}
+	if fp.JobId != nil {
+		jobID = fp.JobId.String()
+	}
+
+	_, err = conn.ExecContext(ctx, `
+		INSERT INTO file_processing (path, detected_at, source, status, message, job_id)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (path) DO UPDATE SET
+			detected_at = EXCLUDED.detected_at,
+			source = EXCLUDED.source,
+			status = EXCLUDED.status,
+			message = EXCLUDED.message,
+			job_id = EXCLUDED.job_id
+	`, fp.Path, fp.DetectedAt, fp.Source, fp.Status, fp.Message, jobID)
+	return err
+}
+
+func (S *SQLRepository) GetFileProcessingByPath(ctx context.Context, path string) (*model.FileProcessing, error) {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var fp model.FileProcessing
+	var jobID sql.NullString
+
+	err = conn.QueryRowContext(ctx, `
+		SELECT id, path, detected_at, source, status, message, job_id, created_at
+		FROM file_processing WHERE path = $1
+	`, path).Scan(&fp.Id, &fp.Path, &fp.DetectedAt, &fp.Source, &fp.Status, &fp.Message, &jobID, &fp.CreatedAt)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if jobID.Valid {
+		id, err := uuid.Parse(jobID.String)
+		if err == nil {
+			fp.JobId = &id
+		}
+	}
+
+	return &fp, nil
+}
+
+func (S *SQLRepository) GetRecentFileProcessings(ctx context.Context, limit int, source model.FileProcessingSource) ([]*model.FileProcessing, error) {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var query string
+	var args []interface{}
+
+	if source == "" {
+		query = `
+			SELECT id, path, detected_at, source, status, message, job_id, created_at
+			FROM file_processing
+			ORDER BY detected_at DESC
+			LIMIT $1
+		`
+		args = []interface{}{limit}
+	} else {
+		query = `
+			SELECT id, path, detected_at, source, status, message, job_id, created_at
+			FROM file_processing
+			WHERE source = $1
+			ORDER BY detected_at DESC
+			LIMIT $2
+		`
+		args = []interface{}{source, limit}
+	}
+
+	rows, err := conn.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var processings []*model.FileProcessing
+	for rows.Next() {
+		var fp model.FileProcessing
+		var jobID sql.NullString
+		if err := rows.Scan(&fp.Id, &fp.Path, &fp.DetectedAt, &fp.Source, &fp.Status, &fp.Message, &jobID, &fp.CreatedAt); err != nil {
+			return nil, err
+		}
+		if jobID.Valid {
+			id, err := uuid.Parse(jobID.String)
+			if err == nil {
+				fp.JobId = &id
+			}
+		}
+		processings = append(processings, &fp)
+	}
+
+	return processings, nil
 }

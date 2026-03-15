@@ -33,3 +33,10 @@ func WebFlags() {
 	pflag.Int("web.port", 8080, "WebServer Port")
 	pflag.String("web.token", "admin", "WebServer Port")
 }
+
+func WatcherFlags() {
+	pflag.StringSlice("scheduler.watchPaths", []string{}, "Comma-separated paths to watch for new video files")
+	pflag.Bool("scheduler.watchEnabled", false, "Enable folder watcher for auto-detecting new video files")
+	pflag.Duration("scheduler.watchDebounce", 2*time.Second, "Debounce time for file events")
+	pflag.StringSlice("scheduler.watchPatterns", []string{"*.mkv", "*.mp4", "*.avi", "*.mov", "*.wmv", "*.flv"}, "File patterns to watch")
+}

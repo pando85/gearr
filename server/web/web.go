@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"gearr/model"
 	"gearr/server/scheduler"
+	"gearr/server/watcher"
 	"gearr/server/web/ui"
 	"io"
 	"net/http"
@@ -22,10 +23,11 @@ import (
 
 type WebServer struct {
 	WebServerConfig
-	scheduler scheduler.Scheduler
-	router    *gin.Engine
-	ctx       context.Context
-	upgrader  websocket.Upgrader
+	scheduler      scheduler.Scheduler
+	router         *gin.Engine
+	ctx            context.Context
+	upgrader       websocket.Upgrader
+	watcherHandler *watcher.Handler
 }
 
 func (w *WebServer) addJob(c *gin.Context) {
@@ -245,7 +247,7 @@ type WebServerConfig struct {
 	Token string `mapstructure:"token"`
 }
 
-func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler) *WebServer {
+func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watcher.Watcher) *WebServer {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
@@ -253,6 +255,10 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler) *WebSer
 		WebServerConfig: config,
 		scheduler:       scheduler,
 		router:          r,
+	}
+
+	if w != nil {
+		webServer.watcherHandler = watcher.NewHandler(w)
 	}
 
 	r.GET("/-/healthy", func(c *gin.Context) {
@@ -272,6 +278,12 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler) *WebSer
 	api.POST("/job/:id/upload", webServer.upload)
 
 	api.GET("/workers/", webServer.AuthHeaderFunc(webServer.getWorkers))
+
+	api.GET("/watcher/status", webServer.AuthHeaderFunc(webServer.getWatcherStatus))
+	api.GET("/watcher/detections", webServer.AuthHeaderFunc(webServer.getWatcherDetections))
+	api.POST("/watcher/paths", webServer.AuthHeaderFunc(webServer.addWatcherPath))
+	api.DELETE("/watcher/paths", webServer.AuthHeaderFunc(webServer.removeWatcherPath))
+	api.GET("/watcher/enabled", webServer.AuthHeaderFunc(webServer.getWatcherEnabled))
 
 	r.GET("/ws/job", webServer.AuthParamFunc(webServer.getJobsUpdates))
 	ui.AddRoutes(r)
@@ -353,4 +365,44 @@ func webError(c *gin.Context, err error, code int) bool {
 		return true
 	}
 	return false
+}
+
+func (w *WebServer) getWatcherStatus(c *gin.Context) {
+	if w.watcherHandler == nil {
+		c.JSON(http.StatusOK, gin.H{"active": false, "watched_paths": []string{}, "files_detected": 0, "files_queued": 0})
+		return
+	}
+	w.watcherHandler.GetStatus(c)
+}
+
+func (w *WebServer) getWatcherDetections(c *gin.Context) {
+	if w.watcherHandler == nil {
+		c.JSON(http.StatusOK, []interface{}{})
+		return
+	}
+	w.watcherHandler.GetDetections(c)
+}
+
+func (w *WebServer) addWatcherPath(c *gin.Context) {
+	if w.watcherHandler == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "watcher not initialized"})
+		return
+	}
+	w.watcherHandler.AddPath(c)
+}
+
+func (w *WebServer) removeWatcherPath(c *gin.Context) {
+	if w.watcherHandler == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "watcher not initialized"})
+		return
+	}
+	w.watcherHandler.RemovePath(c)
+}
+
+func (w *WebServer) getWatcherEnabled(c *gin.Context) {
+	if w.watcherHandler == nil {
+		c.JSON(http.StatusOK, gin.H{"enabled": false})
+		return
+	}
+	w.watcherHandler.IsEnabled(c)
 }

@@ -8,6 +8,7 @@ import (
 	"gearr/server/queue"
 	"gearr/server/repository"
 	"gearr/server/scheduler"
+	"gearr/server/watcher"
 	"gearr/server/web"
 	"net/url"
 	"os"
@@ -29,6 +30,7 @@ type CmdLineOpts struct {
 	LogLevel  string                     `mapstructure:"log-level"`
 	Scheduler scheduler.SchedulerConfig  `mapstructure:"scheduler"`
 	Web       web.WebServerConfig        `mapstructure:"web"`
+	Watcher   watcher.Config             `mapstructure:"watcher"`
 }
 
 var (
@@ -40,6 +42,7 @@ func init() {
 	cmd.LogLevelFlags()
 	cmd.SchedulerFlags()
 	cmd.WebFlags()
+	cmd.WatcherFlags()
 
 	pflag.Usage = usage
 
@@ -84,6 +87,9 @@ func init() {
 	opts.Scheduler.UploadPath = filepath.Clean(opts.Scheduler.UploadPath)
 	helper.CheckPath(opts.Scheduler.DownloadPath)
 	helper.CheckPath(opts.Scheduler.UploadPath)
+
+	opts.Watcher.DownloadPath = opts.Scheduler.DownloadPath
+	opts.Watcher.MinFileSize = opts.Scheduler.MinFileSize
 }
 
 func usage() {
@@ -127,8 +133,14 @@ func main() {
 	}
 	scheduler.Run(wg, ctx)
 
+	watcherSvc, err := watcher.NewWatcher(opts.Watcher, scheduler, repo)
+	if err != nil {
+		log.Panic(err)
+	}
+	watcherSvc.Run(wg, ctx)
+
 	var webServer *web.WebServer
-	webServer = web.NewWebServer(opts.Web, scheduler)
+	webServer = web.NewWebServer(opts.Web, scheduler, watcherSvc)
 	webServer.Run(wg, ctx)
 	wg.Wait()
 }
