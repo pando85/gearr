@@ -202,3 +202,62 @@ func TestConfig_HaveSetPeriodTime(t *testing.T) {
 		})
 	}
 }
+
+func TestTimeHourMinute_Type(t *testing.T) {
+	time := TimeHourMinute{Hour: 9, Minute: 30}
+	result := time.Type()
+
+	if result != "TimeHourMinute" {
+		t.Errorf("Type() = %q, want %q", result, "TimeHourMinute")
+	}
+}
+
+func TestConfig_Fields(t *testing.T) {
+	config := Config{
+		UpdateMode:        true,
+		TemporalPath:      "/tmp/gearr",
+		Name:              "test-worker",
+		Threads:           4,
+		MaxPrefetchJobs:   10,
+		Jobs:              AcceptedJobs{model.EncodeJobType, model.PGSToSrtJobType},
+		EncodeJobs:        2,
+		PgsJobs:           2,
+		StartAfter:        TimeHourMinute{Hour: 9, Minute: 0},
+		StopAfter:         TimeHourMinute{Hour: 17, Minute: 0},
+		Paused:            false,
+		PGSTOSrtDLLPath:   "/usr/lib/pgs",
+		TesseractDataPath: "/usr/share/tessdata",
+		DotnetPath:        "/usr/bin/dotnet",
+	}
+
+	if config.Name != "test-worker" {
+		t.Errorf("config.Name = %q, want %q", config.Name, "test-worker")
+	}
+	if config.Threads != 4 {
+		t.Errorf("config.Threads = %d, want 4", config.Threads)
+	}
+	if config.MaxPrefetchJobs != 10 {
+		t.Errorf("config.MaxPrefetchJobs = %d, want 10", config.MaxPrefetchJobs)
+	}
+	if len(config.Jobs) != 2 {
+		t.Errorf("len(config.Jobs) = %d, want 2", len(config.Jobs))
+	}
+	if !config.Jobs.IsAccepted(model.EncodeJobType) {
+		t.Error("config.Jobs should accept EncodeJobType")
+	}
+	if !config.Jobs.IsAccepted(model.PGSToSrtJobType) {
+		t.Error("config.Jobs should accept PGSToSrtJobType")
+	}
+	if config.EncodeJobs != 2 {
+		t.Errorf("config.EncodeJobs = %d, want 2", config.EncodeJobs)
+	}
+	if config.PgsJobs != 2 {
+		t.Errorf("config.PgsJobs = %d, want 2", config.PgsJobs)
+	}
+	if config.Paused {
+		t.Error("config.Paused should be false")
+	}
+	if config.TemporalPath != "/tmp/gearr" {
+		t.Errorf("config.TemporalPath = %q, want %q", config.TemporalPath, "/tmp/gearr")
+	}
+}
