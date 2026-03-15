@@ -4,7 +4,7 @@ FROM ${BASE_IMAGE} AS build
 
 ARG FFMPEG_BUILD_SCRIPT_VERSION=1.58.1
 
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
     && apt-get -y --no-install-recommends install \
@@ -34,7 +34,7 @@ RUN curl -sLO \
     find workspace -mindepth 1 -maxdepth 1 -type d ! -name 'bin' -exec rm -rf {} \; && \
     find workspace/bin -mindepth 1 -maxdepth 1 -type f ! -name 'ff*' -exec rm -f {} \;
 
-FROM ubuntu:24.04 as base
+FROM ubuntu:24.04 AS base
 
 RUN apt-get update \
     && apt-get install -y \
@@ -47,20 +47,19 @@ COPY --from=build /app/workspace/bin/ff* /usr/bin/
 
 # Check shared library
 RUN ldd /usr/bin/ffmpeg && \
-    ldd /usr/bin/ffprobe && \
-    ldd /usr/bin/ffplay
+    ldd /usr/bin/ffprobe
 
-FROM base as server
+FROM base AS server
 COPY ./dist/gearr-server /app/gearr-server
 
 ENTRYPOINT ["/app/gearr-server"]
 
-FROM base as worker
+FROM base AS worker
 COPY ./dist/gearr-worker /app/gearr-worker
 
 ENTRYPOINT ["/app/gearr-worker"]
 
-FROM tentacule/pgstosrt as worker-pgs
+FROM tentacule/pgstosrt AS worker-pgs
 COPY ./dist/gearr-worker /app/gearr-worker
 
 ENTRYPOINT ["/app/gearr-worker"]

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"gearr/broker"
 	"gearr/cmd"
 	"gearr/helper"
 	"gearr/server/queue"
@@ -26,7 +25,6 @@ import (
 )
 
 type CmdLineOpts struct {
-	Broker    broker.Config              `mapstructure:"broker"`
 	Database  repository.SQLServerConfig `mapstructure:"database"`
 	LogLevel  string                     `mapstructure:"log-level"`
 	Scheduler scheduler.SchedulerConfig  `mapstructure:"scheduler"`
@@ -38,7 +36,6 @@ var (
 )
 
 func init() {
-	cmd.BrokerFlags()
 	cmd.DatabaseFlags()
 	cmd.LogLevelFlags()
 	cmd.SchedulerFlags()
@@ -106,7 +103,6 @@ func main() {
 		shutdownHandler(ctx, sigs, cancel)
 		wg.Done()
 	}()
-	//Prepare resources
 	log.Infof("preparing to runwithcontext")
 
 	var repo repository.Repository
@@ -119,21 +115,18 @@ func main() {
 		log.Panic(err)
 	}
 
-	//BrokerServer System
-	broker, err := queue.NewBrokerServerRabbit(opts.Broker, repo)
+	broker, err := queue.NewBrokerServer(repo)
 	if err != nil {
 		log.Panic(err)
 	}
 	broker.Run(wg, ctx)
 
-	//Scheduler
 	scheduler, err := scheduler.NewScheduler(opts.Scheduler, repo, broker)
 	if err != nil {
 		log.Panic(err)
 	}
 	scheduler.Run(wg, ctx)
 
-	//Web Server
 	var webServer *web.WebServer
 	webServer = web.NewWebServer(opts.Web, scheduler)
 	webServer.Run(wg, ctx)

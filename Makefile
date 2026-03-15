@@ -50,41 +50,63 @@ push-images: push-image-server push-image-worker
 push-images:		## build and push container images
 
 DOCKER_BUILD_ARG := --cache-to type=inline
+CACHE_FROM_BASE := --cache-from type=registry,ref=$(IMAGE_NAME):latest-base
+CACHE_FROM_SERVER := --cache-from type=registry,ref=$(IMAGE_NAME):latest-server
+CACHE_FROM_WORKER := --cache-from type=registry,ref=$(IMAGE_NAME):latest-worker
 
 .PHONY: image-%
 .PHONY: push-image-%
 image-% push-image-%: build-%
 	@export DOCKER_BUILD_ARG="$(DOCKER_BUILD_ARG) $(if $(findstring push,$@),--push,--load)"; \
 	if [ "$*" = "server" ]; then \
+		echo "Building server image with cache..."; \
 		docker buildx build \
+		$(CACHE_FROM_BASE) \
 		$${DOCKER_BUILD_ARG} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-build \
 		--target build \
 		-f Dockerfile \
 		. ; \
 		docker buildx build \
+		$(CACHE_FROM_BASE) \
 		$${DOCKER_BUILD_ARG} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-base \
 		--target base \
 		-f Dockerfile \
 		. ; \
-	else \
 		docker buildx build \
+		$(CACHE_FROM_BASE) $(CACHE_FROM_SERVER) \
+		$${DOCKER_BUILD_ARG} \
+		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
+		-f Dockerfile \
+		--target $* \
+		. ; \
+	else \
+		echo "Building worker image with cache..."; \
+		docker buildx build \
+		$(CACHE_FROM_BASE) \
 		$${DOCKER_BUILD_ARG} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-worker-pgs \
 		--target worker-pgs \
 		-f Dockerfile \
 		. ; \
-	fi; \
-	docker buildx build \
+		docker buildx build \
+		$(CACHE_FROM_BASE) $(CACHE_FROM_WORKER) \
 		$${DOCKER_BUILD_ARG} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
 		-f Dockerfile \
 		--target $* \
-		. ;
+		. ; \
+	fi;
+
+.PHONY: pull-cache
+pull-cache:		## pull cache images from registry
+	@docker pull $(IMAGE_NAME):latest-base 2>/dev/null || true
+	@docker pull $(IMAGE_NAME):latest-server 2>/dev/null || true
+	@docker pull $(IMAGE_NAME):latest-worker 2>/dev/null || true
 
 .PHONY: run-all
-run-all: images
+run-all: pull-cache images
 run-all: export NOT_RUN_FRONT=true
 run-all:	## run all services in local using docker-compose
 run-all:
@@ -105,10 +127,21 @@ demo-files:		## download demo file
 demo-files:
 	@scripts/get-demo-files.sh
 
-.PHONY: test-upload
-test-upload:	## upload job to test all process
-test-upload: demo-files run-all
-	@scripts/test-upload.sh
+.PHONY: test
+test:	## run unit tests with race detection and coverage
+	go test -race -cover -short ./helper/... ./worker/... ./cmd/... ./model/... ./internal/... ./server/queue/... ./server/repository/...
+
+.PHONY: test-integration
+test-integration:	## run integration tests (requires PostgreSQL)
+	go test -race -cover ./server/repository/... -run Integration
+
+.PHONY: test-e2e
+test-e2e:	## run e2e test (requires docker-compose)
+test-e2e: demo-files run-all
+	@scripts/test-e2e.sh
+
+.PHONY: test-all
+test-all: test test-e2e	## run all tests
 
 .PHONY: update-changelog
 update-changelog:	## automatically update changelog based on commits

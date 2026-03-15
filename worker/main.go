@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"gearr/broker"
 	"gearr/cmd"
 	"gearr/helper"
+	"gearr/server/repository"
 	"gearr/worker/task"
 	"os"
 	"os/signal"
@@ -21,9 +21,9 @@ import (
 )
 
 type CmdLineOpts struct {
-	Broker   broker.Config `mapstructure:"broker"`
-	Worker   task.Config   `mapstructure:"worker"`
-	LogLevel string        `mapstructure:"log-level"`
+	Database repository.SQLServerConfig `mapstructure:"database"`
+	Worker   task.Config                `mapstructure:"worker"`
+	LogLevel string                     `mapstructure:"log-level"`
 }
 
 var (
@@ -37,7 +37,7 @@ func init() {
 		log.Panic(err)
 	}
 
-	cmd.BrokerFlags()
+	cmd.DatabaseFlags()
 	cmd.LogLevelFlags()
 	pflag.String("worker.temporalPath", os.TempDir(), "Path used for temporal data")
 	pflag.String("worker.name", hostname, "Worker Name used for statistics")
@@ -112,11 +112,13 @@ func main() {
 
 	printer := task.NewConsoleWorkerPrinter()
 
-	//BrokerClient System
-	broker := task.NewBrokerClientRabbit(opts.Broker, opts.Worker, printer)
-	broker.Run(wg, ctx)
+	brokerClient, err := task.NewBrokerClientPostgres(opts.Database, opts.Worker, printer)
+	if err != nil {
+		log.Panic(err)
+	}
+	brokerClient.Run(wg, ctx)
 
-	worker := task.NewWorkerClient(opts.Worker, broker, printer)
+	worker := task.NewWorkerClient(opts.Worker, brokerClient, printer)
 	worker.Run(wg, ctx)
 
 	wg.Wait()

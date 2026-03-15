@@ -278,3 +278,7 @@ type Manager interface {
 	ResponsePGSJob(response TaskPGSResponse) error
 	RequestPGSJob(pgsJob TaskPGS) <-chan *TaskPGSResponse
 }
+
+type BrokerClient interface {
+	Manager
+}
