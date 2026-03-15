@@ -7,6 +7,7 @@
   import IconErrorOutline from '$lib/components/icons/IconErrorOutline.svelte';
   import IconSchedule from '$lib/components/icons/IconSchedule.svelte';
   import IconArrowForward from '$lib/components/icons/IconArrowForward.svelte';
+  import ScannerWidget from '$lib/components/ScannerWidget.svelte';
 
   const stats = [
     { key: 'total', label: 'Total Jobs', icon: IconAssignment },
@@ -52,6 +53,10 @@
         <div class="stat-card-label">{stat.label}</div>
       </div>
     {/each}
+  </div>
+
+  <div class="dashboard-widgets">
+    <ScannerWidget />
   </div>
 
   <div class="recent-section">
@@ -118,6 +123,10 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-2xl);
+  }
+
+  .dashboard-widgets {
     margin-bottom: var(--spacing-2xl);
   }
 

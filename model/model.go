@@ -307,3 +307,62 @@ type FileProcessing struct {
 	JobId      *uuid.UUID           `json:"job_id,omitempty"`
 	CreatedAt  time.Time            `json:"created_at"`
 }
+
+type ScanStatus string
+
+const (
+	ScanRunning   ScanStatus = "running"
+	ScanCompleted ScanStatus = "completed"
+	ScanFailed    ScanStatus = "failed"
+)
+
+type LibraryScan struct {
+	Id                string     `json:"id"`
+	StartedAt         time.Time  `json:"started_at"`
+	CompletedAt       *time.Time `json:"completed_at,omitempty"`
+	Status            ScanStatus `json:"status"`
+	FilesFound        int        `json:"files_found"`
+	FilesQueued       int        `json:"files_queued"`
+	FilesSkippedSize  int        `json:"files_skipped_size"`
+	FilesSkippedCodec int        `json:"files_skipped_codec"`
+	FilesSkippedExist int        `json:"files_skipped_exists"`
+	ErrorMessage      string     `json:"error_message,omitempty"`
+}
+
+type ScannedFile struct {
+	Id            string    `json:"id"`
+	FilePath      string    `json:"file_path"`
+	FileSize      int64     `json:"file_size"`
+	Codec         string    `json:"codec,omitempty"`
+	LastScannedAt time.Time `json:"last_scanned_at"`
+	Queued        bool      `json:"queued"`
+	ScanId        string    `json:"scan_id,omitempty"`
+}
+
+type ScannerStatus struct {
+	Enabled    bool          `json:"enabled"`
+	IsScanning bool          `json:"is_scanning"`
+	LastScan   *LibraryScan  `json:"last_scan,omitempty"`
+	NextScanAt *time.Time    `json:"next_scan_at,omitempty"`
+	Config     ScannerConfig `json:"config"`
+}
+
+type ScannerConfig struct {
+	Enabled        bool          `json:"enabled"`
+	Interval       time.Duration `json:"interval"`
+	MinFileSize    int64         `json:"min_file_size"`
+	Paths          []string      `json:"paths"`
+	FileExtensions []string      `json:"file_extensions"`
+}
+
+type ScannerNotification struct {
+	Type         string     `json:"type"`
+	ScanId       string     `json:"scan_id"`
+	Progress     int        `json:"progress"`
+	FilesFound   int        `json:"files_found"`
+	FilesQueued  int        `json:"files_queued"`
+	FilesSkipped int        `json:"files_skipped"`
+	CurrentPath  string     `json:"current_path,omitempty"`
+	Status       ScanStatus `json:"status"`
+	ErrorMessage string     `json:"error_message,omitempty"`
+}

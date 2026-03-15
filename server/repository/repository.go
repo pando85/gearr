@@ -48,6 +48,14 @@ type Repository interface {
 	AddFileProcessing(ctx context.Context, fp *model.FileProcessing) error
 	GetFileProcessingByPath(ctx context.Context, path string) (*model.FileProcessing, error)
 	GetRecentFileProcessings(ctx context.Context, limit int, source model.FileProcessingSource) ([]*model.FileProcessing, error)
+	CreateScan(ctx context.Context, scan *model.LibraryScan) error
+	UpdateScan(ctx context.Context, scan *model.LibraryScan) error
+	GetScan(ctx context.Context, id string) (*model.LibraryScan, error)
+	GetLatestScan(ctx context.Context) (*model.LibraryScan, error)
+	GetScanHistory(ctx context.Context, limit int) ([]*model.LibraryScan, error)
+	UpsertScannedFile(ctx context.Context, file *model.ScannedFile) error
+	GetScannedFile(ctx context.Context, path string) (*model.ScannedFile, error)
+	GetScannedFilesByScan(ctx context.Context, scanID string) ([]*model.ScannedFile, error)
 }
 
 type Transaction interface {
@@ -858,4 +866,173 @@ func (S *SQLRepository) GetRecentFileProcessings(ctx context.Context, limit int,
 	}
 
 	return processings, nil
+}
+
+func (S *SQLRepository) CreateScan(ctx context.Context, scan *model.LibraryScan) error {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = conn.ExecContext(ctx,
+		`INSERT INTO library_scans (id, started_at, completed_at, status, files_found, files_queued, files_skipped_size, files_skipped_codec, files_skipped_exists, error_message)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		scan.Id, scan.StartedAt, scan.CompletedAt, scan.Status, scan.FilesFound, scan.FilesQueued,
+		scan.FilesSkippedSize, scan.FilesSkippedCodec, scan.FilesSkippedExist, scan.ErrorMessage)
+	return err
+}
+
+func (S *SQLRepository) UpdateScan(ctx context.Context, scan *model.LibraryScan) error {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = conn.ExecContext(ctx,
+		`UPDATE library_scans SET completed_at=$1, status=$2, files_found=$3, files_queued=$4, 
+		 files_skipped_size=$5, files_skipped_codec=$6, files_skipped_exists=$7, error_message=$8
+		 WHERE id=$9`,
+		scan.CompletedAt, scan.Status, scan.FilesFound, scan.FilesQueued,
+		scan.FilesSkippedSize, scan.FilesSkippedCodec, scan.FilesSkippedExist, scan.ErrorMessage, scan.Id)
+	return err
+}
+
+func (S *SQLRepository) GetScan(ctx context.Context, id string) (*model.LibraryScan, error) {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := conn.QueryContext(ctx,
+		`SELECT id, started_at, completed_at, status, files_found, files_queued, 
+		 files_skipped_size, files_skipped_codec, files_skipped_exists, error_message
+		 FROM library_scans WHERE id=$1`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		scan := &model.LibraryScan{}
+		if err := rows.Scan(&scan.Id, &scan.StartedAt, &scan.CompletedAt, &scan.Status,
+			&scan.FilesFound, &scan.FilesQueued, &scan.FilesSkippedSize, &scan.FilesSkippedCodec,
+			&scan.FilesSkippedExist, &scan.ErrorMessage); err != nil {
+			return nil, err
+		}
+		return scan, nil
+	}
+	return nil, fmt.Errorf("%w: scan %s", ErrElementNotFound, id)
+}
+
+func (S *SQLRepository) GetLatestScan(ctx context.Context) (*model.LibraryScan, error) {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := conn.QueryContext(ctx,
+		`SELECT id, started_at, completed_at, status, files_found, files_queued, 
+		 files_skipped_size, files_skipped_codec, files_skipped_exists, error_message
+		 FROM library_scans ORDER BY started_at DESC LIMIT 1`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		scan := &model.LibraryScan{}
+		if err := rows.Scan(&scan.Id, &scan.StartedAt, &scan.CompletedAt, &scan.Status,
+			&scan.FilesFound, &scan.FilesQueued, &scan.FilesSkippedSize, &scan.FilesSkippedCodec,
+			&scan.FilesSkippedExist, &scan.ErrorMessage); err != nil {
+			return nil, err
+		}
+		return scan, nil
+	}
+	return nil, nil
+}
+
+func (S *SQLRepository) GetScanHistory(ctx context.Context, limit int) ([]*model.LibraryScan, error) {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := conn.QueryContext(ctx,
+		`SELECT id, started_at, completed_at, status, files_found, files_queued, 
+		 files_skipped_size, files_skipped_codec, files_skipped_exists, error_message
+		 FROM library_scans ORDER BY started_at DESC LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var scans []*model.LibraryScan
+	for rows.Next() {
+		scan := &model.LibraryScan{}
+		if err := rows.Scan(&scan.Id, &scan.StartedAt, &scan.CompletedAt, &scan.Status,
+			&scan.FilesFound, &scan.FilesQueued, &scan.FilesSkippedSize, &scan.FilesSkippedCodec,
+			&scan.FilesSkippedExist, &scan.ErrorMessage); err != nil {
+			return nil, err
+		}
+		scans = append(scans, scan)
+	}
+	return scans, nil
+}
+
+func (S *SQLRepository) UpsertScannedFile(ctx context.Context, file *model.ScannedFile) error {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = conn.ExecContext(ctx,
+		`INSERT INTO scanned_files (id, file_path, file_size, codec, last_scanned_at, queued, scan_id)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7)
+		 ON CONFLICT (file_path) DO UPDATE SET 
+		 file_size=$3, codec=$4, last_scanned_at=$5, queued=$6, scan_id=$7`,
+		file.Id, file.FilePath, file.FileSize, file.Codec, file.LastScannedAt, file.Queued, file.ScanId)
+	return err
+}
+
+func (S *SQLRepository) GetScannedFile(ctx context.Context, path string) (*model.ScannedFile, error) {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := conn.QueryContext(ctx,
+		`SELECT id, file_path, file_size, codec, last_scanned_at, queued, scan_id
+		 FROM scanned_files WHERE file_path=$1`, path)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		file := &model.ScannedFile{}
+		if err := rows.Scan(&file.Id, &file.FilePath, &file.FileSize, &file.Codec,
+			&file.LastScannedAt, &file.Queued, &file.ScanId); err != nil {
+			return nil, err
+		}
+		return file, nil
+	}
+	return nil, fmt.Errorf("%w: file %s", ErrElementNotFound, path)
+}
+
+func (S *SQLRepository) GetScannedFilesByScan(ctx context.Context, scanID string) ([]*model.ScannedFile, error) {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := conn.QueryContext(ctx,
+		`SELECT id, file_path, file_size, codec, last_scanned_at, queued, scan_id
+		 FROM scanned_files WHERE scan_id=$1 ORDER BY last_scanned_at DESC`, scanID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var files []*model.ScannedFile
+	for rows.Next() {
+		file := &model.ScannedFile{}
+		if err := rows.Scan(&file.Id, &file.FilePath, &file.FileSize, &file.Codec,
+			&file.LastScannedAt, &file.Queued, &file.ScanId); err != nil {
+			return nil, err
+		}
+		files = append(files, file)
+	}
+	return files, nil
 }

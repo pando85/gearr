@@ -14,3 +14,16 @@ scheduler:
   downloadPath: /source
   uploadPath: /target
   domain: http://gearr.example.com
+
+scanner:
+  enabled: false
+  interval: 24h
+  minFileSize: 100000000
+  paths:
+    - /media/movies
+    - /media/tvshows
+  fileExtensions:
+    - .mkv
+    - .mp4
+    - .avi
+    - .mov

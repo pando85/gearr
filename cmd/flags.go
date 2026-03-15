@@ -40,3 +40,11 @@ func WatcherFlags() {
 	pflag.Duration("scheduler.watchDebounce", 2*time.Second, "Debounce time for file events")
 	pflag.StringSlice("scheduler.watchPatterns", []string{"*.mkv", "*.mp4", "*.avi", "*.mov", "*.wmv", "*.flv"}, "File patterns to watch")
 }
+
+func ScannerFlags() {
+	pflag.Bool("scanner.enabled", false, "Enable library scanner")
+	pflag.Duration("scanner.interval", time.Hour*24, "Scan interval for library scanner")
+	pflag.Int64("scanner.minFileSize", 1e+8, "Minimum file size for library scanner (bytes)")
+	pflag.StringSlice("scanner.paths", []string{}, "Paths to scan for video files")
+	pflag.StringSlice("scanner.fileExtensions", []string{}, "File extensions to scan (default: common video extensions)")
+}
