@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"gearr/broker"
 	"gearr/cmd"
 	"gearr/helper"
 	"gearr/server/repository"
@@ -22,7 +21,6 @@ import (
 )
 
 type CmdLineOpts struct {
-	Broker   broker.Config              `mapstructure:"broker"`
 	Database repository.SQLServerConfig `mapstructure:"database"`
 	Worker   task.Config                `mapstructure:"worker"`
 	LogLevel string                     `mapstructure:"log-level"`
@@ -39,7 +37,6 @@ func init() {
 		log.Panic(err)
 	}
 
-	cmd.BrokerFlags()
 	cmd.DatabaseFlags()
 	cmd.LogLevelFlags()
 	pflag.String("worker.temporalPath", os.TempDir(), "Path used for temporal data")
@@ -115,15 +112,9 @@ func main() {
 
 	printer := task.NewConsoleWorkerPrinter()
 
-	var brokerClient task.BrokerClient
-	if opts.Broker.Type == "rabbitmq" {
-		brokerClient = task.NewBrokerClientRabbit(opts.Broker, opts.Worker, printer)
-	} else {
-		var err error
-		brokerClient, err = task.NewBrokerClientPostgres(opts.Database, opts.Worker, printer)
-		if err != nil {
-			log.Panic(err)
-		}
+	brokerClient, err := task.NewBrokerClientPostgres(opts.Database, opts.Worker, printer)
+	if err != nil {
+		log.Panic(err)
 	}
 	brokerClient.Run(wg, ctx)
 

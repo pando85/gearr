@@ -10,14 +10,12 @@ require (
 	github.com/gin-gonic/gin v1.12.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/isayme/go-amqp-reconnect v0.0.0-20210303120416-fc811b0bcda2
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/jedib0t/go-pretty/v6 v6.7.8
 	github.com/rakyll/statik v0.1.8
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
-	github.com/streadway/amqp v1.1.0
 	golift.io/starr v1.3.1
 	gopkg.in/errgo.v2 v2.1.0
 	gopkg.in/vansante/go-ffprobe.v2 v2.3.0

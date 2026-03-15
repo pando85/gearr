@@ -2,7 +2,6 @@ package task
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"gearr/helper"
@@ -14,13 +13,31 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	_ "github.com/jackc/pgx/v5/stdlib"
 	log "github.com/sirupsen/logrus"
 )
 
+type JobWorker struct {
+	jobID        uuid.UUID
+	active       bool
+	pgs          concurrent.Slice
+	pgsWorker    *PGSWorker
+	encodeWorker *EncodeWorker
+}
+
+type TaskPGSJobControl struct {
+	task     model.TaskPGS
+	response chan *model.TaskPGSResponse
+}
+
+func NewPGSJobControl(task model.TaskPGS) *TaskPGSJobControl {
+	return &TaskPGSJobControl{
+		task:     task,
+		response: make(chan *model.TaskPGSResponse, 1),
+	}
+}
+
 type PostgresClient struct {
-	db                *sql.DB
-	repo              *repository.SQLRepository
+	repo              repository.Repository
 	workerConfig      Config
 	workerUniqueQueue string
 	PGSWorker         []*JobWorker
@@ -44,7 +61,6 @@ func NewBrokerClientPostgres(dbConfig repository.SQLServerConfig, workerConfig C
 
 	return &PostgresClient{
 		repo:              repo,
-		db:                repo.GetDB(),
 		workerConfig:      workerConfig,
 		workerUniqueQueue: uniqueID,
 		printer:           printer,
@@ -72,11 +88,11 @@ func (p *PostgresClient) RegisterEncodeWorker(worker *EncodeWorker) {
 }
 
 func (p *PostgresClient) Run(wg *sync.WaitGroup, ctx context.Context) {
-	log.Info("starting postgres broker client")
+	log.Info("starting broker client")
 	wg.Add(1)
 	go func() {
 		<-ctx.Done()
-		log.Info("stopping postgres broker client")
+		log.Info("stopping broker client")
 		wg.Done()
 	}()
 
@@ -84,10 +100,7 @@ func (p *PostgresClient) Run(wg *sync.WaitGroup, ctx context.Context) {
 }
 
 func (p *PostgresClient) EventNotification(event model.TaskEvent) error {
-	_, err := p.db.ExecContext(context.Background(),
-		`INSERT INTO task_event_queue (job_id, event_id, event_type, worker_name, worker_queue, event_time, ip, notification_type, status, message)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-		event.Id.String(), event.EventID, event.EventType, event.WorkerName, event.WorkerQueue, event.EventTime, event.IP, event.NotificationType, event.Status, event.Message)
+	err := p.repo.EnqueueTaskEvent(context.Background(), &event)
 	if err != nil {
 		return err
 	}
@@ -100,10 +113,7 @@ func (p *PostgresClient) RequestPGSJob(pgsJob model.TaskPGS) <-chan *model.TaskP
 	pgsJobControl := NewPGSJobControl(pgsJob)
 	pgsJob.ReplyTo = p.workerUniqueQueue
 
-	_, err := p.db.ExecContext(context.Background(),
-		"INSERT INTO pgs_queue (job_id, pgs_id, pgs_data, pgs_language, reply_to_queue) VALUES ($1, $2, $3, $4, $5)",
-		pgsJob.Id.String(), pgsJob.PGSID, pgsJob.PGSdata, pgsJob.PGSLanguage, pgsJob.ReplyTo)
-
+	err := p.repo.EnqueuePGSJob(context.Background(), &pgsJob)
 	if err != nil {
 		log.Errorf("failed to publish PGS job: %v", err)
 		pgsJobControl.response <- &model.TaskPGSResponse{
@@ -122,10 +132,7 @@ func (p *PostgresClient) RequestPGSJob(pgsJob model.TaskPGS) <-chan *model.TaskP
 }
 
 func (p *PostgresClient) ResponsePGSJob(pgsResponse model.TaskPGSResponse) error {
-	_, err := p.db.ExecContext(context.Background(),
-		"INSERT INTO pgs_responses (job_id, pgs_id, srt_data, error, reply_to_queue) VALUES ($1, $2, $3, $4, $5)",
-		pgsResponse.Id.String(), pgsResponse.PGSID, pgsResponse.Srt, pgsResponse.Err, pgsResponse.Queue)
-	return err
+	return p.repo.EnqueuePGSResponse(context.Background(), &pgsResponse)
 }
 
 func (p *PostgresClient) eventProcessor(ctx context.Context) {
@@ -139,11 +146,14 @@ func (p *PostgresClient) eventProcessor(ctx context.Context) {
 	ticker := time.NewTicker(p.pollInterval)
 	defer ticker.Stop()
 
+	pingTicker := time.NewTicker(30 * time.Second)
+	defer pingTicker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(time.Second * 30):
+		case <-pingTicker.C:
 			pingEvent := model.TaskEvent{
 				EventType:   model.PingEvent,
 				WorkerName:  p.workerConfig.Name,
@@ -160,69 +170,32 @@ func (p *PostgresClient) eventProcessor(ctx context.Context) {
 }
 
 func (p *PostgresClient) checkPGSResponses() {
-	rows, err := p.db.QueryContext(context.Background(), `
-		UPDATE pgs_responses 
-		SET consumed = true, consumed_at = NOW()
-		WHERE id IN (
-			SELECT id FROM pgs_responses 
-			WHERE reply_to_queue = $1 AND consumed = false
-			ORDER BY created_at ASC
-			FOR UPDATE SKIP LOCKED
-		)
-		RETURNING job_id, pgs_id, srt_data, error
-	`, p.workerUniqueQueue)
-
+	resp, err := p.repo.DequeuePGSResponse(context.Background(), p.workerUniqueQueue)
 	if err != nil {
 		log.Errorf("failed to check PGS responses: %v", err)
 		return
 	}
-	defer rows.Close()
+	if resp == nil {
+		return
+	}
 
-	for rows.Next() {
-		var resp model.TaskPGSResponse
-		var jobID string
-		if err := rows.Scan(&jobID, &resp.PGSID, &resp.Srt, &resp.Err); err != nil {
-			log.Errorf("failed to scan PGS response: %v", err)
-			continue
-		}
-
-		if val, ok := p.pgsJobControls.Get(fmt.Sprintf("%d", resp.PGSID)); ok {
-			pgsJobControl := val.(*TaskPGSJobControl)
-			resp.Id = pgsJobControl.task.Id
-			pgsJobControl.response <- &resp
-			close(pgsJobControl.response)
-			p.EncodeWorker.pgs.Delete(pgsJobControl)
-		}
+	if val, ok := p.pgsJobControls.Get(fmt.Sprintf("%d", resp.PGSID)); ok {
+		pgsJobControl := val.(*TaskPGSJobControl)
+		resp.Id = pgsJobControl.task.Id
+		pgsJobControl.response <- resp
+		close(pgsJobControl.response)
+		p.EncodeWorker.pgs.Delete(pgsJobControl)
 	}
 }
 
 func (p *PostgresClient) checkJobActions(ctx context.Context) {
-	rows, err := p.db.QueryContext(ctx, `
-		UPDATE job_actions 
-		SET consumed = true, consumed_at = NOW()
-		WHERE id IN (
-			SELECT id FROM job_actions 
-			WHERE worker_name = $1 AND consumed = false
-			ORDER BY created_at ASC
-			FOR UPDATE SKIP LOCKED
-		)
-		RETURNING job_id, action
-	`, p.workerUniqueQueue)
-
+	actions, err := p.repo.DequeueJobActions(ctx, p.workerUniqueQueue)
 	if err != nil {
 		log.Errorf("failed to check job actions: %v", err)
 		return
 	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var action model.JobAction
-		var jobID string
-		if err := rows.Scan(&jobID, &action); err != nil {
-			log.Errorf("failed to scan job action: %v", err)
-			continue
-		}
-		log.Infof("received job action %s for job %s", action, jobID)
+	for _, action := range actions {
+		log.Infof("received job action %s for job %s", action.Action, action.Id.String())
 	}
 }
 
@@ -238,32 +211,12 @@ func (p *PostgresClient) pgsQueueProcessor(ctx context.Context) {
 		case <-ticker.C:
 			for _, worker := range p.PGSWorker {
 				if !worker.active && worker.pgsWorker.AcceptJobs() {
-					var pgsJob model.TaskPGS
-					var jobID string
-					err := p.db.QueryRowContext(ctx, `
-						UPDATE pgs_queue 
-						SET status = 'processing', locked_at = NOW(), locked_by = $1
-						WHERE id = (
-							SELECT id FROM pgs_queue 
-							WHERE status = 'pending'
-							ORDER BY created_at ASC
-							LIMIT 1
-							FOR UPDATE SKIP LOCKED
-						)
-						RETURNING job_id, pgs_id, pgs_data, pgs_language, reply_to_queue
-					`, p.workerUniqueQueue).Scan(&jobID, &pgsJob.PGSID, &pgsJob.PGSdata, &pgsJob.PGSLanguage, &pgsJob.ReplyTo)
-
-					if err == sql.ErrNoRows {
-						continue
-					}
+					pgsJob, err := p.repo.DequeuePGSJob(ctx, p.workerUniqueQueue)
 					if err != nil {
 						log.Errorf("failed to dequeue PGS job: %v", err)
 						continue
 					}
-
-					pgsJob.Id, err = uuid.Parse(jobID)
-					if err != nil {
-						log.Errorf("failed to parse job ID: %v", err)
+					if pgsJob == nil {
 						continue
 					}
 
@@ -301,32 +254,12 @@ func (p *PostgresClient) encodeQueueProcessor(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if p.EncodeWorker.encodeWorker.AcceptJobs() {
-				var task model.TaskEncode
-				var jobID string
-				err := p.db.QueryRowContext(ctx, `
-					UPDATE encode_queue 
-					SET status = 'processing', locked_at = NOW(), locked_by = $1
-					WHERE id = (
-						SELECT id FROM encode_queue 
-						WHERE status = 'pending'
-						ORDER BY created_at ASC
-						LIMIT 1
-						FOR UPDATE SKIP LOCKED
-					)
-					RETURNING job_id, download_url, upload_url, checksum_url, event_id
-				`, p.workerUniqueQueue).Scan(&jobID, &task.DownloadURL, &task.UploadURL, &task.ChecksumURL, &task.EventID)
-
-				if err == sql.ErrNoRows {
-					continue
-				}
+				task, err := p.repo.DequeueEncodeJob(ctx, p.workerUniqueQueue)
 				if err != nil {
 					log.Errorf("failed to dequeue encode job: %v", err)
 					continue
 				}
-
-				task.Id, err = uuid.Parse(jobID)
-				if err != nil {
-					log.Errorf("failed to parse job ID: %v", err)
+				if task == nil {
 					continue
 				}
 

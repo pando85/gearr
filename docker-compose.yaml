@@ -10,7 +10,6 @@ services:
     environment:
       LOG_LEVEL: DEBUG
       DATABASE_DRIVER: pgx
-      BROKER_TYPE: postgres
       DATABASE_HOST: postgres
       DATABASE_USER: postgres
       DATABASE_PASSWORD: postgres_password
@@ -43,8 +42,6 @@ services:
     command:
       - --log-level
       - debug
-      - --broker.type
-      - postgres
       - --database.host
       - postgres
       - --database.user
@@ -72,8 +69,6 @@ services:
     command:
       - --log-level
       - debug
-      - --broker.type
-      - postgres
       - --database.host
       - postgres
       - --database.user
