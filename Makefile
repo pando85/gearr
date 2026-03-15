@@ -105,10 +105,17 @@ demo-files:		## download demo file
 demo-files:
 	@scripts/get-demo-files.sh
 
-.PHONY: test-upload
-test-upload:	## upload job to test all process
-test-upload: demo-files run-all
-	@scripts/test-upload.sh
+.PHONY: test
+test:	## run unit tests with race detection and coverage
+	go test -race -cover ./helper/... ./worker/... ./broker/... ./cmd/... ./model/...
+
+.PHONY: test-e2e
+test-e2e:	## run e2e test (requires docker-compose)
+test-e2e: demo-files run-all
+	@scripts/test-e2e.sh
+
+.PHONY: test-all
+test-all: test test-e2e	## run all tests
 
 .PHONY: update-changelog
 update-changelog:	## automatically update changelog based on commits
