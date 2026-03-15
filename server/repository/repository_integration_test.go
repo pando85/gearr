@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"gearr/model"
+	"os"
 	"testing"
 	"time"
 
@@ -470,5 +471,5 @@ func getEnvOrDefault(key, defaultVal string) string {
 }
 
 func getEnv(key string) string {
-	return ""
+	return os.Getenv(key)
 }

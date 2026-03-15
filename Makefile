@@ -129,7 +129,11 @@ demo-files:
 
 .PHONY: test
 test:	## run unit tests with race detection and coverage
-	go test -race -cover ./helper/... ./worker/... ./cmd/... ./model/... ./internal/... ./server/queue/...
+	go test -race -cover -short ./helper/... ./worker/... ./cmd/... ./model/... ./internal/... ./server/queue/... ./server/repository/...
+
+.PHONY: test-integration
+test-integration:	## run integration tests (requires PostgreSQL)
+	go test -race -cover ./server/repository/... -run Integration
 
 .PHONY: test-e2e
 test-e2e:	## run e2e test (requires docker-compose)
