@@ -50,44 +50,54 @@ push-images: push-image-server push-image-worker
 push-images:		## build and push container images
 
 DOCKER_BUILD_ARG := --cache-to type=inline
-CACHE_FROM := --cache-from $(IMAGE_NAME):$(IMAGE_VERSION)-base --cache-from $(IMAGE_NAME):latest-base
+CACHE_FROM_BASE := --cache-from type=registry,ref=$(IMAGE_NAME):latest-base
+CACHE_FROM_SERVER := --cache-from type=registry,ref=$(IMAGE_NAME):latest-server
+CACHE_FROM_WORKER := --cache-from type=registry,ref=$(IMAGE_NAME):latest-worker
 
 .PHONY: image-%
 .PHONY: push-image-%
 image-% push-image-%: build-%
-	@export CACHE_FROM="$(CACHE_FROM)"; \
-	export DOCKER_BUILD_ARG="$(DOCKER_BUILD_ARG) $(if $(findstring push,$@),--push,--load)"; \
+	@export DOCKER_BUILD_ARG="$(DOCKER_BUILD_ARG) $(if $(findstring push,$@),--push,--load)"; \
 	if [ "$*" = "server" ]; then \
+		echo "Building server image with cache..."; \
 		docker buildx build \
-		$${CACHE_FROM} \
+		$(CACHE_FROM_BASE) \
 		$${DOCKER_BUILD_ARG} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-build \
 		--target build \
 		-f Dockerfile \
 		. ; \
 		docker buildx build \
-		$${CACHE_FROM} \
+		$(CACHE_FROM_BASE) \
 		$${DOCKER_BUILD_ARG} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-base \
 		--target base \
 		-f Dockerfile \
 		. ; \
-	else \
 		docker buildx build \
-		$${CACHE_FROM} \
+		$(CACHE_FROM_BASE) $(CACHE_FROM_SERVER) \
+		$${DOCKER_BUILD_ARG} \
+		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
+		-f Dockerfile \
+		--target $* \
+		. ; \
+	else \
+		echo "Building worker image with cache..."; \
+		docker buildx build \
+		$(CACHE_FROM_BASE) \
 		$${DOCKER_BUILD_ARG} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-worker-pgs \
 		--target worker-pgs \
 		-f Dockerfile \
 		. ; \
-	fi; \
-	docker buildx build \
-		$${CACHE_FROM} \
+		docker buildx build \
+		$(CACHE_FROM_BASE) $(CACHE_FROM_WORKER) \
 		$${DOCKER_BUILD_ARG} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
 		-f Dockerfile \
 		--target $* \
-		. ;
+		. ; \
+	fi;
 
 .PHONY: pull-cache
 pull-cache:		## pull cache images from registry

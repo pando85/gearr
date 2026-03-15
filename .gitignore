@@ -5,3 +5,4 @@ statik/
 /dist/
 /gui/
 demo-files
+coverage.out
