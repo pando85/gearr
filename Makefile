@@ -107,7 +107,7 @@ demo-files:
 
 .PHONY: test
 test:	## run unit tests with race detection and coverage
-	go test -race -cover ./helper/... ./worker/... ./cmd/... ./model/...
+	go test -race -cover ./helper/... ./worker/... ./cmd/... ./model/... ./internal/... ./server/queue/...
 
 .PHONY: test-e2e
 test-e2e:	## run e2e test (requires docker-compose)
