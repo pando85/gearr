@@ -1,6 +1,7 @@
 package broker
 
 type Config struct {
+	Type                   string `mapstructure:"type"`
 	Host                   string `mapstructure:"host"`
 	Port                   int    `mapstructure:"port"`
 	User                   string `mapstructure:"user"`

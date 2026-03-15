@@ -10,9 +10,7 @@ services:
     environment:
       LOG_LEVEL: DEBUG
       DATABASE_DRIVER: pgx
-      BROKER_HOST: rabbitmq
-      BROKER_USER: rabbit
-      BROKER_PASSWORD: rabbit_password
+      BROKER_TYPE: postgres
       DATABASE_HOST: postgres
       DATABASE_USER: postgres
       DATABASE_PASSWORD: postgres_password
@@ -26,7 +24,6 @@ services:
       - "8080:8080"
     depends_on:
       - postgres
-      - rabbitmq
 
   postgres:
     image: postgres:latest
@@ -37,14 +34,6 @@ services:
     ports:
       - "5432:5432"
 
-  rabbitmq:
-    image: "rabbitmq:4-management"
-    environment:
-      RABBITMQ_DEFAULT_USER: rabbit
-      RABBITMQ_DEFAULT_PASS: rabbit_password
-    ports:
-      - "5672:5672"
-
   worker:
     build:
       context: .
@@ -54,12 +43,16 @@ services:
     command:
       - --log-level
       - debug
-      - --broker.host
-      - rabbitmq
-      - --broker.user
-      - rabbit
-      - --broker.password
-      - rabbit_password
+      - --broker.type
+      - postgres
+      - --database.host
+      - postgres
+      - --database.user
+      - postgres
+      - --database.password
+      - postgres_password
+      - --database.database
+      - gearr
       - --worker.acceptedJobs
       - encode
       - --worker.pgsJobs
@@ -67,7 +60,7 @@ services:
       - --worker.maxPrefetchJobs
       - "3"
     depends_on:
-      - rabbitmq
+      - postgres
       - server
 
   worker-pgs:
@@ -79,16 +72,20 @@ services:
     command:
       - --log-level
       - debug
-      - --broker.host
-      - rabbitmq
-      - --broker.user
-      - rabbit
-      - --broker.password
-      - rabbit_password
+      - --broker.type
+      - postgres
+      - --database.host
+      - postgres
+      - --database.user
+      - postgres
+      - --database.password
+      - postgres_password
+      - --database.database
+      - gearr
       - --worker.pgsJobs
       - "1"
       - --worker.acceptedJobs
       - pgstosrt
     depends_on:
-      - rabbitmq
+      - postgres
       - server

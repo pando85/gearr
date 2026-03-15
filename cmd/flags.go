@@ -7,6 +7,7 @@ import (
 )
 
 func BrokerFlags() {
+	pflag.String("broker.type", "postgres", "Broker type: postgres or rabbitmq")
 	pflag.String("broker.host", "localhost", "Broker Host")
 	pflag.Int("broker.port", 5672, "WebServer Port")
 	pflag.String("broker.user", "broker", "Broker User")

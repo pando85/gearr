@@ -120,9 +120,17 @@ func main() {
 	}
 
 	//BrokerServer System
-	broker, err := queue.NewBrokerServerRabbit(opts.Broker, repo)
-	if err != nil {
-		log.Panic(err)
+	var broker queue.BrokerServer
+	if opts.Broker.Type == "rabbitmq" {
+		broker, err = queue.NewBrokerServerRabbit(opts.Broker, repo)
+		if err != nil {
+			log.Panic(err)
+		}
+	} else {
+		broker, err = queue.NewBrokerServerPostgres(repo)
+		if err != nil {
+			log.Panic(err)
+		}
 	}
 	broker.Run(wg, ctx)
 

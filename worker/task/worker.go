@@ -10,11 +10,18 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func NewWorkerClient(config Config, rabbit *RabbitMQClient, printer *ConsoleWorkerPrinter) *WorkerRuntime {
+type BrokerClient interface {
+	model.Manager
+	RegisterPGSWorker(worker *PGSWorker)
+	RegisterEncodeWorker(worker *EncodeWorker)
+	Run(wg *sync.WaitGroup, ctx context.Context)
+}
+
+func NewWorkerClient(config Config, brokerClient BrokerClient, printer *ConsoleWorkerPrinter) *WorkerRuntime {
 	return &WorkerRuntime{
-		config:  config,
-		rabbit:  rabbit,
-		printer: printer,
+		config:       config,
+		brokerClient: brokerClient,
+		printer:      printer,
 	}
 }
 
@@ -22,7 +29,7 @@ type WorkerRuntime struct {
 	config       Config
 	EncodeWorker *EncodeWorker
 	PGSWorker    []*PGSWorker
-	rabbit       *RabbitMQClient
+	brokerClient BrokerClient
 	printer      *ConsoleWorkerPrinter
 }
 
@@ -41,7 +48,7 @@ func (W *WorkerRuntime) Run(wg *sync.WaitGroup, ctx context.Context) {
 func (W *WorkerRuntime) start(ctx context.Context) {
 	if W.config.Jobs.IsAccepted(model.EncodeJobType) {
 		W.EncodeWorker = NewEncodeWorker(ctx, W.config, fmt.Sprintf("%s-%d", model.EncodeJobType, 1), W.printer)
-		W.rabbit.RegisterEncodeWorker(W.EncodeWorker)
+		W.brokerClient.RegisterEncodeWorker(W.EncodeWorker)
 		W.EncodeWorker.Initialize()
 		log.Info("initializing encode worker")
 
@@ -51,7 +58,7 @@ func (W *WorkerRuntime) start(ctx context.Context) {
 			pgsWorker := NewPGSWorker(ctx, W.config, fmt.Sprintf("%s-%d", model.PGSToSrtJobType, i))
 			log.Infof("initializing pgs worker %d", i)
 			W.PGSWorker = append(W.PGSWorker, pgsWorker)
-			W.rabbit.RegisterPGSWorker(pgsWorker)
+			W.brokerClient.RegisterPGSWorker(pgsWorker)
 		}
 	}
 }

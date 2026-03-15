@@ -10,6 +10,7 @@ import (
 
 	_ "embed"
 
+	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	log "github.com/sirupsen/logrus"
 )
@@ -33,6 +34,17 @@ type Repository interface {
 	WithTransaction(ctx context.Context, transactionFunc func(ctx context.Context, tx Repository) error) error
 	GetWorker(ctx context.Context, name string) (*model.Worker, error)
 	GetWorkers(ctx context.Context) (*[]model.Worker, error)
+	EnqueueEncodeJob(ctx context.Context, task *model.TaskEncode) error
+	DequeueEncodeJob(ctx context.Context, workerName string) (*model.TaskEncode, error)
+	EnqueuePGSJob(ctx context.Context, pgs *model.TaskPGS) error
+	DequeuePGSJob(ctx context.Context, workerName string) (*model.TaskPGS, error)
+	EnqueuePGSResponse(ctx context.Context, resp *model.TaskPGSResponse) error
+	DequeuePGSResponse(ctx context.Context, replyToQueue string) (*model.TaskPGSResponse, error)
+	EnqueueTaskEvent(ctx context.Context, event *model.TaskEvent) error
+	DequeueTaskEvents(ctx context.Context, limit int) ([]*model.TaskEvent, error)
+	EnqueueJobAction(ctx context.Context, jobID string, workerName string, action model.JobAction) error
+	DequeueJobActions(ctx context.Context, workerName string) ([]*model.JobEvent, error)
+	GetDB() *sql.DB
 }
 
 type Transaction interface {
@@ -41,6 +53,7 @@ type Transaction interface {
 	Query(query string, args ...interface{}) (*sql.Rows, error)
 	QueryRow(query string, args ...interface{}) *sql.Row
 	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
 	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 }
 
@@ -71,6 +84,10 @@ func (S *SQLTransaction) QueryContext(ctx context.Context, query string, args ..
 
 func (S *SQLTransaction) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
 	return S.tx.ExecContext(ctx, query, args...)
+}
+
+func (S *SQLTransaction) QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row {
+	return S.tx.QueryRowContext(ctx, query, args...)
 }
 
 type SQLRepository struct {
@@ -490,4 +507,244 @@ func (S *SQLRepository) WithTransaction(ctx context.Context, transactionFunc fun
 		}
 	}
 	return nil
+}
+
+func (S *SQLRepository) GetDB() *sql.DB {
+	return S.db
+}
+
+func (S *SQLRepository) EnqueueEncodeJob(ctx context.Context, task *model.TaskEncode) error {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = conn.ExecContext(ctx,
+		"INSERT INTO encode_queue (job_id, download_url, upload_url, checksum_url, event_id) VALUES ($1, $2, $3, $4, $5)",
+		task.Id.String(), task.DownloadURL, task.UploadURL, task.ChecksumURL, task.EventID)
+	return err
+}
+
+func (S *SQLRepository) DequeueEncodeJob(ctx context.Context, workerName string) (*model.TaskEncode, error) {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var task model.TaskEncode
+	var jobID string
+	err = conn.QueryRowContext(ctx, `
+		UPDATE encode_queue 
+		SET status = 'processing', locked_at = NOW(), locked_by = $1
+		WHERE id = (
+			SELECT id FROM encode_queue 
+			WHERE status = 'pending'
+			ORDER BY created_at ASC
+			LIMIT 1
+			FOR UPDATE SKIP LOCKED
+		)
+		RETURNING job_id, download_url, upload_url, checksum_url, event_id
+	`, workerName).Scan(&jobID, &task.DownloadURL, &task.UploadURL, &task.ChecksumURL, &task.EventID)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	task.Id, err = uuid.Parse(jobID)
+	if err != nil {
+		return nil, err
+	}
+	return &task, nil
+}
+
+func (S *SQLRepository) EnqueuePGSJob(ctx context.Context, pgs *model.TaskPGS) error {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = conn.ExecContext(ctx,
+		"INSERT INTO pgs_queue (job_id, pgs_id, pgs_data, pgs_language, reply_to_queue) VALUES ($1, $2, $3, $4, $5)",
+		pgs.Id.String(), pgs.PGSID, pgs.PGSdata, pgs.PGSLanguage, pgs.ReplyTo)
+	return err
+}
+
+func (S *SQLRepository) DequeuePGSJob(ctx context.Context, workerName string) (*model.TaskPGS, error) {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var pgs model.TaskPGS
+	var jobID string
+	err = conn.QueryRowContext(ctx, `
+		UPDATE pgs_queue 
+		SET status = 'processing', locked_at = NOW(), locked_by = $1
+		WHERE id = (
+			SELECT id FROM pgs_queue 
+			WHERE status = 'pending'
+			ORDER BY created_at ASC
+			LIMIT 1
+			FOR UPDATE SKIP LOCKED
+		)
+		RETURNING job_id, pgs_id, pgs_data, pgs_language, reply_to_queue
+	`, workerName).Scan(&jobID, &pgs.PGSID, &pgs.PGSdata, &pgs.PGSLanguage, &pgs.ReplyTo)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	pgs.Id, err = uuid.Parse(jobID)
+	if err != nil {
+		return nil, err
+	}
+	return &pgs, nil
+}
+
+func (S *SQLRepository) EnqueuePGSResponse(ctx context.Context, resp *model.TaskPGSResponse) error {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = conn.ExecContext(ctx,
+		"INSERT INTO pgs_responses (job_id, pgs_id, srt_data, error, reply_to_queue) VALUES ($1, $2, $3, $4, $5)",
+		resp.Id.String(), resp.PGSID, resp.Srt, resp.Err, resp.Queue)
+	return err
+}
+
+func (S *SQLRepository) DequeuePGSResponse(ctx context.Context, replyToQueue string) (*model.TaskPGSResponse, error) {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp model.TaskPGSResponse
+	var jobID string
+	err = conn.QueryRowContext(ctx, `
+		UPDATE pgs_responses 
+		SET consumed = true, consumed_at = NOW()
+		WHERE id = (
+			SELECT id FROM pgs_responses 
+			WHERE reply_to_queue = $1 AND consumed = false
+			ORDER BY created_at ASC
+			LIMIT 1
+			FOR UPDATE SKIP LOCKED
+		)
+		RETURNING job_id, pgs_id, srt_data, error
+	`, replyToQueue).Scan(&jobID, &resp.PGSID, &resp.Srt, &resp.Err)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	resp.Id, err = uuid.Parse(jobID)
+	if err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+func (S *SQLRepository) EnqueueTaskEvent(ctx context.Context, event *model.TaskEvent) error {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = conn.ExecContext(ctx,
+		`INSERT INTO task_event_queue (job_id, event_id, event_type, worker_name, worker_queue, event_time, ip, notification_type, status, message)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		event.Id.String(), event.EventID, event.EventType, event.WorkerName, event.WorkerQueue, event.EventTime, event.IP, event.NotificationType, event.Status, event.Message)
+	return err
+}
+
+func (S *SQLRepository) DequeueTaskEvents(ctx context.Context, limit int) ([]*model.TaskEvent, error) {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := conn.QueryContext(ctx, `
+		DELETE FROM task_event_queue
+		WHERE id IN (
+			SELECT id FROM task_event_queue
+			ORDER BY created_at ASC
+			LIMIT $1
+			FOR UPDATE SKIP LOCKED
+		)
+		RETURNING job_id, event_id, event_type, worker_name, worker_queue, event_time, ip, notification_type, status, message
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []*model.TaskEvent
+	for rows.Next() {
+		var event model.TaskEvent
+		var jobID string
+		if err := rows.Scan(&jobID, &event.EventID, &event.EventType, &event.WorkerName, &event.WorkerQueue, &event.EventTime, &event.IP, &event.NotificationType, &event.Status, &event.Message); err != nil {
+			return nil, err
+		}
+		event.Id, err = uuid.Parse(jobID)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, &event)
+	}
+	return events, nil
+}
+
+func (S *SQLRepository) EnqueueJobAction(ctx context.Context, jobID string, workerName string, action model.JobAction) error {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = conn.ExecContext(ctx,
+		"INSERT INTO job_actions (job_id, worker_name, action) VALUES ($1, $2, $3)",
+		jobID, workerName, action)
+	return err
+}
+
+func (S *SQLRepository) DequeueJobActions(ctx context.Context, workerName string) ([]*model.JobEvent, error) {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := conn.QueryContext(ctx, `
+		UPDATE job_actions 
+		SET consumed = true, consumed_at = NOW()
+		WHERE id IN (
+			SELECT id FROM job_actions 
+			WHERE worker_name = $1 AND consumed = false
+			ORDER BY created_at ASC
+			FOR UPDATE SKIP LOCKED
+		)
+		RETURNING job_id, action
+	`, workerName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var actions []*model.JobEvent
+	for rows.Next() {
+		var action model.JobEvent
+		var jobID string
+		if err := rows.Scan(&jobID, &action.Action); err != nil {
+			return nil, err
+		}
+		action.Id, err = uuid.Parse(jobID)
+		if err != nil {
+			return nil, err
+		}
+		actions = append(actions, &action)
+	}
+	return actions, nil
 }

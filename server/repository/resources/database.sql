@@ -129,3 +129,81 @@ CREATE TRIGGER event_insert_job_status_update
 AFTER
 INSERT
     ON job_events FOR EACH ROW EXECUTE PROCEDURE fn_trigger_job_status_update();
+
+-- Queue tables for PostgreSQL-based message broker
+CREATE TABLE IF NOT EXISTS encode_queue (
+    id SERIAL PRIMARY KEY,
+    job_id varchar(255) NOT NULL,
+    download_url text NOT NULL,
+    upload_url text NOT NULL,
+    checksum_url text NOT NULL,
+    event_id int NOT NULL,
+    created_at timestamp NOT NULL DEFAULT NOW(),
+    locked_at timestamp,
+    locked_by varchar(255),
+    status varchar(20) NOT NULL DEFAULT 'pending'
+);
+
+CREATE INDEX IF NOT EXISTS idx_encode_queue_pending ON encode_queue (status, created_at) 
+    WHERE status = 'pending';
+
+CREATE TABLE IF NOT EXISTS pgs_queue (
+    id SERIAL PRIMARY KEY,
+    job_id varchar(255) NOT NULL,
+    pgs_id int NOT NULL,
+    pgs_data bytea NOT NULL,
+    pgs_language varchar(10) NOT NULL,
+    reply_to_queue varchar(255) NOT NULL,
+    created_at timestamp NOT NULL DEFAULT NOW(),
+    locked_at timestamp,
+    locked_by varchar(255),
+    status varchar(20) NOT NULL DEFAULT 'pending'
+);
+
+CREATE INDEX IF NOT EXISTS idx_pgs_queue_pending ON pgs_queue (status, created_at) 
+    WHERE status = 'pending';
+
+CREATE TABLE IF NOT EXISTS pgs_responses (
+    id SERIAL PRIMARY KEY,
+    job_id varchar(255) NOT NULL,
+    pgs_id int NOT NULL,
+    srt_data bytea,
+    error text,
+    reply_to_queue varchar(255) NOT NULL,
+    created_at timestamp NOT NULL DEFAULT NOW(),
+    consumed boolean NOT NULL DEFAULT false,
+    consumed_at timestamp
+);
+
+CREATE INDEX IF NOT EXISTS idx_pgs_responses_pending ON pgs_responses (reply_to_queue, consumed, created_at) 
+    WHERE consumed = false;
+
+CREATE TABLE IF NOT EXISTS task_event_queue (
+    id SERIAL PRIMARY KEY,
+    job_id varchar(255) NOT NULL,
+    event_id int NOT NULL,
+    event_type varchar(50) NOT NULL,
+    worker_name varchar(255) NOT NULL,
+    worker_queue varchar(255) NOT NULL,
+    event_time timestamp NOT NULL,
+    ip varchar(100),
+    notification_type varchar(50) NOT NULL,
+    status varchar(20) NOT NULL,
+    message text,
+    created_at timestamp NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_event_pending ON task_event_queue (created_at);
+
+CREATE TABLE IF NOT EXISTS job_actions (
+    id SERIAL PRIMARY KEY,
+    job_id varchar(255) NOT NULL,
+    worker_name varchar(255) NOT NULL,
+    action varchar(50) NOT NULL,
+    created_at timestamp NOT NULL DEFAULT NOW(),
+    consumed boolean NOT NULL DEFAULT false,
+    consumed_at timestamp
+);
+
+CREATE INDEX IF NOT EXISTS idx_job_actions_pending ON job_actions (worker_name, consumed, created_at) 
+    WHERE consumed = false;
