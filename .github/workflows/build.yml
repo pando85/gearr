@@ -78,7 +78,7 @@ jobs:
         env:
           DOCKER_BUILDKIT: 1
           CACHE_TYPE: gha
-          CACHE_MODE: min
+          CACHE_MODE: max
 
   push-images:
     runs-on: ubuntu-latest
@@ -117,7 +117,7 @@ jobs:
           IMAGE_VERSION=$VERSION make push-images
         env:
           CACHE_TYPE: gha
-          CACHE_MODE: min
+          CACHE_MODE: max
 
       - name: Get Changelog Entry
         if: startsWith(github.ref, 'refs/tags/')
