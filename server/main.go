@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"gearr/cmd"
 	"gearr/helper"
+	"gearr/model"
 	"gearr/server/queue"
 	"gearr/server/repository"
+	libscanner "gearr/server/scanner"
 	"gearr/server/scheduler"
 	"gearr/server/watcher"
 	"gearr/server/web"
@@ -31,6 +33,7 @@ type CmdLineOpts struct {
 	Scheduler scheduler.SchedulerConfig  `mapstructure:"scheduler"`
 	Web       web.WebServerConfig        `mapstructure:"web"`
 	Watcher   watcher.Config             `mapstructure:"watcher"`
+	Scanner   model.ScannerConfig        `mapstructure:"scanner"`
 }
 
 var (
@@ -43,6 +46,7 @@ func init() {
 	cmd.SchedulerFlags()
 	cmd.WebFlags()
 	cmd.WatcherFlags()
+	cmd.ScannerFlags()
 
 	pflag.Usage = usage
 
@@ -139,8 +143,15 @@ func main() {
 	}
 	watcherSvc.Run(wg, ctx)
 
+	var libScanner *libscanner.Scanner
+	if opts.Scanner.Enabled && len(opts.Scanner.Paths) > 0 {
+		libScanner = libscanner.NewScanner(opts.Scanner, repo, scheduler)
+		libScanner.Run(wg, ctx)
+		log.Info("library scanner started")
+	}
+
 	var webServer *web.WebServer
-	webServer = web.NewWebServer(opts.Web, scheduler, watcherSvc)
+	webServer = web.NewWebServer(opts.Web, scheduler, watcherSvc, libScanner)
 	webServer.Run(wg, ctx)
 	wg.Wait()
 }

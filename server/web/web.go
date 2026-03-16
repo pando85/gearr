@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"gearr/model"
+	"gearr/server/scanner"
 	"gearr/server/scheduler"
 	"gearr/server/watcher"
 	"gearr/server/web/ui"
@@ -24,6 +25,7 @@ import (
 type WebServer struct {
 	WebServerConfig
 	scheduler      scheduler.Scheduler
+	scanner        *scanner.Scanner
 	router         *gin.Engine
 	ctx            context.Context
 	upgrader       websocket.Upgrader
@@ -247,13 +249,14 @@ type WebServerConfig struct {
 	Token string `mapstructure:"token"`
 }
 
-func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watcher.Watcher) *WebServer {
+func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watcher.Watcher, scanner *scanner.Scanner) *WebServer {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
 	webServer := &WebServer{
 		WebServerConfig: config,
 		scheduler:       scheduler,
+		scanner:         scanner,
 		router:          r,
 	}
 
@@ -286,6 +289,14 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watc
 	api.GET("/watcher/enabled", webServer.AuthHeaderFunc(webServer.getWatcherEnabled))
 
 	r.GET("/ws/job", webServer.AuthParamFunc(webServer.getJobsUpdates))
+
+	if scanner != nil {
+		api.GET("/scanner/status", webServer.AuthHeaderFunc(webServer.getScannerStatus))
+		api.POST("/scanner/scan", webServer.AuthHeaderFunc(webServer.triggerScan))
+		api.GET("/scanner/history", webServer.AuthHeaderFunc(webServer.getScanHistory))
+		r.GET("/ws/scanner", webServer.AuthParamFunc(webServer.getScannerUpdates))
+	}
+
 	ui.AddRoutes(r)
 
 	return webServer
@@ -405,4 +416,69 @@ func (w *WebServer) getWatcherEnabled(c *gin.Context) {
 		return
 	}
 	w.watcherHandler.IsEnabled(c)
+}
+
+func (w *WebServer) getScannerStatus(c *gin.Context) {
+	if w.scanner == nil {
+		c.JSON(http.StatusOK, gin.H{"enabled": false, "is_scanning": false})
+		return
+	}
+	status := w.scanner.GetStatus()
+	c.JSON(http.StatusOK, status)
+}
+
+func (w *WebServer) triggerScan(c *gin.Context) {
+	if w.scanner == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "scanner not configured"})
+		return
+	}
+	w.scanner.TriggerScan()
+	c.JSON(http.StatusAccepted, gin.H{"message": "scan triggered"})
+}
+
+func (w *WebServer) getScanHistory(c *gin.Context) {
+	if w.scanner == nil {
+		c.JSON(http.StatusOK, []interface{}{})
+		return
+	}
+	history, err := w.scanner.GetHistory(w.ctx, 10)
+	if err != nil {
+		webError(c, err, http.StatusInternalServerError)
+		return
+	}
+	c.JSON(http.StatusOK, history)
+}
+
+func (w *WebServer) getScannerUpdates(c *gin.Context) {
+	if w.scanner == nil {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
+
+	conn, err := w.upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		log.Errorf("failed to upgrade: %s", err)
+		return
+	}
+	defer conn.Close()
+	log.Debug("scanner websocket connected")
+
+	ch := w.scanner.GetNotificationChan()
+	for {
+		select {
+		case <-w.ctx.Done():
+			return
+		case notification, ok := <-ch:
+			if !ok {
+				return
+			}
+			jsonBytes, err := json.Marshal(notification)
+			if err != nil {
+				log.Errorf("scanner notification cannot be marshaled: %s", err)
+				return
+			}
+			log.Debugf("sending scanner update: %+v", notification)
+			conn.WriteMessage(websocket.TextMessage, jsonBytes)
+		}
+	}
 }

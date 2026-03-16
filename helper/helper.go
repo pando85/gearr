@@ -2,6 +2,7 @@ package helper
 
 import (
 	"compress/gzip"
+	"context"
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 	"github.com/avast/retry-go/v5"
 	"github.com/rakyll/statik/fs"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/vansante/go-ffprobe.v2"
 )
 
 var (
@@ -206,4 +208,21 @@ func SetLogLevel(level string) {
 		log.SetLevel(log.InfoLevel)
 		log.Warnf("invalid log level '%s', defaulting to 'info'", level)
 	}
+}
+
+func DetectCodec(filePath string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	data, err := ffprobe.ProbeURL(ctx, filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to probe file %s: %w", filePath, err)
+	}
+
+	videoStreams := data.StreamType(ffprobe.StreamVideo)
+	if len(videoStreams) == 0 {
+		return "", fmt.Errorf("no video stream found in %s", filePath)
+	}
+
+	return videoStreams[0].CodecName, nil
 }

@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { jobStore } from './stores';
+import { scannerStore } from './stores/scanner';
 import { createJob, type Job, type Worker } from './model';
+import type { ScannerStatus, LibraryScan } from './stores/scanner-model';
 
 export type { Worker };
 
@@ -70,4 +72,50 @@ export async function fetchWorkers(token: string) {
     },
   });
   return response.data;
+}
+
+export async function fetchScannerStatus(token: string): Promise<ScannerStatus> {
+  scannerStore.setLoading();
+  
+  try {
+    const response = await axios.get('/api/v1/scanner/status', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    scannerStore.setStatus(response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching scanner status:', error);
+    scannerStore.setError('Failed to fetch scanner status.');
+    throw error;
+  }
+}
+
+export async function triggerScan(token: string): Promise<void> {
+  try {
+    await axios.post('/api/v1/scanner/scan', {}, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  } catch (error) {
+    console.error('Error triggering scan:', error);
+    throw error;
+  }
+}
+
+export async function fetchScanHistory(token: string): Promise<LibraryScan[]> {
+  try {
+    const response = await axios.get('/api/v1/scanner/history', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    scannerStore.setHistory(response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching scan history:', error);
+    throw error;
+  }
 }
