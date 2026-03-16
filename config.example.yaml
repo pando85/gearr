@@ -13,7 +13,7 @@ web:
 scheduler:
   downloadPath: /source
   uploadPath: /target
-  domain: http://gearr.example.com
+domain: http://gearr.example.com
 
 scanner:
   enabled: false
