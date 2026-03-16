@@ -1,5 +1,5 @@
 # target build source: https://github.com/markus-perl/ffmpeg-build-script/blob/v1.48/Dockerfile
-ARG BASE_IMAGE=ubuntu:24.04@sha256:d1e2e92c075e5ca139d51a140fff46f84315c0fdce203eab2807c7e495eff4f9
+ARG BASE_IMAGE=ubuntu:24.04
 FROM ${BASE_IMAGE} AS build
 
 ARG FFMPEG_BUILD_SCRIPT_VERSION=1.58.1
@@ -37,7 +37,7 @@ RUN curl -sLO \
     find workspace -mindepth 1 -maxdepth 1 -type d ! -name 'bin' -exec rm -rf {} \; && \
     find workspace/bin -mindepth 1 -maxdepth 1 -type f ! -name 'ff*' -exec rm -f {} \;
 
-FROM ubuntu:24.04 AS base
+FROM ${BASE_IMAGE} AS base
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \

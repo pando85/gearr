@@ -51,7 +51,7 @@ push-images:		## build and push container images
 
 DOCKER_BUILD_ARG := --cache-to type=inline
 CACHE_TYPE ?= registry
-CACHE_MODE ?= min
+CACHE_MODE ?= max
 
 ifeq ($(CACHE_TYPE),gha)
 CACHE_FROM_BASE := --cache-from type=gha
