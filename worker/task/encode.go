@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"gearr/helper"
 	"gearr/helper/command"
+	"gearr/internal/constants"
 	"gearr/model"
 	"hash"
 	"io"
@@ -32,7 +33,6 @@ import (
 const RESET_LINE = "\r\033[K"
 
 const (
-	bufferSize                   = 131072
 	pgsConversionTimeout         = 90 * time.Minute
 	encodeProgressUpdateInterval = 10.0
 	durationToleranceSeconds     = 60
@@ -88,9 +88,9 @@ func NewEncodeWorker(ctx context.Context, workerConfig Config, workerName string
 		wg:              sync.WaitGroup{},
 		cancelContext:   cancel,
 		workerConfig:    workerConfig,
-		downloadChan:    make(chan *model.WorkTaskEncode, 100),
-		encodeChan:      make(chan *model.WorkTaskEncode, 100),
-		uploadChan:      make(chan *model.WorkTaskEncode, 100),
+		downloadChan:    make(chan *model.WorkTaskEncode, constants.ChannelBufferSize),
+		encodeChan:      make(chan *model.WorkTaskEncode, constants.ChannelBufferSize),
+		uploadChan:      make(chan *model.WorkTaskEncode, constants.ChannelBufferSize),
 		tempPath:        tempPath,
 		terminal:        printer,
 		maxPrefetchJobs: uint32(workerConfig.MaxPrefetchJobs),
@@ -266,7 +266,7 @@ func (J *EncodeWorker) calculateChecksum(checksumURL string) (string, error) {
 
 	err := retry.New(
 		retry.Delay(time.Second*5),
-		retry.Attempts(10),
+		retry.Attempts(checksumRetryAttempts),
 		retry.LastErrorOnly(true),
 		retry.OnRetry(func(n uint, err error) {
 			J.terminal.Error("error %s on calculate checksum of downloaded job %s", err.Error(), checksumURL)

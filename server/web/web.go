@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"gearr/internal/constants"
 	"gearr/model"
 	"gearr/server/scanner"
 	"gearr/server/scheduler"
@@ -21,8 +22,6 @@ import (
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 )
-
-const transferBufferSize = 131072
 
 type WebServer struct {
 	WebServerConfig
@@ -149,7 +148,7 @@ func (w *WebServer) upload(c *gin.Context) {
 		return
 	}
 
-	b := make([]byte, transferBufferSize)
+	b := make([]byte, constants.IOBufferSize)
 	reader := c.Request.Body
 	var readed uint64
 loop:
@@ -204,7 +203,7 @@ func (w *WebServer) download(c *gin.Context) {
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", url.QueryEscape(downloadStream.Name())))
 	c.Status(http.StatusOK)
 
-	b := make([]byte, transferBufferSize)
+	b := make([]byte, constants.IOBufferSize)
 loop:
 	for {
 		select {
