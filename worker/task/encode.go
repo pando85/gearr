@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"gearr/helper"
 	"gearr/helper/command"
+	"gearr/internal/constants"
 	"gearr/model"
 	"hash"
 	"io"
@@ -30,6 +31,15 @@ import (
 )
 
 const RESET_LINE = "\r\033[K"
+
+const (
+	pgsConversionTimeout         = 90 * time.Minute
+	encodeProgressUpdateInterval = 10.0
+	durationToleranceSeconds     = 60
+	uploadRetryAttempts          = 17280
+	downloadRetryAttempts        = 180
+	checksumRetryAttempts        = 10
+)
 
 var ffmpegSpeedRegex = regexp.MustCompile(`speed=(\d*\.?\d+)x`)
 var ErrorJobNotFound = errors.New("job Not found")
@@ -78,9 +88,9 @@ func NewEncodeWorker(ctx context.Context, workerConfig Config, workerName string
 		wg:              sync.WaitGroup{},
 		cancelContext:   cancel,
 		workerConfig:    workerConfig,
-		downloadChan:    make(chan *model.WorkTaskEncode, 100),
-		encodeChan:      make(chan *model.WorkTaskEncode, 100),
-		uploadChan:      make(chan *model.WorkTaskEncode, 100),
+		downloadChan:    make(chan *model.WorkTaskEncode, constants.ChannelBufferSize),
+		encodeChan:      make(chan *model.WorkTaskEncode, constants.ChannelBufferSize),
+		uploadChan:      make(chan *model.WorkTaskEncode, constants.ChannelBufferSize),
 		tempPath:        tempPath,
 		terminal:        printer,
 		maxPrefetchJobs: uint32(workerConfig.MaxPrefetchJobs),
@@ -187,7 +197,7 @@ func (J *EncodeWorker) AcceptJobs() bool {
 func (J *EncodeWorker) downloadFile(job *model.WorkTaskEncode, track *TaskTracks) error {
 	err := retry.New(
 		retry.Delay(time.Second*5),
-		retry.Attempts(180),
+		retry.Attempts(downloadRetryAttempts),
 		retry.LastErrorOnly(true),
 		retry.OnRetry(func(n uint, err error) {
 			J.terminal.Error("error on downloading job %s", err.Error())
@@ -256,7 +266,7 @@ func (J *EncodeWorker) calculateChecksum(checksumURL string) (string, error) {
 
 	err := retry.New(
 		retry.Delay(time.Second*5),
-		retry.Attempts(10),
+		retry.Attempts(checksumRetryAttempts),
 		retry.LastErrorOnly(true),
 		retry.OnRetry(func(n uint, err error) {
 			J.terminal.Error("error %s on calculate checksum of downloaded job %s", err.Error(), checksumURL)
@@ -525,7 +535,7 @@ func (J *EncodeWorker) UploadJob(task *model.WorkTaskEncode, track *TaskTracks) 
 			return !errors.Is(err, context.Canceled)
 		}),
 		retry.DelayType(retry.FixedDelay),
-		retry.Attempts(17280),
+		retry.Attempts(uploadRetryAttempts),
 		retry.LastErrorOnly(true),
 		retry.OnRetry(func(n uint, err error) {
 			J.terminal.Error("error on uploading job %s", err.Error())
@@ -759,7 +769,7 @@ func (J *EncodeWorker) convertPGSToSrt(taskEncode *model.WorkTaskEncode, contain
 		select {
 		case <-J.ctx.Done():
 			return J.ctx.Err()
-		case <-time.After(time.Minute * 90):
+		case <-time.After(pgsConversionTimeout):
 			return errors.New("timeout waiting for PGS job done")
 		case response, ok := <-out:
 			if !ok {

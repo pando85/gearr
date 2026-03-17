@@ -1,12 +1,17 @@
 package model
 
 import (
+	"errors"
 	"gearr/helper/max"
 	"os"
 	"time"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
+)
+
+var (
+	ErrJobExists = errors.New("job already exists")
 )
 
 type EventType string
@@ -17,10 +22,18 @@ type TaskEvents []*TaskEvent
 
 type CustomError struct {
 	Message string
+	Cause   error
 }
 
 func (e *CustomError) Error() string {
+	if e.Cause != nil {
+		return e.Message + ": " + e.Cause.Error()
+	}
 	return e.Message
+}
+
+func (e *CustomError) Unwrap() error {
+	return e.Cause
 }
 
 const (
@@ -220,7 +233,8 @@ func (t *TaskEvents) GetLatestPerNotificationType(notificationType NotificationT
 	log.Debugf("notification type: %+v", notificationType)
 
 	if t == nil || len(*t) == 0 {
-		log.Panic("task events are empty")
+		log.Warnf("task events are empty for notification type %s", notificationType)
+		return nil
 	}
 
 	eventID := -1
@@ -233,7 +247,11 @@ func (t *TaskEvents) GetLatestPerNotificationType(notificationType NotificationT
 	return returnEvent
 }
 func (t *TaskEvents) GetStatus() NotificationStatus {
-	return t.GetLatestPerNotificationType(JobNotification).Status
+	event := t.GetLatestPerNotificationType(JobNotification)
+	if event == nil {
+		return ""
+	}
+	return event.Status
 }
 
 type JobRequest struct {

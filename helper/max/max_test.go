@@ -66,6 +66,14 @@ func TestMax(t *testing.T) {
 	}
 }
 
+func TestMaxEmpty(t *testing.T) {
+	var items testItems
+	result := Max(items)
+	if result != nil {
+		t.Errorf("Max() = %v, want nil", result)
+	}
+}
+
 type taskEvents []*taskEvent
 
 type taskEvent struct {
