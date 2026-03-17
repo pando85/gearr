@@ -44,9 +44,10 @@ func CheckPath(path string) {
 	}
 }
 
-func GetPublicIP() (publicIP string) {
+func GetPublicIP() (string, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
-	retry.New(
+	var publicIP string
+	err := retry.New(
 		retry.Delay(time.Millisecond*100),
 		retry.Attempts(360),
 		retry.LastErrorOnly(true),
@@ -64,7 +65,10 @@ func GetPublicIP() (publicIP string) {
 		publicIP = strings.TrimSpace(string(publicIPBytes))
 		return nil
 	})
-	return publicIP
+	if err != nil {
+		return "", fmt.Errorf("failed to get public IP: %w", err)
+	}
+	return publicIP, nil
 }
 
 func NameCleaner(path string) string {
