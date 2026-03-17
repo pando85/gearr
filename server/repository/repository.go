@@ -3,13 +3,13 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"fmt"
 	"gearr/internal/constants"
 	"gearr/model"
+	"sort"
 	"strings"
 	"time"
-
-	_ "embed"
 
 	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -156,6 +156,49 @@ func (S *SQLRepository) ProcessEvent(ctx context.Context, taskEvent *model.TaskE
 //go:embed resources/database.sql
 var databaseScript string
 
+//go:embed resources/*.sql
+var migrationFiles embed.FS
+
+type migration struct {
+	name string
+	sql  string
+}
+
+func loadMigrations() ([]migration, error) {
+	entries, err := migrationFiles.ReadDir("resources")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read migration files: %w", err)
+	}
+
+	var migrations []migration
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if name == "database.sql" {
+			continue
+		}
+		if !strings.HasSuffix(name, ".sql") {
+			continue
+		}
+		content, err := migrationFiles.ReadFile("resources/" + name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read migration %s: %w", name, err)
+		}
+		migrations = append(migrations, migration{
+			name: name,
+			sql:  string(content),
+		})
+	}
+
+	sort.Slice(migrations, func(i, j int) bool {
+		return migrations[i].name < migrations[j].name
+	})
+
+	return migrations, nil
+}
+
 func (S *SQLRepository) prepareDatabase(ctx context.Context) (returnError error) {
 	err := S.WithTransaction(ctx, func(ctx context.Context, tx Repository) error {
 		con, err := tx.getConnection(ctx)
@@ -164,7 +207,56 @@ func (S *SQLRepository) prepareDatabase(ctx context.Context) (returnError error)
 		}
 		log.Debug("prepare database")
 		_, err = con.ExecContext(ctx, databaseScript)
-		return err
+		if err != nil {
+			return fmt.Errorf("failed to run database script: %w", err)
+		}
+
+		_, err = con.ExecContext(ctx, `
+			CREATE TABLE IF NOT EXISTS schema_migrations (
+				version VARCHAR(255) PRIMARY KEY,
+				applied_at TIMESTAMP NOT NULL DEFAULT NOW()
+			)
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to create schema_migrations table: %w", err)
+		}
+
+		migrations, err := loadMigrations()
+		if err != nil {
+			return fmt.Errorf("failed to load migrations: %w", err)
+		}
+
+		for _, m := range migrations {
+			var applied bool
+			err = con.QueryRowContext(ctx,
+				"SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = $1)",
+				m.name,
+			).Scan(&applied)
+			if err != nil {
+				return fmt.Errorf("failed to check migration status %s: %w", m.name, err)
+			}
+
+			if applied {
+				log.Debugf("migration %s already applied, skipping", m.name)
+				continue
+			}
+
+			log.Infof("applying migration %s", strings.TrimSuffix(m.name, ".sql"))
+			_, err = con.ExecContext(ctx, m.sql)
+			if err != nil {
+				return fmt.Errorf("failed to apply migration %s: %w", m.name, err)
+			}
+
+			_, err = con.ExecContext(ctx,
+				"INSERT INTO schema_migrations (version) VALUES ($1)",
+				m.name,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to record migration %s: %w", m.name, err)
+			}
+		}
+
+		return nil
 	})
 	return err
 }
