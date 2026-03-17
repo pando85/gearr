@@ -193,21 +193,16 @@ func (R *RuntimeScheduler) schedule(ctx context.Context) {
 		case checksumPath := <-R.checksumChan:
 			R.pathChecksumMap[checksumPath.path] = checksumPath.checksum
 		case <-time.After(R.config.ScheduleTime):
-			taskEvents, err := R.repo.GetTimeoutJobs(ctx, R.config.JobTimeout)
+			timeoutJobs, err := R.repo.GetTimeoutJobs(ctx, R.config.JobTimeout)
 			if err != nil {
 				helper.Error(err)
 			}
-			for _, taskEvent := range taskEvents {
-				if taskEvent.Status == model.ProgressingNotificationStatus {
-					helper.Infof("rescheduling %s after job timeout", taskEvent.Id.String())
-					job, err := R.repo.GetJob(ctx, taskEvent.Id.String())
-					if err != nil {
-						helper.Error(err)
-						continue
-					}
+			for _, timeoutJob := range timeoutJobs {
+				if timeoutJob.Status == model.ProgressingNotificationStatus {
+					helper.Infof("rescheduling %s after job timeout", timeoutJob.Id.String())
 					jobRequest := &model.JobRequest{
-						SourcePath:      job.SourcePath,
-						DestinationPath: job.DestinationPath,
+						SourcePath:      timeoutJob.SourcePath,
+						DestinationPath: timeoutJob.DestinationPath,
 					}
 					_, err = R.scheduleJobRequest(ctx, jobRequest)
 					if err != nil {

@@ -37,7 +37,7 @@ type QueueRepository interface {
 type EventRepository interface {
 	ProcessEvent(ctx context.Context, event *model.TaskEvent) error
 	AddNewTaskEvent(ctx context.Context, event *model.TaskEvent) error
-	GetTimeoutJobs(ctx context.Context, timeout time.Duration) ([]*model.TaskEvent, error)
+	GetTimeoutJobs(ctx context.Context, timeout time.Duration) ([]*model.TimeoutJob, error)
 }
 
 type ScanRepository interface {

@@ -259,6 +259,13 @@ type JobRequest struct {
 	DestinationPath string `json:"destination_path"`
 }
 
+type TimeoutJob struct {
+	Id              uuid.UUID          `json:"id"`
+	SourcePath      string             `json:"source_path"`
+	DestinationPath string             `json:"destination_path"`
+	Status          NotificationStatus `json:"status"`
+}
+
 func (a TaskEvents) Len() int {
 	return len(a)
 }
