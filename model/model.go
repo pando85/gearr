@@ -1,12 +1,17 @@
 package model
 
 import (
+	"errors"
 	"gearr/helper/max"
 	"os"
 	"time"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
+)
+
+var (
+	ErrJobExists = errors.New("job already exists")
 )
 
 type EventType string
@@ -17,10 +22,18 @@ type TaskEvents []*TaskEvent
 
 type CustomError struct {
 	Message string
+	Cause   error
 }
 
 func (e *CustomError) Error() string {
+	if e.Cause != nil {
+		return e.Message + ": " + e.Cause.Error()
+	}
 	return e.Message
+}
+
+func (e *CustomError) Unwrap() error {
+	return e.Cause
 }
 
 const (

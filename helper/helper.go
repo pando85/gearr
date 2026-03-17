@@ -44,9 +44,10 @@ func CheckPath(path string) {
 	}
 }
 
-func GetPublicIP() (publicIP string) {
+func GetPublicIP() (string, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
-	retry.New(
+	var publicIP string
+	err := retry.New(
 		retry.Delay(time.Millisecond*100),
 		retry.Attempts(360),
 		retry.LastErrorOnly(true),
@@ -64,7 +65,10 @@ func GetPublicIP() (publicIP string) {
 		publicIP = strings.TrimSpace(string(publicIPBytes))
 		return nil
 	})
-	return publicIP
+	if err != nil {
+		return "", fmt.Errorf("failed to get public IP: %w", err)
+	}
+	return publicIP, nil
 }
 
 func NameCleaner(path string) string {
@@ -115,7 +119,7 @@ func CopyFilePath(src, dst string, compressed bool) (int64, error) {
 func DisembedFile(embedFS http.FileSystem, statikPath string, targetFilePath string) (string, error) {
 	embededFile, err := embedFS.Open(statikPath)
 	if err != nil {
-		panic(err)
+		return "", fmt.Errorf("failed to open embedded file %s: %w", statikPath, err)
 	}
 	defer embededFile.Close()
 	if st, _ := embededFile.Stat(); st.IsDir() {
@@ -185,12 +189,12 @@ func GenerateSha1File(path string) error {
 	return nil
 }
 
-func HashSha1Myself() string {
+func HashSha1Myself() (string, error) {
 	sha1, err := GenerateSha1(os.Args[0])
 	if err != nil {
-		panic(err)
+		return "", fmt.Errorf("failed to generate sha1 for self: %w", err)
 	}
-	return sha1
+	return sha1, nil
 }
 
 func SetLogLevel(level string) {
