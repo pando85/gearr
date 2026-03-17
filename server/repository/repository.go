@@ -3,14 +3,13 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"fmt"
 	"gearr/internal/constants"
 	"gearr/model"
-	"gearr/server/repository/migrations"
+	"sort"
 	"strings"
 	"time"
-
-	_ "embed"
 
 	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -20,6 +19,45 @@ import (
 var (
 	ErrElementNotFound = fmt.Errorf("element not found")
 )
+
+type Repository interface {
+	getConnection(ctx context.Context) (Transaction, error)
+	Initialize(ctx context.Context) error
+	ProcessEvent(ctx context.Context, event *model.TaskEvent) error
+	PingServerUpdate(ctx context.Context, name string, ip string, queueName string) error
+	GetTimeoutJobs(ctx context.Context, timeout time.Duration) ([]*model.TaskEvent, error)
+	GetJob(ctx context.Context, uuid string) (*model.Job, error)
+	DeleteJob(ctx context.Context, uuid string) error
+	GetJobs(ctx context.Context) (*[]model.Job, error)
+	GetJobByPath(ctx context.Context, path string) (*model.Job, error)
+	AddNewTaskEvent(ctx context.Context, event *model.TaskEvent) error
+	AddJob(ctx context.Context, job *model.Job) error
+	WithTransaction(ctx context.Context, transactionFunc func(ctx context.Context, tx Repository) error) error
+	GetWorker(ctx context.Context, name string) (*model.Worker, error)
+	GetWorkers(ctx context.Context) (*[]model.Worker, error)
+	EnqueueEncodeJob(ctx context.Context, task *model.TaskEncode) error
+	DequeueEncodeJob(ctx context.Context, workerName string) (*model.TaskEncode, error)
+	EnqueuePGSJob(ctx context.Context, pgs *model.TaskPGS) error
+	DequeuePGSJob(ctx context.Context, workerName string) (*model.TaskPGS, error)
+	EnqueuePGSResponse(ctx context.Context, resp *model.TaskPGSResponse) error
+	DequeuePGSResponse(ctx context.Context, replyToQueue string) (*model.TaskPGSResponse, error)
+	EnqueueTaskEvent(ctx context.Context, event *model.TaskEvent) error
+	DequeueTaskEvents(ctx context.Context, limit int) ([]*model.TaskEvent, error)
+	EnqueueJobAction(ctx context.Context, jobID string, workerName string, action model.JobAction) error
+	DequeueJobActions(ctx context.Context, workerName string) ([]*model.JobEvent, error)
+	GetDB() *sql.DB
+	AddFileProcessing(ctx context.Context, fp *model.FileProcessing) error
+	GetFileProcessingByPath(ctx context.Context, path string) (*model.FileProcessing, error)
+	GetRecentFileProcessings(ctx context.Context, limit int, source model.FileProcessingSource) ([]*model.FileProcessing, error)
+	CreateScan(ctx context.Context, scan *model.LibraryScan) error
+	UpdateScan(ctx context.Context, scan *model.LibraryScan) error
+	GetScan(ctx context.Context, id string) (*model.LibraryScan, error)
+	GetLatestScan(ctx context.Context) (*model.LibraryScan, error)
+	GetScanHistory(ctx context.Context, limit int) ([]*model.LibraryScan, error)
+	UpsertScannedFile(ctx context.Context, file *model.ScannedFile) error
+	GetScannedFile(ctx context.Context, path string) (*model.ScannedFile, error)
+	GetScannedFilesByScan(ctx context.Context, scanID string) ([]*model.ScannedFile, error)
+}
 
 type Transaction interface {
 	Exec(query string, args ...interface{}) (sql.Result, error)
@@ -115,21 +153,109 @@ func (S *SQLRepository) ProcessEvent(ctx context.Context, taskEvent *model.TaskE
 //go:embed resources/database.sql
 var databaseScript string
 
-func (S *SQLRepository) prepareDatabase(ctx context.Context) error {
-	if _, err := S.db.ExecContext(ctx, databaseScript); err != nil {
-		return fmt.Errorf("failed to initialize base schema: %w", err)
-	}
+//go:embed resources/*.sql
+var migrationFiles embed.FS
 
-	migrator, err := migrations.NewMigrator(S.db)
+type migration struct {
+	name string
+	sql  string
+}
+
+func loadMigrations() ([]migration, error) {
+	entries, err := migrationFiles.ReadDir("resources")
 	if err != nil {
-		return fmt.Errorf("failed to create migrator: %w", err)
+		return nil, fmt.Errorf("failed to read migration files: %w", err)
 	}
 
-	if err := migrator.Migrate(ctx); err != nil {
-		return fmt.Errorf("failed to run migrations: %w", err)
+	var migrations []migration
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if name == "database.sql" {
+			continue
+		}
+		if !strings.HasSuffix(name, ".sql") {
+			continue
+		}
+		content, err := migrationFiles.ReadFile("resources/" + name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read migration %s: %w", name, err)
+		}
+		migrations = append(migrations, migration{
+			name: name,
+			sql:  string(content),
+		})
 	}
 
-	return nil
+	sort.Slice(migrations, func(i, j int) bool {
+		return migrations[i].name < migrations[j].name
+	})
+
+	return migrations, nil
+}
+
+func (S *SQLRepository) prepareDatabase(ctx context.Context) (returnError error) {
+	err := S.WithTransaction(ctx, func(ctx context.Context, tx Repository) error {
+		con, err := tx.getConnection(ctx)
+		if err != nil {
+			return err
+		}
+		log.Debug("prepare database")
+		_, err = con.ExecContext(ctx, databaseScript)
+		if err != nil {
+			return fmt.Errorf("failed to run database script: %w", err)
+		}
+
+		_, err = con.ExecContext(ctx, `
+			CREATE TABLE IF NOT EXISTS schema_migrations (
+				version VARCHAR(255) PRIMARY KEY,
+				applied_at TIMESTAMP NOT NULL DEFAULT NOW()
+			)
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to create schema_migrations table: %w", err)
+		}
+
+		migrations, err := loadMigrations()
+		if err != nil {
+			return fmt.Errorf("failed to load migrations: %w", err)
+		}
+
+		for _, m := range migrations {
+			var applied bool
+			err = con.QueryRowContext(ctx,
+				"SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = $1)",
+				m.name,
+			).Scan(&applied)
+			if err != nil {
+				return fmt.Errorf("failed to check migration status %s: %w", m.name, err)
+			}
+
+			if applied {
+				log.Debugf("migration %s already applied, skipping", m.name)
+				continue
+			}
+
+			log.Infof("applying migration %s", strings.TrimSuffix(m.name, ".sql"))
+			_, err = con.ExecContext(ctx, m.sql)
+			if err != nil {
+				return fmt.Errorf("failed to apply migration %s: %w", m.name, err)
+			}
+
+			_, err = con.ExecContext(ctx,
+				"INSERT INTO schema_migrations (version) VALUES ($1)",
+				m.name,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to record migration %s: %w", m.name, err)
+			}
+		}
+
+		return nil
+	})
+	return err
 }
 
 func (S *SQLRepository) getConnection(ctx context.Context) (Transaction, error) {
