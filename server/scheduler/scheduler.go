@@ -296,9 +296,12 @@ func (R *RuntimeScheduler) isValidStremeableJob(ctx context.Context, uuid string
 	if err != nil {
 		return nil, err
 	}
-	status := job.Events.GetLatestPerNotificationType(model.JobNotification).Status
-	if status != model.ProgressingNotificationStatus {
-		return nil, fmt.Errorf("%w: job is in status %s", ErrorStreamNotAllowed, status)
+	latestEvent := job.Events.GetLatestPerNotificationType(model.JobNotification)
+	if latestEvent == nil {
+		return nil, fmt.Errorf("%w: job has no events", ErrorStreamNotAllowed)
+	}
+	if latestEvent.Status != model.ProgressingNotificationStatus {
+		return nil, fmt.Errorf("%w: job is in status %s", ErrorStreamNotAllowed, latestEvent.Status)
 	}
 	return job, nil
 }

@@ -105,7 +105,7 @@ func CopyFilePath(src, dst string, compressed bool) (int64, error) {
 	if compressed {
 		reader, err = gzip.NewReader(source)
 		if err != nil {
-			return 0, nil
+			return 0, err
 		}
 	}
 	nBytes, err := io.Copy(destination, reader)
