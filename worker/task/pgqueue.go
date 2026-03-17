@@ -154,12 +154,16 @@ func (p *PostgresClient) eventProcessor(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-pingTicker.C:
+			publicIP, err := helper.GetPublicIP()
+			if err != nil {
+				log.Warnf("failed to get public IP: %v", err)
+			}
 			pingEvent := model.TaskEvent{
 				EventType:   model.PingEvent,
 				WorkerName:  p.workerConfig.Name,
 				WorkerQueue: p.workerUniqueQueue,
 				EventTime:   time.Now(),
-				IP:          helper.GetPublicIP(),
+				IP:          publicIP,
 			}
 			p.EventNotification(pingEvent)
 		case <-ticker.C:

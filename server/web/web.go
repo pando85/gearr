@@ -41,7 +41,7 @@ func (w *WebServer) addJob(c *gin.Context) {
 
 	job, err := w.scheduler.ScheduleJobRequest(w.ctx, &jobRequest)
 	if err != nil {
-		if err.Error() == "job already exists" {
+		if errors.Is(err, model.ErrJobExists) {
 			c.Status(http.StatusConflict)
 			return
 		}

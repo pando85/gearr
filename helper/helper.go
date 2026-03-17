@@ -44,7 +44,7 @@ func CheckPath(path string) {
 	}
 }
 
-func GetPublicIP() (publicIP string) {
+func GetPublicIP() (publicIP string, err error) {
 	retry.New(
 		retry.Delay(time.Millisecond*100),
 		retry.Attempts(360),
@@ -63,7 +63,7 @@ func GetPublicIP() (publicIP string) {
 		publicIP = strings.TrimSpace(string(publicIPBytes))
 		return nil
 	})
-	return publicIP
+	return publicIP, err
 }
 
 func NameCleaner(path string) string {
@@ -114,7 +114,7 @@ func CopyFilePath(src, dst string, compressed bool) (int64, error) {
 func DisembedFile(embedFS http.FileSystem, statikPath string, targetFilePath string) (string, error) {
 	embededFile, err := embedFS.Open(statikPath)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 	defer embededFile.Close()
 	if st, _ := embededFile.Stat(); st.IsDir() {
@@ -184,12 +184,12 @@ func GenerateSha1File(path string) error {
 	return nil
 }
 
-func HashSha1Myself() string {
+func HashSha1Myself() (string, error) {
 	sha1, err := GenerateSha1(os.Args[0])
 	if err != nil {
-		panic(err)
+		return "", err
 	}
-	return sha1
+	return sha1, nil
 }
 
 func SetLogLevel(level string) {
