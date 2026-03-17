@@ -89,8 +89,12 @@ func init() {
 
 	opts.Scheduler.DownloadPath = filepath.Clean(opts.Scheduler.DownloadPath)
 	opts.Scheduler.UploadPath = filepath.Clean(opts.Scheduler.UploadPath)
-	helper.CheckPath(opts.Scheduler.DownloadPath)
-	helper.CheckPath(opts.Scheduler.UploadPath)
+	if err := helper.CheckPath(opts.Scheduler.DownloadPath); err != nil {
+		log.Panic(err)
+	}
+	if err := helper.CheckPath(opts.Scheduler.UploadPath); err != nil {
+		log.Panic(err)
+	}
 
 	opts.Watcher.DownloadPath = opts.Scheduler.DownloadPath
 	opts.Watcher.MinFileSize = opts.Scheduler.MinFileSize

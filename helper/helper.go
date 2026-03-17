@@ -38,10 +38,11 @@ func ValidExtension(extension string) bool {
 	return false
 }
 
-func CheckPath(path string) {
+func CheckPath(path string) error {
 	if !filepath.IsAbs(path) {
-		log.Panicf("download-path %s must be absolute and ends with /", path)
+		return fmt.Errorf("download-path %s must be absolute and ends with /", path)
 	}
+	return nil
 }
 
 func GetPublicIP() (publicIP string, err error) {

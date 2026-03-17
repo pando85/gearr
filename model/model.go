@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"fmt"
 	"gearr/helper/max"
 	"os"
 	"time"
@@ -237,11 +238,11 @@ func (t *TaskEvents) GetLatest() *TaskEvent {
 	}
 	return max.Max(t).(*TaskEvent)
 }
-func (t *TaskEvents) GetLatestPerNotificationType(notificationType NotificationType) (returnEvent *TaskEvent) {
+func (t *TaskEvents) GetLatestPerNotificationType(notificationType NotificationType) (returnEvent *TaskEvent, err error) {
 	log.Debugf("notification type: %+v", notificationType)
 
 	if t == nil || len(*t) == 0 {
-		log.Panic("task events are empty")
+		return nil, fmt.Errorf("task events are empty")
 	}
 
 	eventID := -1
@@ -251,10 +252,14 @@ func (t *TaskEvents) GetLatestPerNotificationType(notificationType NotificationT
 			returnEvent = event
 		}
 	}
-	return returnEvent
+	return returnEvent, nil
 }
 func (t *TaskEvents) GetStatus() NotificationStatus {
-	return t.GetLatestPerNotificationType(JobNotification).Status
+	event, err := t.GetLatestPerNotificationType(JobNotification)
+	if err != nil {
+		return ""
+	}
+	return event.Status
 }
 
 type JobRequest struct {
