@@ -220,7 +220,8 @@ func (t *TaskEvents) GetLatestPerNotificationType(notificationType NotificationT
 	log.Debugf("notification type: %+v", notificationType)
 
 	if t == nil || len(*t) == 0 {
-		log.Panic("task events are empty")
+		log.Warnf("task events are empty for notification type %s", notificationType)
+		return nil
 	}
 
 	eventID := -1
@@ -233,7 +234,11 @@ func (t *TaskEvents) GetLatestPerNotificationType(notificationType NotificationT
 	return returnEvent
 }
 func (t *TaskEvents) GetStatus() NotificationStatus {
-	return t.GetLatestPerNotificationType(JobNotification).Status
+	event := t.GetLatestPerNotificationType(JobNotification)
+	if event == nil {
+		return ""
+	}
+	return event.Status
 }
 
 type JobRequest struct {

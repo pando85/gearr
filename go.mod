@@ -1,8 +1,6 @@
 module gearr
 
-go 1.25.7
-
-toolchain go1.26.1
+go 1.26
 
 require (
 	github.com/avast/retry-go/v5 v5.0.0

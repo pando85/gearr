@@ -128,12 +128,6 @@ func NewSQLRepository(config SQLServerConfig) (*SQLRepository, error) {
 	db.SetMaxOpenConns(5)
 	db.SetConnMaxLifetime(5 * time.Minute)
 	db.SetMaxIdleConns(5)
-	/*	go func(){
-		for {
-			fmt.Printf("In use %d not use %d  open %d wait %d\n",db.Stats().Idle, db.Stats().InUse, db.Stats().OpenConnections,db.Stats().WaitCount)
-			time.Sleep(time.Second*5)
-		}
-	}()*/
 	return &SQLRepository{
 		db: db,
 	}, nil

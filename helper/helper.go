@@ -45,13 +45,14 @@ func CheckPath(path string) {
 }
 
 func GetPublicIP() (publicIP string) {
+	client := &http.Client{Timeout: 10 * time.Second}
 	retry.New(
 		retry.Delay(time.Millisecond*100),
 		retry.Attempts(360),
 		retry.LastErrorOnly(true),
 	).Do(func() error {
 		randomIndex := rand.Intn(len(STUNServers))
-		resp, err := http.Get(STUNServers[randomIndex])
+		resp, err := client.Get(STUNServers[randomIndex])
 		if err != nil {
 			return err
 		}
@@ -105,7 +106,7 @@ func CopyFilePath(src, dst string, compressed bool) (int64, error) {
 	if compressed {
 		reader, err = gzip.NewReader(source)
 		if err != nil {
-			return 0, nil
+			return 0, err
 		}
 	}
 	nBytes, err := io.Copy(destination, reader)
