@@ -49,7 +49,6 @@ images:		## build container images
 push-images: push-image-server push-image-worker
 push-images:		## build and push container images
 
-DOCKER_BUILD_ARG := --cache-to type=inline
 CACHE_TYPE ?= registry
 CACHE_MODE ?= max
 
@@ -58,60 +57,87 @@ CACHE_FROM_BUILD := --cache-from type=gha
 CACHE_FROM_BASE := --cache-from type=gha
 CACHE_FROM_SERVER := --cache-from type=gha
 CACHE_FROM_WORKER := --cache-from type=gha
-DOCKER_BUILD_ARG := --cache-to type=gha,mode=$(CACHE_MODE)
+CACHE_TO_BUILD := --cache-to type=gha,mode=$(CACHE_MODE)
+CACHE_TO_BASE := --cache-to type=gha,mode=$(CACHE_MODE)
+CACHE_TO_SERVER := --cache-to type=gha,mode=$(CACHE_MODE)
+CACHE_TO_WORKER := --cache-to type=gha,mode=$(CACHE_MODE)
 else
 CACHE_FROM_BUILD := --cache-from type=registry,ref=$(IMAGE_NAME):latest-build
 CACHE_FROM_BASE := --cache-from type=registry,ref=$(IMAGE_NAME):latest-base
 CACHE_FROM_SERVER := --cache-from type=registry,ref=$(IMAGE_NAME):latest-server
 CACHE_FROM_WORKER := --cache-from type=registry,ref=$(IMAGE_NAME):latest-worker
+CACHE_TO_BUILD := 
+CACHE_TO_BASE := 
+CACHE_TO_SERVER := 
+CACHE_TO_WORKER := 
+CACHE_TO_PUSH_BUILD := --cache-to type=registry,ref=$(IMAGE_NAME):latest-build,mode=$(CACHE_MODE)
+CACHE_TO_PUSH_BASE := --cache-to type=registry,ref=$(IMAGE_NAME):latest-base,mode=$(CACHE_MODE)
+CACHE_TO_PUSH_SERVER := --cache-to type=registry,ref=$(IMAGE_NAME):latest-server,mode=$(CACHE_MODE)
+CACHE_TO_PUSH_WORKER := --cache-to type=registry,ref=$(IMAGE_NAME):latest-worker,mode=$(CACHE_MODE)
 endif
 
 .PHONY: image-%
 .PHONY: push-image-%
 image-% push-image-%: build-%
-	@export DOCKER_BUILD_ARG="$(DOCKER_BUILD_ARG) $(if $(findstring push,$@),--push,--load)"; \
+	@IS_PUSH="$(findstring push,$@)"; \
+	PUSH_OR_LOAD="$${IS_PUSH:+--push}$${IS_PUSH:- --load}"; \
+	if [ "$(CACHE_TYPE)" = "gha" ]; then \
+		CACHE_TO_BUILD_VAL="$(CACHE_TO_BUILD)"; \
+		CACHE_TO_BASE_VAL="$(CACHE_TO_BASE)"; \
+		CACHE_TO_SERVER_VAL="$(CACHE_TO_SERVER)"; \
+		CACHE_TO_WORKER_VAL="$(CACHE_TO_WORKER)"; \
+	else \
+		CACHE_TO_BUILD_VAL="$${IS_PUSH:+$(CACHE_TO_PUSH_BUILD)}"; \
+		CACHE_TO_BASE_VAL="$${IS_PUSH:+$(CACHE_TO_PUSH_BASE)}"; \
+		CACHE_TO_SERVER_VAL="$${IS_PUSH:+$(CACHE_TO_PUSH_SERVER)}"; \
+		CACHE_TO_WORKER_VAL="$${IS_PUSH:+$(CACHE_TO_PUSH_WORKER)}"; \
+	fi; \
 	if [ "$*" = "server" ]; then \
-		echo "Building server image with cache..."; \
+		echo "Building build stage with cache..."; \
 		docker buildx build \
-		$(CACHE_FROM_BUILD) \
-		$${DOCKER_BUILD_ARG} \
+		$(CACHE_FROM_BUILD) $${CACHE_TO_BUILD_VAL} \
+		$${PUSH_OR_LOAD} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-build \
 		--target build \
 		-f Dockerfile \
 		. ; \
+		echo "Building base stage with cache..."; \
 		docker buildx build \
-		$(CACHE_FROM_BUILD) $(CACHE_FROM_BASE) \
-		$${DOCKER_BUILD_ARG} \
+		$(CACHE_FROM_BUILD) $(CACHE_FROM_BASE) $${CACHE_TO_BASE_VAL} \
+		$${PUSH_OR_LOAD} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-base \
 		--target base \
 		-f Dockerfile \
 		. ; \
+		echo "Building server stage with cache..."; \
 		docker buildx build \
-		$(CACHE_FROM_BUILD) $(CACHE_FROM_BASE) $(CACHE_FROM_SERVER) \
-		$${DOCKER_BUILD_ARG} \
+		$(CACHE_FROM_BUILD) $(CACHE_FROM_BASE) $(CACHE_FROM_SERVER) $${CACHE_TO_SERVER_VAL} \
+		$${PUSH_OR_LOAD} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
 		-f Dockerfile \
 		--target $* \
 		. ; \
 	else \
-		echo "Building worker image with cache..."; \
+		echo "Building build stage with cache..."; \
 		docker buildx build \
-		$(CACHE_FROM_BUILD) \
-		$${DOCKER_BUILD_ARG} \
+		$(CACHE_FROM_BUILD) $${CACHE_TO_BUILD_VAL} \
+		$${PUSH_OR_LOAD} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-build \
 		--target build \
 		-f Dockerfile \
 		. ; \
+		echo "Building worker-pgs stage with cache..."; \
 		docker buildx build \
 		$(CACHE_FROM_BUILD) $(CACHE_FROM_BASE) \
-		$${DOCKER_BUILD_ARG} \
+		$${PUSH_OR_LOAD} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-worker-pgs \
 		--target worker-pgs \
 		-f Dockerfile \
 		. ; \
+		echo "Building worker stage with cache..."; \
 		docker buildx build \
-		$(CACHE_FROM_BUILD) $(CACHE_FROM_BASE) $(CACHE_FROM_WORKER) \
-		$${DOCKER_BUILD_ARG} \
+		$(CACHE_FROM_BUILD) $(CACHE_FROM_BASE) $(CACHE_FROM_WORKER) $${CACHE_TO_WORKER_VAL} \
+		$${PUSH_OR_LOAD} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
 		-f Dockerfile \
 		--target $* \
