@@ -180,7 +180,7 @@ func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *m
 		}
 		var eventsToAdd []*model.TaskEvent
 		if job != nil {
-			return &model.CustomError{Message: "job already exists"}
+			return fmt.Errorf("%w", model.ErrJobExists)
 		}
 		newUUID, _ := uuid.NewUUID()
 		job = &model.Job{
