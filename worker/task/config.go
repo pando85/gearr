@@ -2,21 +2,21 @@ package task
 
 import (
 	"fmt"
+	"gearr/helper"
 	"gearr/model"
 	"strconv"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
 	"gopkg.in/errgo.v2/errors"
 )
 
 type AcceptedJobs []model.JobType
 
 func (A AcceptedJobs) IsAccepted(jobType model.JobType) bool {
-	log.Debugf("accepted jobs: %+v", A)
+	helper.Debugf("accepted jobs: %+v", A)
 
 	for _, j := range A {
-		log.Debugf("check %s == %s", j, jobType)
+		helper.Debugf("check %s == %s", j, jobType)
 		if j == jobType {
 			return true
 		}

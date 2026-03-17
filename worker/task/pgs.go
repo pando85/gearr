@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"gearr/helper"
 	"gearr/helper/command"
 	"gearr/model"
 	"io"
@@ -13,7 +14,6 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
-	log "github.com/sirupsen/logrus"
 )
 
 var langMapping []PGSTesseractLanguage
@@ -72,7 +72,7 @@ func (P *PGSWorker) Prepare(workData []byte, queueManager model.Manager) error {
 }
 
 func (P *PGSWorker) Execute() (err error) {
-	log.Infof("converting PGS to SRT for job %s stream %d", P.task.Id.String(), P.task.PGSID)
+	helper.Infof("converting PGS to SRT for job %s stream %d", P.task.Id.String(), P.task.PGSID)
 	inputFilePath := filepath.Join(P.tempPath, strconv.Itoa(P.task.PGSID)+".sup")
 	outputFileName := strconv.Itoa(P.task.PGSID) + ".srt"
 	outputFilePath := filepath.Join(P.tempPath, outputFileName)
@@ -83,7 +83,7 @@ func (P *PGSWorker) Execute() (err error) {
 			errString = err.Error()
 		}
 
-		log.Debug("send SRT back to rabbit")
+		helper.Debug("send SRT back to rabbit")
 
 		pgsTaskResponse := model.TaskPGSResponse{
 			Id:    P.task.Id,
@@ -92,7 +92,7 @@ func (P *PGSWorker) Execute() (err error) {
 			Err:   errString,
 			Queue: P.task.ReplyTo,
 		}
-		log.Debugf("task response: %+v", pgsTaskResponse)
+		helper.Debugf("task response: %+v", pgsTaskResponse)
 		P.Manager.ResponsePGSJob(pgsTaskResponse)
 	}()
 
@@ -104,25 +104,25 @@ func (P *PGSWorker) Execute() (err error) {
 	language := calculateTesseractLanguage(P.task.PGSLanguage)
 	PGSToSrtCommand := command.NewCommand(P.workerConfig.DotnetPath, fmt.Sprintf("%s", P.workerConfig.PGSTOSrtDLLPath), "--input", inputFilePath, "--output", outputFilePath, "--tesseractlanguage", language, "--tesseractdata", P.workerConfig.TesseractDataPath).
 		SetWorkDir(P.tempPath)
-	log.Debugf("pgstosrt command: %s", PGSToSrtCommand.GetFullCommand())
+	helper.Debugf("pgstosrt command: %s", PGSToSrtCommand.GetFullCommand())
 	ecode, err := PGSToSrtCommand.RunWithContext(P.ctx)
 	if err != nil {
-		log.Errorf("error executing pgstosrt command: %s", err)
+		helper.Errorf("error executing pgstosrt command: %s", err)
 		return err
 	}
 	if ecode != 0 {
 		errorMessage := fmt.Sprintf("PGSToSrt invalid exit code %d", ecode)
-		log.Error(errorMessage)
+		helper.Error(errorMessage)
 		return errors.New(errorMessage)
 	}
 	f, err := os.Open(outputFilePath)
 	if err != nil {
-		log.Errorf("error opening %s file", outputFilePath)
+		helper.Errorf("error opening %s file", outputFilePath)
 		return err
 	}
 	defer f.Close()
 	outputBytes, err = io.ReadAll(f)
-	log.Infof("converted PGS to SRT for job %s stream %d", P.task.Id.String(), P.task.PGSID)
+	helper.Infof("converted PGS to SRT for job %s stream %d", P.task.Id.String(), P.task.PGSID)
 	return err
 }
 
@@ -138,17 +138,17 @@ func calculateTesseractLanguage(language string) string {
 }
 
 func (P *PGSWorker) Clean() error {
-	log.Warnf("[%s] cleaning up worker workspace", P.GetID())
+	helper.Warnf("[%s] cleaning up worker workspace", P.GetID())
 	err := os.RemoveAll(P.tempPath)
 	if err != nil {
-		log.Error("error in clean folder", P.GetID())
+		helper.Error("error in clean folder", P.GetID())
 		return err
 	}
 	return nil
 }
 
 func (P *PGSWorker) Cancel() {
-	log.Warnf("[%s] canceling job %s", P.GetID(), P.task.Id.String())
+	helper.Warnf("[%s] canceling job %s", P.GetID(), P.task.Id.String())
 	P.cancelContext()
 }
 

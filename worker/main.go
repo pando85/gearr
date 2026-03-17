@@ -15,7 +15,6 @@ import (
 	"sync"
 	"syscall"
 
-	log "github.com/sirupsen/logrus"
 	pflag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
@@ -34,7 +33,7 @@ func init() {
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		log.Panic(err)
+		helper.Panic(err)
 	}
 
 	cmd.DatabaseFlags()
@@ -68,7 +67,7 @@ func init() {
 
 	err = viper.ReadInConfig()
 	if err != nil {
-		log.Warnf("no config file found")
+		helper.Warnf("no config file found")
 	}
 
 	pflag.Parse()
@@ -87,7 +86,7 @@ func init() {
 	})
 	err = viper.Unmarshal(&opts, viperDecoder)
 	if err != nil {
-		log.Panic(err)
+		helper.Panic(err)
 	}
 }
 
@@ -108,13 +107,13 @@ func main() {
 		shutdownHandler(ctx, sigs, cancel)
 		wg.Done()
 	}()
-	log.Debugf("%+v", opts)
+	helper.Debugf("%+v", opts)
 
 	printer := task.NewConsoleWorkerPrinter()
 
 	brokerClient, err := task.NewBrokerClientPostgres(opts.Database, opts.Worker, printer)
 	if err != nil {
-		log.Panic(err)
+		helper.Panic(err)
 	}
 	brokerClient.Run(wg, ctx)
 
@@ -128,7 +127,7 @@ func shutdownHandler(ctx context.Context, sigs chan os.Signal, cancel context.Ca
 	select {
 	case <-sigs:
 		cancel()
-		log.Info("termination signal detected")
+		helper.Info("termination signal detected")
 	}
 
 	signal.Stop(sigs)

@@ -22,7 +22,6 @@ import (
 	"syscall"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
@@ -64,7 +63,7 @@ func init() {
 
 	err := viper.ReadInConfig()
 	if err != nil {
-		log.Warnf("no config file found")
+		helper.Warnf("no config file found")
 	}
 
 	pflag.Parse()
@@ -84,7 +83,7 @@ func init() {
 	})
 	err = viper.Unmarshal(&opts, urlAndDurationDecoder)
 	if err != nil {
-		log.Panic(err)
+		helper.Panic(err)
 	}
 
 	opts.Scheduler.DownloadPath = filepath.Clean(opts.Scheduler.DownloadPath)
@@ -113,33 +112,33 @@ func main() {
 		shutdownHandler(ctx, sigs, cancel)
 		wg.Done()
 	}()
-	log.Infof("preparing to runwithcontext")
+	helper.Infof("preparing to runwithcontext")
 
 	var repo repository.Repository
 	repo, err := repository.NewSQLRepository(opts.Database)
 	if err != nil {
-		log.Panic(err)
+		helper.Panic(err)
 	}
 	err = repo.Initialize(ctx)
 	if err != nil {
-		log.Panic(err)
+		helper.Panic(err)
 	}
 
 	broker, err := queue.NewBrokerServer(repo)
 	if err != nil {
-		log.Panic(err)
+		helper.Panic(err)
 	}
 	broker.Run(wg, ctx)
 
 	scheduler, err := scheduler.NewScheduler(opts.Scheduler, repo, broker)
 	if err != nil {
-		log.Panic(err)
+		helper.Panic(err)
 	}
 	scheduler.Run(wg, ctx)
 
 	watcherSvc, err := watcher.NewWatcher(opts.Watcher, scheduler, repo)
 	if err != nil {
-		log.Panic(err)
+		helper.Panic(err)
 	}
 	watcherSvc.Run(wg, ctx)
 
@@ -147,7 +146,7 @@ func main() {
 	if opts.Scanner.Enabled && len(opts.Scanner.Paths) > 0 {
 		libScanner = libscanner.NewScanner(opts.Scanner, repo, scheduler)
 		libScanner.Run(wg, ctx)
-		log.Info("library scanner started")
+		helper.Info("library scanner started")
 	}
 
 	var webServer *web.WebServer
@@ -159,10 +158,10 @@ func main() {
 func shutdownHandler(ctx context.Context, sigs chan os.Signal, cancel context.CancelFunc) {
 	select {
 	case <-ctx.Done():
-		log.Info("termination signal detected")
+		helper.Info("termination signal detected")
 	case <-sigs:
 		cancel()
-		log.Info("termination signal detected")
+		helper.Info("termination signal detected")
 	}
 
 	signal.Stop(sigs)

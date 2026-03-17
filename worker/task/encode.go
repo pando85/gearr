@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v5"
-	log "github.com/sirupsen/logrus"
 	"gopkg.in/vansante/go-ffprobe.v2"
 )
 
@@ -715,10 +714,10 @@ func (J *EncodeWorker) PGSMkvExtractDetectAndConvert(taskEncode *model.WorkTaskE
 		}
 		J.updateTaskStatus(taskEncode, model.MKVExtractNotification, model.CompletedNotificationStatus, "")
 
-		log.Debug("is going to start PGS task?")
+		helper.Debug("is going to start PGS task?")
 		J.updateTaskStatus(taskEncode, model.PGSNotification, model.ProgressingNotificationStatus, "")
 		track.Message(string(model.PGSNotification))
-		log.Debugf("converting PGS to SRT: %+v", PGSTOSrt)
+		helper.Debugf("converting PGS to SRT: %+v", PGSTOSrt)
 		err = J.convertPGSToSrt(taskEncode, container, PGSTOSrt)
 		if err != nil {
 			J.updateTaskStatus(taskEncode, model.PGSNotification, model.FailedNotificationStatus, err.Error())
@@ -731,11 +730,11 @@ func (J *EncodeWorker) PGSMkvExtractDetectAndConvert(taskEncode *model.WorkTaskE
 }
 
 func (J *EncodeWorker) convertPGSToSrt(taskEncode *model.WorkTaskEncode, container *ContainerData, subtitles []*Subtitle) error {
-	log.Debug("convert PGS to SRT")
+	helper.Debug("convert PGS to SRT")
 	out := make(chan *model.TaskPGSResponse)
 	var pendingPGSResponses []<-chan *model.TaskPGSResponse
 	for _, subtitle := range subtitles {
-		log.Debugf("starting to process subtitle %+v", subtitle)
+		helper.Debugf("starting to process subtitle %+v", subtitle)
 		subFile, err := os.Open(filepath.Join(taskEncode.WorkDir, fmt.Sprintf("%d.sup", subtitle.Id)))
 		if err != nil {
 			return err
@@ -745,7 +744,7 @@ func (J *EncodeWorker) convertPGSToSrt(taskEncode *model.WorkTaskEncode, contain
 			return err
 		}
 		subFile.Close()
-		log.Debugf("subtitle %d is pgs, requesting conversion", subtitle.Id)
+		helper.Debugf("subtitle %d is pgs, requesting conversion", subtitle.Id)
 
 		PGSResponse := J.RequestPGSJob(model.TaskPGS{
 			Id:          taskEncode.TaskEncode.Id,
@@ -764,7 +763,7 @@ func (J *EncodeWorker) convertPGSToSrt(taskEncode *model.WorkTaskEncode, contain
 		close(out)
 	}()
 
-	log.Debug("start the PGs counter")
+	helper.Debug("start the PGs counter")
 	for {
 		select {
 		case <-J.ctx.Done():
@@ -775,7 +774,7 @@ func (J *EncodeWorker) convertPGSToSrt(taskEncode *model.WorkTaskEncode, contain
 			if !ok {
 				return nil
 			}
-			log.Debugf("response: %+v", response)
+			helper.Debugf("response: %+v", response)
 			if response.Err != "" {
 				return fmt.Errorf("error on process PGS %d: %s", response.PGSID, response.Err)
 			}
@@ -811,7 +810,7 @@ func (J *EncodeWorker) PrefetchJobs() uint32 {
 }
 
 func (J *EncodeWorker) AddDownloadJob(job *model.WorkTaskEncode) {
-	log.Debug("add another download job")
+	helper.Debug("add another download job")
 	atomic.AddUint32(&J.prefetchJobs, 1)
 	J.downloadChan <- job
 }

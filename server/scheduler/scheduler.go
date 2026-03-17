@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -75,13 +74,13 @@ func NewScheduler(config SchedulerConfig, repo repository.Repository, queue queu
 }
 
 func (R *RuntimeScheduler) Run(wg *sync.WaitGroup, ctx context.Context) {
-	log.Info("starting scheduler")
+	helper.Info("starting scheduler")
 	R.start(ctx)
-	log.Info("progressing scheduler")
+	helper.Info("progressing scheduler")
 	wg.Add(1)
 	go func() {
 		<-ctx.Done()
-		log.Info("stopping scheduler")
+		helper.Info("stopping scheduler")
 		R.stop()
 		wg.Done()
 	}()
@@ -139,7 +138,7 @@ func (R *RuntimeScheduler) safeChannelSend(sub *jobSubscription, notification *m
 
 	defer func() {
 		if r := recover(); r != nil {
-			log.Debug("send on closed channel, notification dropped")
+			helper.Debug("send on closed channel, notification dropped")
 		}
 	}()
 
@@ -147,7 +146,7 @@ func (R *RuntimeScheduler) safeChannelSend(sub *jobSubscription, notification *m
 	case sub.notifyChan <- notification:
 	case <-sub.closed:
 	case <-time.After(notificationSendTimeout):
-		log.Warn("notification send timed out, dropping notification")
+		helper.Warn("notification send timed out, dropping notification")
 	}
 }
 
@@ -176,43 +175,38 @@ func (R *RuntimeScheduler) schedule(ctx context.Context) {
 			if jobEvent.EventType == model.NotificationEvent && jobEvent.NotificationType == model.JobNotification && jobEvent.Status == model.CompletedNotificationStatus {
 				job, err := R.repo.GetJob(ctx, jobEvent.Id.String())
 				if err != nil {
-					log.Error(err)
+					helper.Error(err)
 					continue
 				}
 				sourcePath := filepath.Join(R.config.DownloadPath, job.SourcePath)
 				target := filepath.Join(R.config.DownloadPath, job.DestinationPath)
 				if _, err := os.Stat(target); err != nil {
-					log.Warnf("job %s completed, source file %s can not be removed because target file does not exists", jobEvent.Id.String(), sourcePath)
+					helper.Warnf("job %s completed, source file %s can not be removed because target file does not exists", jobEvent.Id.String(), sourcePath)
 					continue
 				}
-				log.Infof("job %s completed, removing source file %s", jobEvent.Id.String(), sourcePath)
+				helper.Infof("job %s completed, removing source file %s", jobEvent.Id.String(), sourcePath)
 				err = os.Remove(sourcePath)
 				if err != nil {
-					log.Error(err)
+					helper.Error(err)
 				}
 			}
 		case checksumPath := <-R.checksumChan:
 			R.pathChecksumMap[checksumPath.path] = checksumPath.checksum
 		case <-time.After(R.config.ScheduleTime):
-			taskEvents, err := R.repo.GetTimeoutJobs(ctx, R.config.JobTimeout)
+			timeoutJobs, err := R.repo.GetTimeoutJobs(ctx, R.config.JobTimeout)
 			if err != nil {
-				log.Error(err)
+				helper.Error(err)
 			}
-			for _, taskEvent := range taskEvents {
-				if taskEvent.Status == model.ProgressingNotificationStatus {
-					log.Infof("rescheduling %s after job timeout", taskEvent.Id.String())
-					job, err := R.repo.GetJob(ctx, taskEvent.Id.String())
-					if err != nil {
-						log.Error(err)
-						continue
-					}
+			for _, timeoutJob := range timeoutJobs {
+				if timeoutJob.Status == model.ProgressingNotificationStatus {
+					helper.Infof("rescheduling %s after job timeout", timeoutJob.Id.String())
 					jobRequest := &model.JobRequest{
-						SourcePath:      job.SourcePath,
-						DestinationPath: job.DestinationPath,
+						SourcePath:      timeoutJob.SourcePath,
+						DestinationPath: timeoutJob.DestinationPath,
 					}
 					_, err = R.scheduleJobRequest(ctx, jobRequest)
 					if err != nil {
-						log.Error(err)
+						helper.Error(err)
 					}
 				}
 			}

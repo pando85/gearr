@@ -16,7 +16,6 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/google/uuid"
-	log "github.com/sirupsen/logrus"
 )
 
 type WatcherStatus struct {
@@ -51,7 +50,7 @@ type Watcher struct {
 
 func NewWatcher(config Config, sched scheduler.Scheduler, repo repository.Repository) (*Watcher, error) {
 	if !config.Enabled || len(config.Paths) == 0 {
-		log.Info("folder watcher is disabled or no paths configured")
+		helper.Info("folder watcher is disabled or no paths configured")
 		return &Watcher{config: config, scheduler: sched, repo: repo}, nil
 	}
 
@@ -76,19 +75,19 @@ func (w *Watcher) Run(wg *sync.WaitGroup, ctx context.Context) {
 
 	fsnWatcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Errorf("failed to create fsnotify watcher: %v", err)
+		helper.Errorf("failed to create fsnotify watcher: %v", err)
 		return
 	}
 	w.fsnotifyWatcher = fsnWatcher
 
 	for _, path := range w.config.Paths {
 		if err := w.AddPath(path); err != nil {
-			log.Errorf("failed to add watch path %s: %v", path, err)
+			helper.Errorf("failed to add watch path %s: %v", path, err)
 		}
 	}
 
 	w.setStatusActive(true)
-	log.Infof("folder watcher started, monitoring %d paths", len(w.config.Paths))
+	helper.Infof("folder watcher started, monitoring %d paths", len(w.config.Paths))
 
 	wg.Add(1)
 	go func() {
@@ -114,7 +113,7 @@ func (w *Watcher) watch(ctx context.Context) {
 			if !ok {
 				return
 			}
-			log.Errorf("fsnotify error: %v", err)
+			helper.Errorf("fsnotify error: %v", err)
 		}
 	}
 }
@@ -130,7 +129,7 @@ func (w *Watcher) stop() {
 	}
 	w.debounceMap = make(map[string]*time.Timer)
 	w.debounceMutex.Unlock()
-	log.Info("folder watcher stopped")
+	helper.Info("folder watcher stopped")
 }
 
 func (w *Watcher) handleFileEvent(filePath string) {
@@ -155,7 +154,7 @@ func (w *Watcher) processFile(filePath string) {
 		if os.IsNotExist(err) {
 			return
 		}
-		log.Errorf("failed to stat file %s: %v", filePath, err)
+		helper.Errorf("failed to stat file %s: %v", filePath, err)
 		return
 	}
 
@@ -181,23 +180,23 @@ func (w *Watcher) processFile(filePath string) {
 
 	relativePath, err := filepath.Rel(w.config.DownloadPath, filePath)
 	if err != nil {
-		log.Errorf("failed to get relative path for %s: %v", filePath, err)
+		helper.Errorf("failed to get relative path for %s: %v", filePath, err)
 		relativePath = filePath
 	}
 
 	existingJob, err := w.repo.GetJobByPath(w.ctx, relativePath)
 	if err != nil {
-		log.Errorf("failed to check existing job for %s: %v", relativePath, err)
+		helper.Errorf("failed to check existing job for %s: %v", relativePath, err)
 		return
 	}
 	if existingJob != nil {
-		log.Debugf("file %s already has a job, skipping", relativePath)
+		helper.Debugf("file %s already has a job, skipping", relativePath)
 		return
 	}
 
 	existingDetection, err := w.repo.GetFileProcessingByPath(w.ctx, relativePath)
 	if err != nil {
-		log.Errorf("failed to check existing detection for %s: %v", relativePath, err)
+		helper.Errorf("failed to check existing detection for %s: %v", relativePath, err)
 		return
 	}
 
@@ -212,14 +211,14 @@ func (w *Watcher) processFile(filePath string) {
 		fp.Status = model.X265Status
 		fp.Message = "file already encoded in x265 or compatible codec"
 		if err := w.repo.AddFileProcessing(w.ctx, fp); err != nil {
-			log.Errorf("failed to record file processing for %s: %v", relativePath, err)
+			helper.Errorf("failed to record file processing for %s: %v", relativePath, err)
 		}
-		log.Infof("watcher: file %s is already x265, skipping", relativePath)
+		helper.Infof("watcher: file %s is already x265, skipping", relativePath)
 		return
 	}
 
 	if existingDetection != nil && existingDetection.Status == model.QueuedStatus {
-		log.Debugf("file %s already queued, skipping", relativePath)
+		helper.Debugf("file %s already queued, skipping", relativePath)
 		return
 	}
 
@@ -233,9 +232,9 @@ func (w *Watcher) processFile(filePath string) {
 		fp.Status = model.ErrorStatus
 		fp.Message = fmt.Sprintf("failed to queue job: %v", err)
 		if err := w.repo.AddFileProcessing(w.ctx, fp); err != nil {
-			log.Errorf("failed to record file processing error for %s: %v", relativePath, err)
+			helper.Errorf("failed to record file processing error for %s: %v", relativePath, err)
 		}
-		log.Errorf("failed to queue job for %s: %v", relativePath, err)
+		helper.Errorf("failed to queue job for %s: %v", relativePath, err)
 		return
 	}
 
@@ -243,7 +242,7 @@ func (w *Watcher) processFile(filePath string) {
 	fp.Message = "file queued for transcoding"
 	fp.JobId = &job.Id
 	if err := w.repo.AddFileProcessing(w.ctx, fp); err != nil {
-		log.Errorf("failed to record file processing for %s: %v", relativePath, err)
+		helper.Errorf("failed to record file processing for %s: %v", relativePath, err)
 	}
 
 	w.statusMutex.Lock()
@@ -252,7 +251,7 @@ func (w *Watcher) processFile(filePath string) {
 	w.status.LastDetectionTime = detectedAt
 	w.statusMutex.Unlock()
 
-	log.Infof("watcher: detected and queued %s for transcoding (job: %s)", relativePath, job.Id)
+	helper.Infof("watcher: detected and queued %s for transcoding (job: %s)", relativePath, job.Id)
 }
 
 func (w *Watcher) matchesPattern(filename string) bool {
@@ -294,7 +293,7 @@ func (w *Watcher) AddPath(path string) error {
 	}
 	w.statusMutex.Unlock()
 
-	log.Infof("watcher: added path %s", path)
+	helper.Infof("watcher: added path %s", path)
 	return nil
 }
 
@@ -317,7 +316,7 @@ func (w *Watcher) RemovePath(path string) error {
 	w.status.WatchedPaths = newPaths
 	w.statusMutex.Unlock()
 
-	log.Infof("watcher: removed path %s", path)
+	helper.Infof("watcher: removed path %s", path)
 	return nil
 }
 

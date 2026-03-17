@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	log "github.com/sirupsen/logrus"
 )
 
 type JobWorker struct {
@@ -88,11 +87,11 @@ func (p *PostgresClient) RegisterEncodeWorker(worker *EncodeWorker) {
 }
 
 func (p *PostgresClient) Run(wg *sync.WaitGroup, ctx context.Context) {
-	log.Info("starting broker client")
+	helper.Info("starting broker client")
 	wg.Add(1)
 	go func() {
 		<-ctx.Done()
-		log.Info("stopping broker client")
+		helper.Info("stopping broker client")
 		wg.Done()
 	}()
 
@@ -105,7 +104,7 @@ func (p *PostgresClient) EventNotification(event model.TaskEvent) error {
 		return err
 	}
 
-	log.Debugf("[job %s] %s has been %s", event.Id.String(), event.NotificationType, event.Status)
+	helper.Debugf("[job %s] %s has been %s", event.Id.String(), event.NotificationType, event.Status)
 	return nil
 }
 
@@ -115,7 +114,7 @@ func (p *PostgresClient) RequestPGSJob(pgsJob model.TaskPGS) <-chan *model.TaskP
 
 	err := p.repo.EnqueuePGSJob(context.Background(), &pgsJob)
 	if err != nil {
-		log.Errorf("failed to publish PGS job: %v", err)
+		helper.Errorf("failed to publish PGS job: %v", err)
 		pgsJobControl.response <- &model.TaskPGSResponse{
 			Id:    pgsJob.Id,
 			PGSID: pgsJob.PGSID,
@@ -125,7 +124,7 @@ func (p *PostgresClient) RequestPGSJob(pgsJob model.TaskPGS) <-chan *model.TaskP
 		return pgsJobControl.response
 	}
 
-	log.Debugf("published PGS job %s", pgsJobControl.task.Id)
+	helper.Debugf("published PGS job %s", pgsJobControl.task.Id)
 	p.EncodeWorker.pgs.Append(pgsJobControl)
 	p.pgsJobControls.Set(fmt.Sprintf("%d", pgsJob.PGSID), pgsJobControl)
 	return pgsJobControl.response
@@ -156,7 +155,7 @@ func (p *PostgresClient) eventProcessor(ctx context.Context) {
 		case <-pingTicker.C:
 			ip, err := helper.GetPublicIP()
 			if err != nil {
-				log.Warnf("failed to get public IP: %v", err)
+				helper.Warnf("failed to get public IP: %v", err)
 			}
 			pingEvent := model.TaskEvent{
 				EventType:   model.PingEvent,
@@ -176,7 +175,7 @@ func (p *PostgresClient) eventProcessor(ctx context.Context) {
 func (p *PostgresClient) checkPGSResponses() {
 	resp, err := p.repo.DequeuePGSResponse(context.Background(), p.workerUniqueQueue)
 	if err != nil {
-		log.Errorf("failed to check PGS responses: %v", err)
+		helper.Errorf("failed to check PGS responses: %v", err)
 		return
 	}
 	if resp == nil {
@@ -197,16 +196,16 @@ func (p *PostgresClient) checkPGSResponses() {
 func (p *PostgresClient) checkJobActions(ctx context.Context) {
 	actions, err := p.repo.DequeueJobActions(ctx, p.workerUniqueQueue)
 	if err != nil {
-		log.Errorf("failed to check job actions: %v", err)
+		helper.Errorf("failed to check job actions: %v", err)
 		return
 	}
 	for _, action := range actions {
-		log.Infof("received job action %s for job %s", action.Action, action.Id.String())
+		helper.Infof("received job action %s for job %s", action.Action, action.Id.String())
 	}
 }
 
 func (p *PostgresClient) pgsQueueProcessor(ctx context.Context) {
-	log.Info("starting PGS queue processor")
+	helper.Info("starting PGS queue processor")
 	ticker := time.NewTicker(p.pollInterval)
 	defer ticker.Stop()
 
@@ -219,7 +218,7 @@ func (p *PostgresClient) pgsQueueProcessor(ctx context.Context) {
 				if !worker.active && worker.pgsWorker.AcceptJobs() {
 					pgsJob, err := p.repo.DequeuePGSJob(ctx, p.workerUniqueQueue)
 					if err != nil {
-						log.Errorf("failed to dequeue PGS job: %v", err)
+						helper.Errorf("failed to dequeue PGS job: %v", err)
 						continue
 					}
 					if pgsJob == nil {
@@ -229,7 +228,7 @@ func (p *PostgresClient) pgsQueueProcessor(ctx context.Context) {
 					p.printer.Log("[%s] Job Assigned to %s", model.PGSToSrtJobType, worker.pgsWorker.GetID())
 					pgsJobData, err := json.Marshal(pgsJob)
 					if err != nil {
-						log.Errorf("failed to marshal PGS job: %v", err)
+						helper.Errorf("failed to marshal PGS job: %v", err)
 						continue
 					}
 					if err := worker.pgsWorker.Prepare(pgsJobData, p); err != nil {
@@ -247,7 +246,7 @@ func (p *PostgresClient) pgsQueueProcessor(ctx context.Context) {
 }
 
 func (p *PostgresClient) encodeQueueProcessor(ctx context.Context) {
-	log.Info("starting encode queue processor")
+	helper.Info("starting encode queue processor")
 	ticker := time.NewTicker(p.pollInterval)
 	defer ticker.Stop()
 
@@ -262,7 +261,7 @@ func (p *PostgresClient) encodeQueueProcessor(ctx context.Context) {
 			if p.EncodeWorker.encodeWorker.AcceptJobs() {
 				task, err := p.repo.DequeueEncodeJob(ctx, p.workerUniqueQueue)
 				if err != nil {
-					log.Errorf("failed to dequeue encode job: %v", err)
+					helper.Errorf("failed to dequeue encode job: %v", err)
 					continue
 				}
 				if task == nil {
@@ -271,15 +270,15 @@ func (p *PostgresClient) encodeQueueProcessor(ctx context.Context) {
 
 				taskData, err := json.Marshal(task)
 				if err != nil {
-					log.Errorf("failed to marshal task: %v", err)
+					helper.Errorf("failed to marshal task: %v", err)
 					continue
 				}
 
 				if err := p.EncodeWorker.encodeWorker.Execute(taskData); err != nil {
-					log.Errorf("[%s] Error Preparing Job Execution: %v", model.EncodeJobType, err)
+					helper.Errorf("[%s] Error Preparing Job Execution: %v", model.EncodeJobType, err)
 					continue
 				}
-				log.Debug("execute a new encoder job")
+				helper.Debug("execute a new encoder job")
 			}
 		}
 	}
@@ -288,7 +287,7 @@ func (p *PostgresClient) encodeQueueProcessor(ctx context.Context) {
 func (p *PostgresClient) controlPGSJobExecution(jobWorker *JobWorker) {
 	defer func() {
 		if err := jobWorker.pgsWorker.Clean(); err != nil {
-			log.Errorf("error cleaning working path for worker %s: %v", jobWorker.pgsWorker.GetID(), err)
+			helper.Errorf("error cleaning working path for worker %s: %v", jobWorker.pgsWorker.GetID(), err)
 		}
 		jobWorker.active = false
 	}()
