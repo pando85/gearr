@@ -80,7 +80,7 @@ endif
 .PHONY: push-image-%
 image-% push-image-%: build-%
 	@IS_PUSH="$(findstring push,$@)"; \
-	PUSH_OR_LOAD="$${IS_PUSH:+--push}$${IS_PUSH:- --load}"; \
+	if [ -n "$${IS_PUSH}" ]; then PUSH_OR_LOAD="--push"; else PUSH_OR_LOAD="--load"; fi; \
 	if [ "$(CACHE_TYPE)" = "gha" ]; then \
 		CACHE_TO_BUILD_VAL="$(CACHE_TO_BUILD)"; \
 		CACHE_TO_BASE_VAL="$(CACHE_TO_BASE)"; \
