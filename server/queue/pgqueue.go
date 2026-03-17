@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"gearr/internal/constants"
 	"gearr/model"
 	"gearr/server/repository"
 	"sync"
@@ -21,8 +22,8 @@ type PostgresBrokerServer struct {
 func NewBrokerServerPostgres(repo repository.Repository) (*PostgresBrokerServer, error) {
 	return &PostgresBrokerServer{
 		repo:           repo,
-		newTask:        make(chan *model.ControlEvent, 100),
-		newWorkerEvent: make(chan *model.JobEventQueue, 100),
+		newTask:        make(chan *model.ControlEvent, constants.ChannelBufferSize),
+		newWorkerEvent: make(chan *model.JobEventQueue, constants.ChannelBufferSize),
 		pollInterval:   time.Second,
 	}, nil
 }
@@ -54,7 +55,7 @@ func (p *PostgresBrokerServer) PublishJobRequest(taskRequest *model.TaskEncode) 
 }
 
 func (p *PostgresBrokerServer) ReceiveJobEvent() <-chan *model.TaskEvent {
-	tc := make(chan *model.TaskEvent, 100)
+	tc := make(chan *model.TaskEvent, constants.ChannelBufferSize)
 	p.taskEventConsumers = append(p.taskEventConsumers, tc)
 	return tc
 }
