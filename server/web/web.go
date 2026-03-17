@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"gearr/internal/constants"
 	"gearr/model"
 	"gearr/server/scanner"
 	"gearr/server/scheduler"
@@ -147,7 +148,7 @@ func (w *WebServer) upload(c *gin.Context) {
 		return
 	}
 
-	b := make([]byte, 131072)
+	b := make([]byte, constants.IOBufferSize)
 	reader := c.Request.Body
 	var readed uint64
 loop:
@@ -202,7 +203,7 @@ func (w *WebServer) download(c *gin.Context) {
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", url.QueryEscape(downloadStream.Name())))
 	c.Status(http.StatusOK)
 
-	b := make([]byte, 131072)
+	b := make([]byte, constants.IOBufferSize)
 loop:
 	for {
 		select {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"gearr/internal/constants"
 	"gearr/model"
 	"strings"
 	"time"
@@ -125,9 +126,9 @@ func NewSQLRepository(config SQLServerConfig) (*SQLRepository, error) {
 	if err = db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
-	db.SetMaxOpenConns(5)
-	db.SetConnMaxLifetime(5 * time.Minute)
-	db.SetMaxIdleConns(5)
+	db.SetMaxOpenConns(constants.DBMaxOpenConns)
+	db.SetConnMaxLifetime(constants.DBConnMaxLifetime)
+	db.SetMaxIdleConns(constants.DBMaxIdleConns)
 	/*	go func(){
 		for {
 			fmt.Printf("In use %d not use %d  open %d wait %d\n",db.Stats().Idle, db.Stats().InUse, db.Stats().OpenConnections,db.Stats().WaitCount)

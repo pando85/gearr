@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"gearr/helper"
 	"gearr/helper/command"
+	"gearr/internal/constants"
 	"gearr/model"
 	"hash"
 	"io"
@@ -78,9 +79,9 @@ func NewEncodeWorker(ctx context.Context, workerConfig Config, workerName string
 		wg:              sync.WaitGroup{},
 		cancelContext:   cancel,
 		workerConfig:    workerConfig,
-		downloadChan:    make(chan *model.WorkTaskEncode, 100),
-		encodeChan:      make(chan *model.WorkTaskEncode, 100),
-		uploadChan:      make(chan *model.WorkTaskEncode, 100),
+		downloadChan:    make(chan *model.WorkTaskEncode, constants.ChannelBufferSize),
+		encodeChan:      make(chan *model.WorkTaskEncode, constants.ChannelBufferSize),
+		uploadChan:      make(chan *model.WorkTaskEncode, constants.ChannelBufferSize),
 		tempPath:        tempPath,
 		terminal:        printer,
 		maxPrefetchJobs: uint32(workerConfig.MaxPrefetchJobs),
@@ -186,8 +187,8 @@ func (J *EncodeWorker) AcceptJobs() bool {
 
 func (J *EncodeWorker) downloadFile(job *model.WorkTaskEncode, track *TaskTracks) error {
 	err := retry.New(
-		retry.Delay(time.Second*5),
-		retry.Attempts(180),
+		retry.Delay(constants.DownloadRetryDelay),
+		retry.Attempts(constants.DownloadRetryAttempts),
 		retry.LastErrorOnly(true),
 		retry.OnRetry(func(n uint, err error) {
 			J.terminal.Error("error on downloading job %s", err.Error())
@@ -255,8 +256,8 @@ func (J *EncodeWorker) calculateChecksum(checksumURL string) (string, error) {
 	var bodyString string
 
 	err := retry.New(
-		retry.Delay(time.Second*5),
-		retry.Attempts(10),
+		retry.Delay(constants.DownloadRetryDelay),
+		retry.Attempts(constants.ChecksumRetryAttempts),
 		retry.LastErrorOnly(true),
 		retry.OnRetry(func(n uint, err error) {
 			J.terminal.Error("error %s on calculate checksum of downloaded job %s", err.Error(), checksumURL)
@@ -520,12 +521,12 @@ func (P *ProgressTrackReader) SumSha() []byte {
 func (J *EncodeWorker) UploadJob(task *model.WorkTaskEncode, track *TaskTracks) error {
 	J.updateTaskStatus(task, model.UploadNotification, model.ProgressingNotificationStatus, "")
 	err := retry.New(
-		retry.Delay(time.Second*5),
+		retry.Delay(constants.DownloadRetryDelay),
 		retry.RetryIf(func(err error) bool {
 			return !errors.Is(err, context.Canceled)
 		}),
 		retry.DelayType(retry.FixedDelay),
-		retry.Attempts(17280),
+		retry.Attempts(constants.UploadRetryAttempts),
 		retry.LastErrorOnly(true),
 		retry.OnRetry(func(n uint, err error) {
 			J.terminal.Error("error on uploading job %s", err.Error())
