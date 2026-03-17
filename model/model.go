@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"gearr/helper/max"
 	"os"
 	"time"
@@ -15,12 +16,23 @@ type NotificationStatus string
 type JobAction string
 type TaskEvents []*TaskEvent
 
+var ErrJobExists = errors.New("job already exists")
+
 type CustomError struct {
 	Message string
+	err     error
+}
+
+func NewCustomError(message string, wrapped error) *CustomError {
+	return &CustomError{Message: message, err: wrapped}
 }
 
 func (e *CustomError) Error() string {
 	return e.Message
+}
+
+func (e *CustomError) Unwrap() error {
+	return e.err
 }
 
 const (

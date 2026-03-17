@@ -180,7 +180,7 @@ func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *m
 		}
 		var eventsToAdd []*model.TaskEvent
 		if job != nil {
-			return &model.CustomError{Message: "job already exists"}
+			return model.NewCustomError("job already exists", model.ErrJobExists)
 		}
 		newUUID, _ := uuid.NewUUID()
 		job = &model.Job{
@@ -231,23 +231,23 @@ func (R *RuntimeScheduler) ScheduleJobRequest(ctx context.Context, jobRequest *m
 
 	if fileInfo.IsDir() {
 		errorMessage := fmt.Sprintf("%s is a directory", filePath)
-		return nil, &model.CustomError{Message: errorMessage}
+		return nil, model.NewCustomError(errorMessage, nil)
 	}
 
 	if fileInfo.Size() < R.config.MinFileSize {
 		errorMessage := fmt.Sprintf("%s File size must be bigger than %d", filePath, R.config.MinFileSize)
-		return nil, &model.CustomError{Message: errorMessage}
+		return nil, model.NewCustomError(errorMessage, nil)
 	}
 	extension := filepath.Ext(fileInfo.Name())[1:]
 	if !helper.ValidExtension(extension) {
 		errorMessage := fmt.Sprintf("%s Invalid Extension %s", filePath, extension)
-		return nil, &model.CustomError{Message: errorMessage}
+		return nil, model.NewCustomError(errorMessage, nil)
 	}
 
 	relativePathSource, err := filepath.Rel(R.config.DownloadPath, filepath.FromSlash(filePath))
 	if err != nil {
 		errorMessage := fmt.Sprintf("%s is not relative download path", filePath)
-		return nil, &model.CustomError{Message: errorMessage}
+		return nil, model.NewCustomError(errorMessage, nil)
 	}
 
 	relativePathTarget := formatTargetName(relativePathSource)
