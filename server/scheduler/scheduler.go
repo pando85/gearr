@@ -19,6 +19,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	notificationSendTimeout = 5 * time.Second
+)
+
 type Scheduler interface {
 	Run(wg *sync.WaitGroup, ctx context.Context)
 	ScheduleJobRequest(ctx context.Context, jobRequest *model.JobRequest) (*model.Job, error)
@@ -47,9 +51,14 @@ type RuntimeScheduler struct {
 	repo               repository.Repository
 	queue              queue.BrokerServer
 	checksumChan       chan PathChecksum
-	updateJobsChannels map[uuid.UUID]chan *model.JobUpdateNotification
+	updateJobsChannels map[uuid.UUID]*jobSubscription
 	jobChannelsMutex   sync.Mutex
 	pathChecksumMap    map[string]string
+}
+
+type jobSubscription struct {
+	notifyChan chan *model.JobUpdateNotification
+	closed     chan struct{}
 }
 
 func NewScheduler(config SchedulerConfig, repo repository.Repository, queue queue.BrokerServer) (*RuntimeScheduler, error) {
@@ -58,7 +67,7 @@ func NewScheduler(config SchedulerConfig, repo repository.Repository, queue queu
 		repo:               repo,
 		queue:              queue,
 		checksumChan:       make(chan PathChecksum),
-		updateJobsChannels: make(map[uuid.UUID]chan *model.JobUpdateNotification, 0),
+		updateJobsChannels: make(map[uuid.UUID]*jobSubscription, 0),
 		pathChecksumMap:    make(map[string]string),
 	}
 
@@ -83,23 +92,62 @@ func (R *RuntimeScheduler) start(ctx context.Context) {
 }
 
 func (R *RuntimeScheduler) GetUpdateJobsChan(ctx context.Context) (uuid.UUID, chan *model.JobUpdateNotification) {
-	ch := make(chan *model.JobUpdateNotification)
 	id := uuid.New()
+	sub := &jobSubscription{
+		notifyChan: make(chan *model.JobUpdateNotification, 100),
+		closed:     make(chan struct{}),
+	}
 	R.jobChannelsMutex.Lock()
-	R.updateJobsChannels[id] = ch
+	R.updateJobsChannels[id] = sub
 	R.jobChannelsMutex.Unlock()
-	return id, ch
+	return id, sub.notifyChan
 }
 
 func (R *RuntimeScheduler) CloseUpdateJobsChan(id uuid.UUID) {
 	R.jobChannelsMutex.Lock()
-	delete(R.updateJobsChannels, id)
+	sub, exists := R.updateJobsChannels[id]
+	if exists {
+		delete(R.updateJobsChannels, id)
+		close(sub.closed)
+	}
 	R.jobChannelsMutex.Unlock()
+
+	if exists {
+		close(sub.notifyChan)
+	}
 }
 
 func (R *RuntimeScheduler) sendUpdateJobsNotification(notification *model.JobUpdateNotification) {
-	for _, ch := range R.updateJobsChannels {
-		ch <- notification
+	R.jobChannelsMutex.Lock()
+	subs := make([]*jobSubscription, 0, len(R.updateJobsChannels))
+	for _, sub := range R.updateJobsChannels {
+		subs = append(subs, sub)
+	}
+	R.jobChannelsMutex.Unlock()
+
+	for _, sub := range subs {
+		R.safeChannelSend(sub, notification)
+	}
+}
+
+func (R *RuntimeScheduler) safeChannelSend(sub *jobSubscription, notification *model.JobUpdateNotification) {
+	select {
+	case <-sub.closed:
+		return
+	default:
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			log.Debug("send on closed channel, notification dropped")
+		}
+	}()
+
+	select {
+	case sub.notifyChan <- notification:
+	case <-sub.closed:
+	case <-time.After(notificationSendTimeout):
+		log.Warn("notification send timed out, dropping notification")
 	}
 }
 
