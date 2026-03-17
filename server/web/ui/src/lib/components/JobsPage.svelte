@@ -298,9 +298,9 @@
         {/each}
       </div>
     {:else}
-      <div class="jobs-empty">
-        <IconAssignment class="jobs-empty-icon" />
-        <p class="jobs-empty-text">No jobs found</p>
+      <div class="jobs-empty-state">
+        <IconAssignment class="jobs-empty-state-icon" />
+        <p class="jobs-empty-state-text">No jobs found</p>
       </div>
     {/if}
   </div>
@@ -610,7 +610,7 @@
     color: var(--color-error);
   }
 
-  .jobs-empty {
+  .jobs-empty-state {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -619,13 +619,13 @@
     color: var(--text-muted);
   }
 
-  .jobs-empty-icon {
+  .jobs-empty-state-icon {
     width: 3rem;
     height: 3rem;
     margin-bottom: var(--spacing-md);
   }
 
-  .jobs-empty-text {
+  .jobs-empty-state-text {
     font-size: var(--font-size-sm);
   }
 
