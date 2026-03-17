@@ -83,7 +83,7 @@ func (R *RuntimeScheduler) start(ctx context.Context) {
 }
 
 func (R *RuntimeScheduler) GetUpdateJobsChan(ctx context.Context) (uuid.UUID, chan *model.JobUpdateNotification) {
-	ch := make(chan *model.JobUpdateNotification)
+	ch := make(chan *model.JobUpdateNotification, 10)
 	id := uuid.New()
 	R.jobChannelsMutex.Lock()
 	R.updateJobsChannels[id] = ch
@@ -93,13 +93,22 @@ func (R *RuntimeScheduler) GetUpdateJobsChan(ctx context.Context) (uuid.UUID, ch
 
 func (R *RuntimeScheduler) CloseUpdateJobsChan(id uuid.UUID) {
 	R.jobChannelsMutex.Lock()
-	delete(R.updateJobsChannels, id)
-	R.jobChannelsMutex.Unlock()
+	defer R.jobChannelsMutex.Unlock()
+	if ch, ok := R.updateJobsChannels[id]; ok {
+		close(ch)
+		delete(R.updateJobsChannels, id)
+	}
 }
 
 func (R *RuntimeScheduler) sendUpdateJobsNotification(notification *model.JobUpdateNotification) {
+	R.jobChannelsMutex.Lock()
+	defer R.jobChannelsMutex.Unlock()
 	for _, ch := range R.updateJobsChannels {
-		ch <- notification
+		select {
+		case ch <- notification:
+		default:
+			log.Warnf("channel full, skipping notification for job %s", notification.Id.String())
+		}
 	}
 }
 
