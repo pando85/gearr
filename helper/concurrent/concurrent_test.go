@@ -6,7 +6,7 @@ import (
 )
 
 func TestMap_SetAndGet(t *testing.T) {
-	m := NewMap()
+	m := NewMap[string, any]()
 
 	m.Set("key1", "value1")
 	m.Set("key2", 123)
@@ -34,7 +34,7 @@ func TestMap_SetAndGet(t *testing.T) {
 }
 
 func TestMap_Overwrite(t *testing.T) {
-	m := NewMap()
+	m := NewMap[string, string]()
 
 	m.Set("key", "value1")
 	m.Set("key", "value2")
@@ -49,7 +49,7 @@ func TestMap_Overwrite(t *testing.T) {
 }
 
 func TestMap_Iter(t *testing.T) {
-	m := NewMap()
+	m := NewMap[string, string]()
 
 	m.Set("key1", "value1")
 	m.Set("key2", "value2")
@@ -69,7 +69,7 @@ func TestMap_Iter(t *testing.T) {
 }
 
 func TestMap_ConcurrentAccess(t *testing.T) {
-	m := NewMap()
+	m := NewMap[string, int]()
 	var wg sync.WaitGroup
 
 	for i := 0; i < 100; i++ {
@@ -94,7 +94,7 @@ func TestMap_ConcurrentAccess(t *testing.T) {
 }
 
 func TestSlice_Append(t *testing.T) {
-	var s Slice
+	s := NewSlice[string]()
 
 	s.Append("item1")
 	s.Append("item2")
@@ -114,7 +114,7 @@ func TestSlice_Append(t *testing.T) {
 }
 
 func TestSlice_Delete(t *testing.T) {
-	var s Slice
+	s := NewSlice[string]()
 
 	s.Append("item1")
 	s.Append("item2")
@@ -136,20 +136,14 @@ func TestSlice_Delete(t *testing.T) {
 }
 
 func TestSlice_DeleteNonExistent(t *testing.T) {
-	var s Slice
+	s := NewSlice[string]()
 
 	s.Append("item1")
-	originalCount := 0
-	for range s.Iter() {
-		originalCount++
-	}
+	originalCount := s.Len()
 
 	s.Delete("nonexistent")
 
-	count := 0
-	for range s.Iter() {
-		count++
-	}
+	count := s.Len()
 
 	if count != originalCount {
 		t.Errorf("count after deleting nonexistent = %d, want %d", count, originalCount)
@@ -157,7 +151,7 @@ func TestSlice_DeleteNonExistent(t *testing.T) {
 }
 
 func TestSlice_ConcurrentAccess(t *testing.T) {
-	var s Slice
+	s := NewSlice[int]()
 	var wg sync.WaitGroup
 
 	for i := 0; i < 100; i++ {

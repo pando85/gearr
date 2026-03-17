@@ -19,7 +19,7 @@ import (
 type JobWorker struct {
 	jobID        uuid.UUID
 	active       bool
-	pgs          concurrent.Slice
+	pgs          *concurrent.Slice[*TaskPGSJobControl]
 	pgsWorker    *PGSWorker
 	encodeWorker *EncodeWorker
 }
@@ -44,7 +44,7 @@ type PostgresClient struct {
 	EncodeWorker      *JobWorker
 	printer           *ConsoleWorkerPrinter
 	pollInterval      time.Duration
-	pgsJobControls    *concurrent.Map
+	pgsJobControls    *concurrent.Map[string, *TaskPGSJobControl]
 }
 
 func NewBrokerClientPostgres(dbConfig repository.SQLServerConfig, workerConfig Config, printer *ConsoleWorkerPrinter) (*PostgresClient, error) {
@@ -56,7 +56,7 @@ func NewBrokerClientPostgres(dbConfig repository.SQLServerConfig, workerConfig C
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	uniqueID := fmt.Sprintf("%s-%d", workerConfig.Name, rnd.Intn(5000000))
 
-	pgsJobControls := concurrent.NewMap()
+	pgsJobControls := concurrent.NewMap[string, *TaskPGSJobControl]()
 	pgsJobControls.Set("_init", nil)
 
 	return &PostgresClient{
@@ -74,7 +74,7 @@ func (p *PostgresClient) RegisterPGSWorker(worker *PGSWorker) {
 	p.PGSWorker = append(p.PGSWorker, &JobWorker{
 		active:    false,
 		pgsWorker: worker,
-		pgs:       concurrent.Slice{},
+		pgs:       concurrent.NewSlice[*TaskPGSJobControl](),
 	})
 }
 
@@ -83,7 +83,7 @@ func (p *PostgresClient) RegisterEncodeWorker(worker *EncodeWorker) {
 	p.EncodeWorker = &JobWorker{
 		active:       false,
 		encodeWorker: worker,
-		pgs:          concurrent.Slice{},
+		pgs:          concurrent.NewSlice[*TaskPGSJobControl](),
 	}
 }
 
@@ -184,7 +184,7 @@ func (p *PostgresClient) checkPGSResponses() {
 	}
 
 	if val, ok := p.pgsJobControls.Get(fmt.Sprintf("%d", resp.PGSID)); ok {
-		pgsJobControl := val.(*TaskPGSJobControl)
+		pgsJobControl := val
 		resp.Id = pgsJobControl.task.Id
 		pgsJobControl.response <- resp
 		close(pgsJobControl.response)
