@@ -188,7 +188,9 @@ func (p *PostgresClient) checkPGSResponses() {
 		resp.Id = pgsJobControl.task.Id
 		pgsJobControl.response <- resp
 		close(pgsJobControl.response)
-		p.EncodeWorker.pgs.Delete(pgsJobControl)
+		if p.EncodeWorker != nil {
+			p.EncodeWorker.pgs.Delete(pgsJobControl)
+		}
 	}
 }
 
@@ -249,14 +251,14 @@ func (p *PostgresClient) encodeQueueProcessor(ctx context.Context) {
 	ticker := time.NewTicker(p.pollInterval)
 	defer ticker.Stop()
 
-	log.Debug("start encode worker manager")
-	p.EncodeWorker.encodeWorker.Manager = p
-
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			if p.EncodeWorker == nil || p.EncodeWorker.encodeWorker == nil {
+				continue
+			}
 			if p.EncodeWorker.encodeWorker.AcceptJobs() {
 				task, err := p.repo.DequeueEncodeJob(ctx, p.workerUniqueQueue)
 				if err != nil {
