@@ -1,34 +1,38 @@
 package concurrent
 
-import (
-	"sync"
-)
+import "sync"
 
-type Slice struct {
+type Slice[T any] struct {
 	sync.RWMutex
-	items []interface{}
+	items []T
 }
 
-// concurrent slice item
-type SliceItem struct {
+type SliceItem[T any] struct {
 	Index int
-	Value interface{}
+	Value T
 }
 
-func (cs *Slice) Append(item interface{}) {
+func NewSlice[T any]() *Slice[T] {
+	return &Slice[T]{
+		items: make([]T, 0),
+	}
+}
+
+func (cs *Slice[T]) Append(item T) {
 	cs.Lock()
 	defer cs.Unlock()
 
 	cs.items = append(cs.items, item)
 }
-func (cs *Slice) Iter() <-chan SliceItem {
-	c := make(chan SliceItem, 10)
+
+func (cs *Slice[T]) Iter() <-chan SliceItem[T] {
+	c := make(chan SliceItem[T], 10)
 
 	f := func() {
 		cs.Lock()
 		defer cs.Unlock()
 		for index, value := range cs.items {
-			c <- SliceItem{index, value}
+			c <- SliceItem[T]{index, value}
 		}
 		close(c)
 	}
@@ -37,19 +41,26 @@ func (cs *Slice) Iter() <-chan SliceItem {
 	return c
 }
 
-func (cs *Slice) Delete(item interface{}) {
+func (cs *Slice[T]) Delete(item T) {
 	cs.Lock()
 	defer cs.Unlock()
 	foundIndex := -1
 	for index, value := range cs.items {
-		if value == item {
+		if any(value) == any(item) {
 			foundIndex = index
 			break
 		}
 	}
-	if foundIndex != -1 {
+	if foundIndex != -1 && len(cs.items) > 0 {
 		cs.items[foundIndex] = cs.items[len(cs.items)-1]
-		cs.items[len(cs.items)-1] = nil
+		var zero T
+		cs.items[len(cs.items)-1] = zero
 		cs.items = cs.items[:len(cs.items)-1]
 	}
+}
+
+func (cs *Slice[T]) Len() int {
+	cs.RLock()
+	defer cs.RUnlock()
+	return len(cs.items)
 }
