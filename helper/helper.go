@@ -16,7 +16,6 @@ import (
 
 	"github.com/avast/retry-go/v5"
 	"github.com/rakyll/statik/fs"
-	log "github.com/sirupsen/logrus"
 	"gopkg.in/vansante/go-ffprobe.v2"
 )
 
@@ -40,7 +39,7 @@ func ValidExtension(extension string) bool {
 
 func CheckPath(path string) {
 	if !filepath.IsAbs(path) {
-		log.Panicf("download-path %s must be absolute and ends with /", path)
+		Panicf("download-path %s must be absolute and ends with /", path)
 	}
 }
 
@@ -195,24 +194,6 @@ func HashSha1Myself() (string, error) {
 		return "", fmt.Errorf("failed to generate sha1 for self: %w", err)
 	}
 	return sha1, nil
-}
-
-func SetLogLevel(level string) {
-	switch strings.ToLower(level) {
-	case "debug":
-		log.SetLevel(log.DebugLevel)
-	case "info":
-		log.SetLevel(log.InfoLevel)
-	case "warning":
-		log.SetLevel(log.WarnLevel)
-	case "error":
-		log.SetLevel(log.ErrorLevel)
-	case "fatal":
-		log.SetLevel(log.FatalLevel)
-	default:
-		log.SetLevel(log.InfoLevel)
-		log.Warnf("invalid log level '%s', defaulting to 'info'", level)
-	}
 }
 
 func DetectCodec(filePath string) (string, error) {

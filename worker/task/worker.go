@@ -3,11 +3,10 @@ package task
 import (
 	"context"
 	"fmt"
+	"gearr/helper"
 	"gearr/model"
 	"runtime"
 	"sync"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type BrokerClient interface {
@@ -34,13 +33,13 @@ type WorkerRuntime struct {
 }
 
 func (W *WorkerRuntime) Run(wg *sync.WaitGroup, ctx context.Context) {
-	log.Info("starting worker client")
+	helper.Info("starting worker client")
 	W.start(ctx)
-	log.Info("started worker client")
+	helper.Info("started worker client")
 	wg.Add(1)
 	go func() {
 		<-ctx.Done()
-		log.Info("stopping worker client")
+		helper.Info("stopping worker client")
 		W.stop()
 		wg.Done()
 	}()
@@ -50,13 +49,13 @@ func (W *WorkerRuntime) start(ctx context.Context) {
 		W.EncodeWorker = NewEncodeWorker(ctx, W.config, fmt.Sprintf("%s-%d", model.EncodeJobType, 1), W.printer)
 		W.brokerClient.RegisterEncodeWorker(W.EncodeWorker)
 		W.EncodeWorker.Initialize()
-		log.Info("initializing encode worker")
+		helper.Info("initializing encode worker")
 
 	}
 	if W.config.Jobs.IsAccepted(model.PGSToSrtJobType) {
 		for i := 0; i < runtime.NumCPU(); i++ {
 			pgsWorker := NewPGSWorker(ctx, W.config, fmt.Sprintf("%s-%d", model.PGSToSrtJobType, i))
-			log.Infof("initializing pgs worker %d", i)
+			helper.Infof("initializing pgs worker %d", i)
 			W.PGSWorker = append(W.PGSWorker, pgsWorker)
 			W.brokerClient.RegisterPGSWorker(pgsWorker)
 		}
@@ -64,7 +63,7 @@ func (W *WorkerRuntime) start(ctx context.Context) {
 }
 
 func (W *WorkerRuntime) stop() {
-	log.Warnf("stopping all workers")
+	helper.Warnf("stopping all workers")
 	if W.EncodeWorker != nil {
 		W.EncodeWorker.Cancel()
 	}

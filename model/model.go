@@ -2,12 +2,12 @@ package model
 
 import (
 	"errors"
+	"gearr/helper"
 	"gearr/helper/max"
 	"os"
 	"time"
 
 	"github.com/google/uuid"
-	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -230,10 +230,10 @@ func (t *TaskEvents) GetLatest() *TaskEvent {
 	return max.Max(t).(*TaskEvent)
 }
 func (t *TaskEvents) GetLatestPerNotificationType(notificationType NotificationType) (returnEvent *TaskEvent) {
-	log.Debugf("notification type: %+v", notificationType)
+	helper.Debugf("notification type: %+v", notificationType)
 
 	if t == nil || len(*t) == 0 {
-		log.Warnf("task events are empty for notification type %s", notificationType)
+		helper.Warnf("task events are empty for notification type %s", notificationType)
 		return nil
 	}
 

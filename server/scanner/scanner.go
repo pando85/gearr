@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	log "github.com/sirupsen/logrus"
 )
 
 var defaultFileExtensions = []string{".mkv", ".mp4", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4v"}
@@ -49,7 +48,7 @@ func NewScanner(config model.ScannerConfig, repo repository.Repository, schedule
 
 func (s *Scanner) Run(wg *sync.WaitGroup, ctx context.Context) {
 	defer wg.Done()
-	log.Info("starting library scanner")
+	helper.Info("starting library scanner")
 
 	ticker := time.NewTicker(s.config.Interval)
 	defer ticker.Stop()
@@ -62,7 +61,7 @@ func (s *Scanner) Run(wg *sync.WaitGroup, ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Info("stopping library scanner")
+			helper.Info("stopping library scanner")
 			return
 		case <-ticker.C:
 			if s.config.Enabled {
@@ -82,7 +81,7 @@ func (s *Scanner) TriggerScan() {
 	select {
 	case s.scanChan <- struct{}{}:
 	default:
-		log.Debug("scan already queued")
+		helper.Debug("scan already queued")
 	}
 }
 
@@ -116,7 +115,7 @@ func (s *Scanner) performScan(ctx context.Context) {
 	s.mu.Lock()
 	if s.currentScan != nil && s.currentScan.Status == model.ScanRunning {
 		s.mu.Unlock()
-		log.Warn("scan already in progress")
+		helper.Warn("scan already in progress")
 		return
 	}
 
@@ -136,7 +135,7 @@ func (s *Scanner) performScan(ctx context.Context) {
 
 	err := s.repo.CreateScan(ctx, scan)
 	if err != nil {
-		log.Errorf("failed to create scan record: %v", err)
+		helper.Errorf("failed to create scan record: %v", err)
 		s.completeScan(scan, model.ScanFailed, fmt.Sprintf("failed to create scan record: %v", err))
 		return
 	}
@@ -156,7 +155,7 @@ func (s *Scanner) performScan(ctx context.Context) {
 func (s *Scanner) scanDirectory(ctx context.Context, scan *model.LibraryScan, rootPath string) {
 	err := filepath.WalkDir(rootPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			log.Warnf("error accessing path %s: %v", path, err)
+			helper.Warnf("error accessing path %s: %v", path, err)
 			return nil
 		}
 
@@ -185,7 +184,7 @@ func (s *Scanner) scanDirectory(ctx context.Context, scan *model.LibraryScan, ro
 
 		fileInfo, err := os.Stat(path)
 		if err != nil {
-			log.Warnf("cannot stat file %s: %v", path, err)
+			helper.Warnf("cannot stat file %s: %v", path, err)
 			return nil
 		}
 
@@ -193,13 +192,13 @@ func (s *Scanner) scanDirectory(ctx context.Context, scan *model.LibraryScan, ro
 			s.mu.Lock()
 			scan.FilesSkippedSize++
 			s.mu.Unlock()
-			log.Debugf("skipping file %s: size %d below threshold %d", path, fileInfo.Size(), s.config.MinFileSize)
+			helper.Debugf("skipping file %s: size %d below threshold %d", path, fileInfo.Size(), s.config.MinFileSize)
 			return nil
 		}
 
 		existingFile, err := s.repo.GetScannedFile(ctx, path)
 		if err != nil && err != repository.ErrElementNotFound {
-			log.Warnf("error checking scanned file %s: %v", path, err)
+			helper.Warnf("error checking scanned file %s: %v", path, err)
 			return nil
 		}
 
@@ -207,26 +206,26 @@ func (s *Scanner) scanDirectory(ctx context.Context, scan *model.LibraryScan, ro
 			s.mu.Lock()
 			scan.FilesSkippedExist++
 			s.mu.Unlock()
-			log.Debugf("skipping already queued file: %s", path)
+			helper.Debugf("skipping already queued file: %s", path)
 			return nil
 		}
 
 		existingJob, err := s.repo.GetJobByPath(ctx, path)
 		if err != nil && err != repository.ErrElementNotFound {
-			log.Warnf("error checking existing job for %s: %v", path, err)
+			helper.Warnf("error checking existing job for %s: %v", path, err)
 			return nil
 		}
 		if existingJob != nil {
 			s.mu.Lock()
 			scan.FilesSkippedExist++
 			s.mu.Unlock()
-			log.Debugf("skipping file with existing job: %s", path)
+			helper.Debugf("skipping file with existing job: %s", path)
 			return nil
 		}
 
 		codec, err := helper.DetectCodec(path)
 		if err != nil {
-			log.Warnf("failed to detect codec for %s: %v", path, err)
+			helper.Warnf("failed to detect codec for %s: %v", path, err)
 			return nil
 		}
 
@@ -234,7 +233,7 @@ func (s *Scanner) scanDirectory(ctx context.Context, scan *model.LibraryScan, ro
 			s.mu.Lock()
 			scan.FilesSkippedCodec++
 			s.mu.Unlock()
-			log.Debugf("skipping already x265/hevc file: %s", path)
+			helper.Debugf("skipping already x265/hevc file: %s", path)
 			return nil
 		}
 
@@ -250,7 +249,7 @@ func (s *Scanner) scanDirectory(ctx context.Context, scan *model.LibraryScan, ro
 
 		err = s.repo.UpsertScannedFile(ctx, scannedFile)
 		if err != nil {
-			log.Warnf("failed to upsert scanned file %s: %v", path, err)
+			helper.Warnf("failed to upsert scanned file %s: %v", path, err)
 			return nil
 		}
 
@@ -260,26 +259,26 @@ func (s *Scanner) scanDirectory(ctx context.Context, scan *model.LibraryScan, ro
 
 		_, err = s.scheduler.ScheduleJobRequest(ctx, jobRequest)
 		if err != nil {
-			log.Warnf("failed to queue job for %s: %v", path, err)
+			helper.Warnf("failed to queue job for %s: %v", path, err)
 			return nil
 		}
 
 		scannedFile.Queued = true
 		err = s.repo.UpsertScannedFile(ctx, scannedFile)
 		if err != nil {
-			log.Warnf("failed to update scanned file status %s: %v", path, err)
+			helper.Warnf("failed to update scanned file status %s: %v", path, err)
 		}
 
 		s.mu.Lock()
 		scan.FilesQueued++
 		s.mu.Unlock()
 
-		log.Infof("queued file for transcoding: %s (codec: %s, size: %d)", path, codec, fileInfo.Size())
+		helper.Infof("queued file for transcoding: %s (codec: %s, size: %d)", path, codec, fileInfo.Size())
 		return nil
 	})
 
 	if err != nil {
-		log.Errorf("error walking directory %s: %v", rootPath, err)
+		helper.Errorf("error walking directory %s: %v", rootPath, err)
 	}
 }
 
@@ -302,7 +301,7 @@ func (s *Scanner) completeScan(scan *model.LibraryScan, status model.ScanStatus,
 
 	err := s.repo.UpdateScan(context.Background(), scan)
 	if err != nil {
-		log.Errorf("failed to update scan record: %v", err)
+		helper.Errorf("failed to update scan record: %v", err)
 	}
 
 	s.sendNotification(&model.ScannerNotification{
@@ -315,7 +314,7 @@ func (s *Scanner) completeScan(scan *model.LibraryScan, status model.ScanStatus,
 		ErrorMessage: errorMsg,
 	})
 
-	log.Infof("scan completed: %d files found, %d queued, %d skipped (size: %d, codec: %d, exists: %d)",
+	helper.Infof("scan completed: %d files found, %d queued, %d skipped (size: %d, codec: %d, exists: %d)",
 		scan.FilesFound, scan.FilesQueued,
 		scan.FilesSkippedSize+scan.FilesSkippedCodec+scan.FilesSkippedExist,
 		scan.FilesSkippedSize, scan.FilesSkippedCodec, scan.FilesSkippedExist)
@@ -325,6 +324,6 @@ func (s *Scanner) sendNotification(notification *model.ScannerNotification) {
 	select {
 	case s.statusChan <- notification:
 	default:
-		log.Warn("notification channel full, dropping notification")
+		helper.Warn("notification channel full, dropping notification")
 	}
 }

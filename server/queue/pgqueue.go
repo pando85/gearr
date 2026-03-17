@@ -2,13 +2,12 @@ package queue
 
 import (
 	"context"
+	"gearr/helper"
 	"gearr/internal/constants"
 	"gearr/model"
 	"gearr/server/repository"
 	"sync"
 	"time"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type PostgresBrokerServer struct {
@@ -29,11 +28,11 @@ func NewBrokerServerPostgres(repo repository.Repository) (*PostgresBrokerServer,
 }
 
 func (p *PostgresBrokerServer) Run(wg *sync.WaitGroup, ctx context.Context) {
-	log.Info("starting postgres broker")
+	helper.Info("starting postgres broker")
 	wg.Add(1)
 	go func() {
 		<-ctx.Done()
-		log.Info("stopping postgres broker")
+		helper.Info("stopping postgres broker")
 		wg.Done()
 	}()
 	go p.taskPublisher(ctx)
@@ -76,17 +75,17 @@ func (p *PostgresBrokerServer) taskPublisher(ctx context.Context) {
 		case workerEvent := <-p.newWorkerEvent:
 			err := p.repo.EnqueueJobAction(ctx, workerEvent.JobEvent.Id.String(), workerEvent.Queue, workerEvent.JobEvent.Action)
 			if err != nil {
-				log.Errorf("failed to enqueue job action: %v", err)
+				helper.Errorf("failed to enqueue job action: %v", err)
 			} else {
-				log.Infof("sending %s action for job %s", workerEvent.JobEvent.Action, workerEvent.JobEvent.Id.String())
+				helper.Infof("sending %s action for job %s", workerEvent.JobEvent.Action, workerEvent.JobEvent.Id.String())
 			}
 		case taskEvent := <-p.newTask:
 			err := p.repo.EnqueueEncodeJob(ctx, taskEvent.Event)
 			if err != nil {
 				taskEvent.ControlChan <- err
-				log.Infof("failed publish job %s: %v", taskEvent.Event.Id.String(), err)
+				helper.Infof("failed publish job %s: %v", taskEvent.Event.Id.String(), err)
 			} else {
-				log.Infof("published job %s", taskEvent.Event.Id.String())
+				helper.Infof("published job %s", taskEvent.Event.Id.String())
 			}
 			close(taskEvent.ControlChan)
 		}
@@ -104,7 +103,7 @@ func (p *PostgresBrokerServer) taskEventProcessor(ctx context.Context) {
 		case <-ticker.C:
 			events, err := p.repo.DequeueTaskEvents(ctx, constants.TaskEventDequeueLimit)
 			if err != nil {
-				log.Errorf("failed to dequeue task events: %v", err)
+				helper.Errorf("failed to dequeue task events: %v", err)
 				continue
 			}
 
@@ -123,9 +122,9 @@ func (p *PostgresBrokerServer) taskEventProcessor(ctx context.Context) {
 					return nil
 				})
 				if err != nil {
-					log.Errorf("taskencode event error: %s", err.Error())
+					helper.Errorf("taskencode event error: %s", err.Error())
 					if event.EventType != model.PingEvent {
-						log.Debugf("failed event: %+v", event)
+						helper.Debugf("failed event: %+v", event)
 					}
 				}
 			}

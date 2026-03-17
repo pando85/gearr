@@ -12,7 +12,6 @@ require (
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/jedib0t/go-pretty/v6 v6.7.8
 	github.com/rakyll/statik v0.1.8
-	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	golift.io/starr v1.3.1

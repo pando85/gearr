@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"gearr/helper"
 	"gearr/internal/constants"
 	"gearr/model"
 	"sort"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -163,7 +163,7 @@ func (S *SQLRepository) prepareDatabase(ctx context.Context) (returnError error)
 		if err != nil {
 			return err
 		}
-		log.Debug("prepare database")
+		helper.Debug("prepare database")
 		_, err = con.ExecContext(ctx, databaseScript)
 		if err != nil {
 			return fmt.Errorf("failed to run database script: %w", err)
@@ -195,11 +195,11 @@ func (S *SQLRepository) prepareDatabase(ctx context.Context) (returnError error)
 			}
 
 			if applied {
-				log.Debugf("migration %s already applied, skipping", m.name)
+				helper.Debugf("migration %s already applied, skipping", m.name)
 				continue
 			}
 
-			log.Infof("applying migration %s", strings.TrimSuffix(m.name, ".sql"))
+			helper.Infof("applying migration %s", strings.TrimSuffix(m.name, ".sql"))
 			_, err = con.ExecContext(ctx, m.sql)
 			if err != nil {
 				return fmt.Errorf("failed to apply migration %s: %w", m.name, err)
@@ -357,7 +357,7 @@ func (S *SQLRepository) getJob(ctx context.Context, tx Transaction, uuid string)
 
 func (S *SQLRepository) deleteJob(tx Transaction, uuid string) error {
 	sqlResult, err := tx.Exec("DELETE FROM jobs WHERE id=$1", uuid)
-	log.Debugf("query result: +%v", sqlResult)
+	helper.Debugf("query result: +%v", sqlResult)
 	if err != nil {
 		return err
 	}
@@ -391,7 +391,7 @@ func (S *SQLRepository) getJobs(ctx context.Context, tx Transaction) (*[]model.J
 func (S *SQLRepository) getTaskEvents(ctx context.Context, tx Transaction, uuid string) ([]*model.TaskEvent, error) {
 	rows, err := tx.QueryContext(ctx, "SELECT job_id, job_event_id, worker_name, event_time, event_type, notification_type, status, message FROM job_events WHERE job_id=$1 order by event_time asc", uuid)
 	if err != nil {
-		log.Errorf("no job events founds by uuid: %s", uuid)
+		helper.Errorf("no job events founds by uuid: %s", uuid)
 		return nil, err
 	}
 	defer rows.Close()
@@ -403,7 +403,7 @@ func (S *SQLRepository) getTaskEvents(ctx context.Context, tx Transaction, uuid 
 		}
 		taskEvents = append(taskEvents, &event)
 	}
-	log.Debugf("task events: %+v", taskEvents)
+	helper.Debugf("task events: %+v", taskEvents)
 	return taskEvents, nil
 }
 

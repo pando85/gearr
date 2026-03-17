@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"gearr/helper"
 	"gearr/internal/constants"
 	"gearr/model"
 	"gearr/server/scanner"
@@ -20,7 +21,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	log "github.com/sirupsen/logrus"
 )
 
 type WebServer struct {
@@ -98,14 +98,14 @@ func (w *WebServer) deleteJob(c *gin.Context) {
 func (w *WebServer) getJobsUpdates(c *gin.Context) {
 	conn, err := w.upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.Errorf("failed to upgrade: %s", err)
+		helper.Errorf("failed to upgrade: %s", err)
 		return
 	}
 	defer conn.Close()
-	log.Debug("websocket connected")
+	helper.Debug("websocket connected")
 
 	id, ch := w.scheduler.GetUpdateJobsChan(w.ctx)
-	log.Debug("channel connected")
+	helper.Debug("channel connected")
 	defer w.scheduler.CloseUpdateJobsChan(id)
 	for {
 		jobUpdateNotification, ok := <-ch
@@ -114,10 +114,10 @@ func (w *WebServer) getJobsUpdates(c *gin.Context) {
 		}
 		jsonBytes, err := json.Marshal(jobUpdateNotification)
 		if err != nil {
-			log.Errorf("task cannot be marshal to json: %s", err)
+			helper.Errorf("task cannot be marshal to json: %s", err)
 			return
 		}
-		log.Debugf("sending update: %+v", jobUpdateNotification)
+		helper.Debugf("sending update: %+v", jobUpdateNotification)
 		conn.WriteMessage(websocket.TextMessage, []byte(jsonBytes))
 	}
 }
@@ -305,13 +305,13 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watc
 
 func (w *WebServer) Run(wg *sync.WaitGroup, ctx context.Context) {
 	w.ctx = ctx
-	log.Info("starting webserver")
+	helper.Info("starting webserver")
 	w.start()
-	log.Info("started webserver")
+	helper.Info("started webserver")
 	wg.Add(1)
 	go func() {
 		<-ctx.Done()
-		log.Info("stopping webserver")
+		helper.Info("stopping webserver")
 		w.stop(ctx)
 		wg.Done()
 	}()
@@ -321,7 +321,7 @@ func (w *WebServer) start() {
 	go func() {
 		err := w.router.Run(":" + strconv.Itoa(w.Port))
 		if err != nil {
-			log.Panic(err)
+			helper.Panic(err)
 		}
 	}()
 }
@@ -329,7 +329,7 @@ func (w *WebServer) start() {
 func (w *WebServer) stop(ctx context.Context) {
 	server := &http.Server{Addr: ":" + strconv.Itoa(w.Port), Handler: w.router}
 	if err := server.Shutdown(ctx); err != nil {
-		log.Panic(err)
+		helper.Panic(err)
 	}
 }
 
@@ -458,11 +458,11 @@ func (w *WebServer) getScannerUpdates(c *gin.Context) {
 
 	conn, err := w.upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.Errorf("failed to upgrade: %s", err)
+		helper.Errorf("failed to upgrade: %s", err)
 		return
 	}
 	defer conn.Close()
-	log.Debug("scanner websocket connected")
+	helper.Debug("scanner websocket connected")
 
 	ch := w.scanner.GetNotificationChan()
 	for {
@@ -475,10 +475,10 @@ func (w *WebServer) getScannerUpdates(c *gin.Context) {
 			}
 			jsonBytes, err := json.Marshal(notification)
 			if err != nil {
-				log.Errorf("scanner notification cannot be marshaled: %s", err)
+				helper.Errorf("scanner notification cannot be marshaled: %s", err)
 				return
 			}
-			log.Debugf("sending scanner update: %+v", notification)
+			helper.Debugf("sending scanner update: %+v", notification)
 			conn.WriteMessage(websocket.TextMessage, jsonBytes)
 		}
 	}
