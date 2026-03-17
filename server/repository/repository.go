@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"gearr/internal/constants"
 	"gearr/model"
+	"gearr/server/repository/migrations"
 	"strings"
 	"time"
 
@@ -107,9 +108,6 @@ func (S *SQLRepository) ProcessEvent(ctx context.Context, taskEvent *model.TaskE
 		err = S.PingServerUpdate(ctx, taskEvent.WorkerName, taskEvent.WorkerQueue, taskEvent.IP)
 	case model.NotificationEvent:
 		err = S.AddNewTaskEvent(ctx, taskEvent)
-		/*if taskEvent.NotificationType == model.FFProbeNotification && taskEvent.Status ==  model.CompletedNotificationStatus {
-			taskEvent.
-		}*/
 	}
 	return err
 }
@@ -117,17 +115,21 @@ func (S *SQLRepository) ProcessEvent(ctx context.Context, taskEvent *model.TaskE
 //go:embed resources/database.sql
 var databaseScript string
 
-func (S *SQLRepository) prepareDatabase(ctx context.Context) (returnError error) {
-	err := S.WithTransaction(ctx, func(ctx context.Context, tx Repository) error {
-		con, err := tx.getConnection(ctx)
-		if err != nil {
-			return err
-		}
-		log.Debug("prepare database")
-		_, err = con.ExecContext(ctx, databaseScript)
-		return err
-	})
-	return err
+func (S *SQLRepository) prepareDatabase(ctx context.Context) error {
+	if _, err := S.db.ExecContext(ctx, databaseScript); err != nil {
+		return fmt.Errorf("failed to initialize base schema: %w", err)
+	}
+
+	migrator, err := migrations.NewMigrator(S.db)
+	if err != nil {
+		return fmt.Errorf("failed to create migrator: %w", err)
+	}
+
+	if err := migrator.Migrate(ctx); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	return nil
 }
 
 func (S *SQLRepository) getConnection(ctx context.Context) (Transaction, error) {
