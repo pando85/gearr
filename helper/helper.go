@@ -45,13 +45,14 @@ func CheckPath(path string) {
 }
 
 func GetPublicIP() (publicIP string) {
+	client := &http.Client{Timeout: 10 * time.Second}
 	retry.New(
 		retry.Delay(time.Millisecond*100),
 		retry.Attempts(360),
 		retry.LastErrorOnly(true),
 	).Do(func() error {
 		randomIndex := rand.Intn(len(STUNServers))
-		resp, err := http.Get(STUNServers[randomIndex])
+		resp, err := client.Get(STUNServers[randomIndex])
 		if err != nil {
 			return err
 		}

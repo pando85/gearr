@@ -22,6 +22,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const transferBufferSize = 131072
+
 type WebServer struct {
 	WebServerConfig
 	scheduler      scheduler.Scheduler
@@ -147,7 +149,7 @@ func (w *WebServer) upload(c *gin.Context) {
 		return
 	}
 
-	b := make([]byte, 131072)
+	b := make([]byte, transferBufferSize)
 	reader := c.Request.Body
 	var readed uint64
 loop:
@@ -202,7 +204,7 @@ func (w *WebServer) download(c *gin.Context) {
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", url.QueryEscape(downloadStream.Name())))
 	c.Status(http.StatusOK)
 
-	b := make([]byte, 131072)
+	b := make([]byte, transferBufferSize)
 loop:
 	for {
 		select {
