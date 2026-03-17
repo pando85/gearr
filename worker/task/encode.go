@@ -31,6 +31,14 @@ import (
 
 const RESET_LINE = "\r\033[K"
 
+const (
+	DownloadRetryAttempts = 180
+	UploadRetryAttempts   = 17280
+	ChecksumRetryAttempts = 10
+	DownloadRetryDelay    = 5 * time.Second
+	UploadRetryDelay      = 5 * time.Second
+)
+
 var ffmpegSpeedRegex = regexp.MustCompile(`speed=(\d*\.?\d+)x`)
 var ErrorJobNotFound = errors.New("job Not found")
 
@@ -186,8 +194,8 @@ func (J *EncodeWorker) AcceptJobs() bool {
 
 func (J *EncodeWorker) downloadFile(job *model.WorkTaskEncode, track *TaskTracks) error {
 	err := retry.New(
-		retry.Delay(time.Second*5),
-		retry.Attempts(180),
+		retry.Delay(DownloadRetryDelay),
+		retry.Attempts(DownloadRetryAttempts),
 		retry.LastErrorOnly(true),
 		retry.OnRetry(func(n uint, err error) {
 			J.terminal.Error("error on downloading job %s", err.Error())
@@ -255,8 +263,8 @@ func (J *EncodeWorker) calculateChecksum(checksumURL string) (string, error) {
 	var bodyString string
 
 	err := retry.New(
-		retry.Delay(time.Second*5),
-		retry.Attempts(10),
+		retry.Delay(DownloadRetryDelay),
+		retry.Attempts(ChecksumRetryAttempts),
 		retry.LastErrorOnly(true),
 		retry.OnRetry(func(n uint, err error) {
 			J.terminal.Error("error %s on calculate checksum of downloaded job %s", err.Error(), checksumURL)
@@ -520,12 +528,12 @@ func (P *ProgressTrackReader) SumSha() []byte {
 func (J *EncodeWorker) UploadJob(task *model.WorkTaskEncode, track *TaskTracks) error {
 	J.updateTaskStatus(task, model.UploadNotification, model.ProgressingNotificationStatus, "")
 	err := retry.New(
-		retry.Delay(time.Second*5),
+		retry.Delay(UploadRetryDelay),
 		retry.RetryIf(func(err error) bool {
 			return !errors.Is(err, context.Canceled)
 		}),
 		retry.DelayType(retry.FixedDelay),
-		retry.Attempts(17280),
+		retry.Attempts(UploadRetryAttempts),
 		retry.LastErrorOnly(true),
 		retry.OnRetry(func(n uint, err error) {
 			J.terminal.Error("error on uploading job %s", err.Error())

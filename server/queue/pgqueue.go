@@ -10,6 +10,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	ChannelBufferSize = 100
+	PollInterval      = time.Second
+)
+
 type PostgresBrokerServer struct {
 	repo               repository.Repository
 	newTask            chan *model.ControlEvent
@@ -21,9 +26,9 @@ type PostgresBrokerServer struct {
 func NewBrokerServerPostgres(repo repository.Repository) (*PostgresBrokerServer, error) {
 	return &PostgresBrokerServer{
 		repo:           repo,
-		newTask:        make(chan *model.ControlEvent, 100),
-		newWorkerEvent: make(chan *model.JobEventQueue, 100),
-		pollInterval:   time.Second,
+		newTask:        make(chan *model.ControlEvent, ChannelBufferSize),
+		newWorkerEvent: make(chan *model.JobEventQueue, ChannelBufferSize),
+		pollInterval:   PollInterval,
 	}, nil
 }
 
@@ -54,7 +59,7 @@ func (p *PostgresBrokerServer) PublishJobRequest(taskRequest *model.TaskEncode) 
 }
 
 func (p *PostgresBrokerServer) ReceiveJobEvent() <-chan *model.TaskEvent {
-	tc := make(chan *model.TaskEvent, 100)
+	tc := make(chan *model.TaskEvent, ChannelBufferSize)
 	p.taskEventConsumers = append(p.taskEventConsumers, tc)
 	return tc
 }

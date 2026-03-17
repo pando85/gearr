@@ -19,6 +19,12 @@ var (
 	ErrElementNotFound = fmt.Errorf("element not found")
 )
 
+const (
+	DBMaxOpenConns    = 5
+	DBMaxIdleConns    = 5
+	DBConnMaxLifetime = 5 * time.Minute
+)
+
 type Repository interface {
 	getConnection(ctx context.Context) (Transaction, error)
 	Initialize(ctx context.Context) error
@@ -125,9 +131,9 @@ func NewSQLRepository(config SQLServerConfig) (*SQLRepository, error) {
 	if err = db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
-	db.SetMaxOpenConns(5)
-	db.SetConnMaxLifetime(5 * time.Minute)
-	db.SetMaxIdleConns(5)
+	db.SetMaxOpenConns(DBMaxOpenConns)
+	db.SetConnMaxLifetime(DBConnMaxLifetime)
+	db.SetMaxIdleConns(DBMaxIdleConns)
 	/*	go func(){
 		for {
 			fmt.Printf("In use %d not use %d  open %d wait %d\n",db.Stats().Idle, db.Stats().InUse, db.Stats().OpenConnections,db.Stats().WaitCount)
