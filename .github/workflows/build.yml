@@ -77,6 +77,8 @@ jobs:
         run: make test-e2e
         env:
           DOCKER_BUILDKIT: 1
+          CACHE_TYPE: gha
+          CACHE_MODE: max
 
   push-images:
     runs-on: ubuntu-latest

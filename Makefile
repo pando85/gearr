@@ -53,10 +53,10 @@ CACHE_TYPE ?= registry
 CACHE_MODE ?= max
 
 ifeq ($(CACHE_TYPE),gha)
-CACHE_FROM_BUILD := --cache-from type=gha
-CACHE_FROM_BASE := --cache-from type=gha
-CACHE_FROM_SERVER := --cache-from type=gha
-CACHE_FROM_WORKER := --cache-from type=gha
+CACHE_FROM_BUILD := --cache-from type=gha --cache-from type=registry,ref=$(IMAGE_NAME):latest-build
+CACHE_FROM_BASE := --cache-from type=gha --cache-from type=registry,ref=$(IMAGE_NAME):latest-base
+CACHE_FROM_SERVER := --cache-from type=gha --cache-from type=registry,ref=$(IMAGE_NAME):latest-server
+CACHE_FROM_WORKER := --cache-from type=gha --cache-from type=registry,ref=$(IMAGE_NAME):latest-worker
 CACHE_TO_BUILD := --cache-to type=gha,mode=$(CACHE_MODE)
 CACHE_TO_BASE := --cache-to type=gha,mode=$(CACHE_MODE)
 CACHE_TO_SERVER := --cache-to type=gha,mode=$(CACHE_MODE)
