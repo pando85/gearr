@@ -33,6 +33,7 @@ type CmdLineOpts struct {
 	Web       web.WebServerConfig        `mapstructure:"web"`
 	Watcher   watcher.Config             `mapstructure:"watcher"`
 	Scanner   model.ScannerConfig        `mapstructure:"scanner"`
+	Webhook   model.WebhookConfig        `mapstructure:"webhook"`
 }
 
 var (
@@ -46,6 +47,7 @@ func init() {
 	cmd.WebFlags()
 	cmd.WatcherFlags()
 	cmd.ScannerFlags()
+	cmd.WebhookFlags()
 
 	pflag.Usage = usage
 

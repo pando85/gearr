@@ -391,3 +391,8 @@ type ScannerNotification struct {
 	Status       ScanStatus `json:"status"`
 	ErrorMessage string     `json:"error_message,omitempty"`
 }
+
+type WebhookConfig struct {
+	Secret string `mapstructure:"secret" json:"secret"`
+	APIKey string `mapstructure:"apiKey" json:"apiKey"`
+}

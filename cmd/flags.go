@@ -48,3 +48,8 @@ func ScannerFlags() {
 	pflag.StringSlice("scanner.paths", []string{}, "Paths to scan for video files")
 	pflag.StringSlice("scanner.fileExtensions", []string{}, "File extensions to scan (default: common video extensions)")
 }
+
+func WebhookFlags() {
+	pflag.String("webhook.secret", "", "Webhook secret for signature validation")
+	pflag.String("webhook.apiKey", "", "Webhook API key for authentication")
+}
