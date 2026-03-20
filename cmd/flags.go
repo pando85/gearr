@@ -48,3 +48,9 @@ func ScannerFlags() {
 	pflag.StringSlice("scanner.paths", []string{}, "Paths to scan for video files")
 	pflag.StringSlice("scanner.fileExtensions", []string{}, "File extensions to scan (default: common video extensions)")
 }
+
+func PriorityFlags() {
+	pflag.Bool("priority.priorityBySize", false, "Prioritize larger files (larger files = higher priority)")
+	pflag.Bool("priority.priorityByAge", false, "Prioritize older files (older files = higher priority)")
+	pflag.Int("priority.defaultPriority", 5, "Default priority for jobs (1-10, where 10 is highest)")
+}

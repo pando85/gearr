@@ -19,15 +19,6 @@ func ValidateConfig(config QueueConfig) error {
 	return nil
 }
 
-type ValidationError struct {
-	Field   string
-	Message string
-}
-
-func (e *ValidationError) Error() string {
-	return e.Message
-}
-
 func TestValidateConfig(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -66,5 +57,116 @@ func TestValidateConfig(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestValidatePriorityConfig(t *testing.T) {
+	tests := []struct {
+		name      string
+		config    PriorityConfig
+		wantErr   bool
+		errString string
+	}{
+		{
+			name: "valid default priority config",
+			config: PriorityConfig{
+				PriorityBySize:  false,
+				PriorityByAge:   false,
+				DefaultPriority: 5,
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid priority config with size priority enabled",
+			config: PriorityConfig{
+				PriorityBySize:  true,
+				PriorityByAge:   false,
+				DefaultPriority: 5,
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid priority config with age priority enabled",
+			config: PriorityConfig{
+				PriorityBySize:  false,
+				PriorityByAge:   true,
+				DefaultPriority: 5,
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid priority config with both priorities enabled",
+			config: PriorityConfig{
+				PriorityBySize:  true,
+				PriorityByAge:   true,
+				DefaultPriority: 10,
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid priority below range",
+			config: PriorityConfig{
+				PriorityBySize:  false,
+				PriorityByAge:   false,
+				DefaultPriority: 0,
+			},
+			wantErr:   true,
+			errString: "defaultPriority must be between 1 and 10",
+		},
+		{
+			name: "invalid priority above range",
+			config: PriorityConfig{
+				PriorityBySize:  false,
+				PriorityByAge:   false,
+				DefaultPriority: 11,
+			},
+			wantErr:   true,
+			errString: "defaultPriority must be between 1 and 10",
+		},
+		{
+			name: "valid minimum priority",
+			config: PriorityConfig{
+				PriorityBySize:  false,
+				PriorityByAge:   false,
+				DefaultPriority: 1,
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid maximum priority",
+			config: PriorityConfig{
+				PriorityBySize:  false,
+				PriorityByAge:   false,
+				DefaultPriority: 10,
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidatePriorityConfig(tt.config)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidatePriorityConfig() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if err != nil && tt.errString != "" {
+				if err.Error() != tt.errString {
+					t.Errorf("ValidatePriorityConfig() error = %v, want %v", err.Error(), tt.errString)
+				}
+			}
+		})
+	}
+}
+
+func TestDefaultPriorityConfig(t *testing.T) {
+	config := DefaultPriorityConfig()
+	if config.PriorityBySize != false {
+		t.Errorf("DefaultPriorityConfig() PriorityBySize = %v, want false", config.PriorityBySize)
+	}
+	if config.PriorityByAge != false {
+		t.Errorf("DefaultPriorityConfig() PriorityByAge = %v, want false", config.PriorityByAge)
+	}
+	if config.DefaultPriority != 5 {
+		t.Errorf("DefaultPriorityConfig() DefaultPriority = %v, want 5", config.DefaultPriority)
 	}
 }
