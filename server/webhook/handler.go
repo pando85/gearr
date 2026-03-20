@@ -16,6 +16,10 @@ type EventLogger interface {
 	CreateWebhookEvent(ctx context.Context, event *model.WebhookEvent) error
 }
 
+type JobQueuer interface {
+	ScheduleJobRequest(ctx context.Context, jobRequest *model.JobRequest) (*model.Job, error)
+}
+
 type Handler interface {
 	CanHandle(source Source, eventType EventType) bool
 	Parse(ctx context.Context, payload []byte) (*WebhookPayload, error)
@@ -85,6 +89,7 @@ func (r *HandlerRegistry) Handlers() []Handler {
 type HTTPHandler struct {
 	registry    *HandlerRegistry
 	eventLogger EventLogger
+	jobQueuer   JobQueuer
 }
 
 func NewHTTPHandler(registry *HandlerRegistry) *HTTPHandler {
@@ -97,6 +102,14 @@ func NewHTTPHandlerWithLogger(registry *HandlerRegistry, logger EventLogger) *HT
 	return &HTTPHandler{
 		registry:    registry,
 		eventLogger: logger,
+	}
+}
+
+func NewHTTPHandlerWithQueuer(registry *HandlerRegistry, logger EventLogger, queuer JobQueuer) *HTTPHandler {
+	return &HTTPHandler{
+		registry:    registry,
+		eventLogger: logger,
+		jobQueuer:   queuer,
 	}
 }
 
@@ -159,10 +172,13 @@ func (h *HTTPHandler) HandleWebhook(c *gin.Context) {
 		return
 	}
 
+	queuedJobs := h.queueFiles(c.Request.Context(), result.Files)
+
 	c.JSON(http.StatusOK, gin.H{
-		"accepted": true,
-		"files":    result.Files,
-		"message":  "webhook processed successfully",
+		"accepted":    true,
+		"files":       result.Files,
+		"queued_jobs": queuedJobs,
+		"message":     "webhook processed successfully",
 	})
 }
 
@@ -203,6 +219,34 @@ func (h *HTTPHandler) logWebhookEvent(ctx context.Context, source Source, eventT
 	if err := h.eventLogger.CreateWebhookEvent(ctx, event); err != nil {
 		helper.Errorf("failed to log webhook event: %v", err)
 	}
+}
+
+func (h *HTTPHandler) queueFiles(ctx context.Context, files []File) []string {
+	if h.jobQueuer == nil || len(files) == 0 {
+		return nil
+	}
+
+	var queuedJobs []string
+	for _, file := range files {
+		if file.Path == "" {
+			continue
+		}
+
+		jobRequest := &model.JobRequest{
+			SourcePath: file.Path,
+		}
+
+		job, err := h.jobQueuer.ScheduleJobRequest(ctx, jobRequest)
+		if err != nil {
+			helper.Errorf("failed to queue job for file %s: %v", file.Path, err)
+			continue
+		}
+
+		queuedJobs = append(queuedJobs, job.Id.String())
+		helper.Infof("queued job %s for file %s from webhook", job.Id.String(), file.Path)
+	}
+
+	return queuedJobs
 }
 
 func (h *HTTPHandler) HandleTest(c *gin.Context) {

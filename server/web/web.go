@@ -115,7 +115,7 @@ func (w *WebServer) updateJobPriority(c *gin.Context) {
 		return
 	}
 
-	if req.Priority < 0 || req.Priority > 3 {
+	if !model.JobPriorityIsValid(req.Priority) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "priority must be between 0 and 3"})
 		return
 	}
@@ -304,11 +304,7 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watc
 
 	if config.WebhookConfig != nil && config.WebhookConfig.Enabled {
 		registry := webhook.NewDefaultHandlerRegistry()
-		if repo != nil {
-			webServer.webhookHandler = webhook.NewHTTPHandlerWithLogger(registry, repo)
-		} else {
-			webServer.webhookHandler = webhook.NewHTTPHandler(registry)
-		}
+		webServer.webhookHandler = webhook.NewHTTPHandlerWithQueuer(registry, repo, scheduler)
 	}
 
 	r.GET("/-/healthy", func(c *gin.Context) {
