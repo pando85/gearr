@@ -49,6 +49,13 @@ func ScannerFlags() {
 	pflag.StringSlice("scanner.fileExtensions", []string{}, "File extensions to scan (default: common video extensions)")
 }
 
+func WebhookFlags() {
+	pflag.Bool("webhook.enabled", false, "Enable webhook authentication for incoming webhooks")
+	pflag.String("webhook.radarr.apiKey", "", "Radarr webhook API key for authentication")
+	pflag.String("webhook.sonarr.apiKey", "", "Sonarr webhook API key for authentication")
+	pflag.StringToString("webhook.providers", map[string]string{}, "Additional webhook providers in format name=api_key")
+}
+
 func PriorityFlags() {
 	pflag.Bool("priority.enabled", false, "Enable smart prioritization for job queue ordering")
 	pflag.String("priority.defaultPriority", "normal", "Default priority level for jobs (low, normal, high, urgent)")
