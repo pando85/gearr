@@ -53,6 +53,19 @@ function createJobStore() {
           return { ...state, loading: false, jobs: [...state.jobs, newJob] };
         }
       }),
+    updateJobPriority: (jobId: string, priority: number) =>
+      update((state) => {
+        const updatedJobIndex = state.jobs.findIndex((job) => job.id === jobId);
+        if (updatedJobIndex !== -1) {
+          const updatedJobs = [...state.jobs];
+          updatedJobs[updatedJobIndex] = {
+            ...updatedJobs[updatedJobIndex],
+            priority,
+          };
+          return { ...state, loading: false, jobs: updatedJobs };
+        }
+        return state;
+      }),
     reset: () => update((state) => ({ ...state, loading: true, jobs: [] })),
   };
 }
