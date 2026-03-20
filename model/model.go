@@ -391,3 +391,64 @@ type ScannerNotification struct {
 	Status       ScanStatus `json:"status"`
 	ErrorMessage string     `json:"error_message,omitempty"`
 }
+
+type WebhookProvider string
+
+const (
+	WebhookProviderRadarr  WebhookProvider = "radarr"
+	WebhookProviderSonarr  WebhookProvider = "sonarr"
+	WebhookProviderGeneric WebhookProvider = "generic"
+)
+
+type WebhookAuthConfig struct {
+	Enabled  bool            `json:"enabled" mapstructure:"enabled"`
+	Provider WebhookProvider `json:"provider" mapstructure:"provider"`
+	APIKey   string          `json:"-" mapstructure:"api_key"`
+}
+
+type WebhookConfig struct {
+	Enabled       bool                         `json:"enabled" mapstructure:"enabled"`
+	AuthProviders map[string]WebhookAuthConfig `json:"auth_providers" mapstructure:"auth_providers"`
+}
+
+func (c *WebhookAuthConfig) IsValid() bool {
+	return c.Enabled && c.APIKey != ""
+}
+
+func (c *WebhookAuthConfig) ValidateAPIKey(key string) bool {
+	if !c.Enabled || c.APIKey == "" {
+		return false
+	}
+	return c.APIKey == key
+}
+
+func NewWebhookConfig() WebhookConfig {
+	return WebhookConfig{
+		Enabled:       false,
+		AuthProviders: make(map[string]WebhookAuthConfig),
+	}
+}
+
+func (c *WebhookConfig) AddProvider(name string, provider WebhookProvider, apiKey string) {
+	c.AuthProviders[name] = WebhookAuthConfig{
+		Enabled:  true,
+		Provider: provider,
+		APIKey:   apiKey,
+	}
+	c.Enabled = true
+}
+
+func (c *WebhookConfig) GetProvider(name string) *WebhookAuthConfig {
+	if provider, exists := c.AuthProviders[name]; exists {
+		return &provider
+	}
+	return nil
+}
+
+func (c *WebhookConfig) ValidateAuth(providerName string, apiKey string) bool {
+	provider := c.GetProvider(providerName)
+	if provider == nil {
+		return false
+	}
+	return provider.ValidateAPIKey(apiKey)
+}
