@@ -34,6 +34,7 @@ type Scheduler interface {
 	GetWorkers(ctx context.Context) (*[]model.Worker, error)
 	GetUpdateJobsChan(ctx context.Context) (uuid.UUID, chan *model.JobUpdateNotification)
 	CloseUpdateJobsChan(id uuid.UUID)
+	UpdateJobPriority(ctx context.Context, uuid string, priority int) error
 }
 
 type SchedulerConfig struct {
@@ -229,6 +230,7 @@ func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *m
 			SourcePath:      jobRequest.SourcePath,
 			DestinationPath: jobRequest.DestinationPath,
 			Id:              newUUID,
+			Priority:        jobRequest.Priority,
 		}
 		err = tx.AddJob(ctx, job)
 		if err != nil {
@@ -301,6 +303,7 @@ func (R *RuntimeScheduler) ScheduleJobRequest(ctx context.Context, jobRequest *m
 	filteredJobRequest := &model.JobRequest{
 		SourcePath:      relativePathSource,
 		DestinationPath: relativePathTarget,
+		Priority:        jobRequest.Priority,
 	}
 
 	job, err := R.scheduleJobRequest(ctx, filteredJobRequest)
@@ -421,6 +424,10 @@ func (R *RuntimeScheduler) GetChecksum(ctx context.Context, uuid string) (string
 
 func (R *RuntimeScheduler) GetWorkers(ctx context.Context) (*[]model.Worker, error) {
 	return R.repo.GetWorkers(ctx)
+}
+
+func (R *RuntimeScheduler) UpdateJobPriority(ctx context.Context, uuid string, priority int) error {
+	return R.repo.UpdateJobPriority(ctx, uuid, priority)
 }
 
 func (S *RuntimeScheduler) stop() {

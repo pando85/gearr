@@ -12,6 +12,7 @@ import (
 	"gearr/server/scheduler"
 	"gearr/server/watcher"
 	"gearr/server/web/ui"
+	"gearr/server/webhook"
 	"io"
 	"net/http"
 	"net/url"
@@ -25,12 +26,14 @@ import (
 
 type WebServer struct {
 	WebServerConfig
-	scheduler      scheduler.Scheduler
-	scanner        *scanner.Scanner
-	router         *gin.Engine
-	ctx            context.Context
-	upgrader       websocket.Upgrader
-	watcherHandler *watcher.Handler
+	scheduler       scheduler.Scheduler
+	scanner         *scanner.Scanner
+	router          *gin.Engine
+	ctx             context.Context
+	upgrader        websocket.Upgrader
+	watcherHandler  *watcher.Handler
+	webhookConfig   model.WebhookConfig
+	webhookRegistry *webhook.HandlerRegistry
 }
 
 func (w *WebServer) addJob(c *gin.Context) {
@@ -250,15 +253,21 @@ type WebServerConfig struct {
 	Token string `mapstructure:"token"`
 }
 
-func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watcher.Watcher, scanner *scanner.Scanner) *WebServer {
+func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watcher.Watcher, scanner *scanner.Scanner, webhookConfig model.WebhookConfig) *WebServer {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
+
+	registry := webhook.NewHandlerRegistry()
+	registry.Register(webhook.NewRadarrHandler())
+	registry.Register(webhook.NewSonarrHandler())
 
 	webServer := &WebServer{
 		WebServerConfig: config,
 		scheduler:       scheduler,
 		scanner:         scanner,
 		router:          r,
+		webhookConfig:   webhookConfig,
+		webhookRegistry: registry,
 	}
 
 	if w != nil {
@@ -297,6 +306,14 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watc
 		api.GET("/scanner/history", webServer.AuthHeaderFunc(webServer.getScanHistory))
 		r.GET("/ws/scanner", webServer.AuthParamFunc(webServer.getScannerUpdates))
 	}
+
+	if webhookConfig.Enabled {
+		api.POST("/webhook/radarr", webServer.handleRadarrWebhook)
+		api.POST("/webhook/sonarr", webServer.handleSonarrWebhook)
+		api.POST("/webhook/test", webServer.handleTestWebhook)
+	}
+
+	api.PATCH("/job/:id/priority", webServer.AuthHeaderFunc(webServer.updateJobPriority))
 
 	ui.AddRoutes(r)
 
@@ -482,4 +499,196 @@ func (w *WebServer) getScannerUpdates(c *gin.Context) {
 			conn.WriteMessage(websocket.TextMessage, jsonBytes)
 		}
 	}
+}
+
+func (w *WebServer) handleRadarrWebhook(c *gin.Context) {
+	if !w.webhookConfig.Enabled {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "webhooks not enabled"})
+		return
+	}
+
+	apiKey := c.GetHeader("X-Api-Key")
+	if apiKey == "" {
+		apiKey = c.Query("apikey")
+	}
+
+	radarrProvider := w.webhookConfig.GetProvider("radarr")
+	if radarrProvider == nil || !radarrProvider.ValidateAPIKey(apiKey) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or missing API key"})
+		return
+	}
+
+	body, err := c.GetRawData()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read request body"})
+		return
+	}
+
+	handler := w.webhookRegistry.GetHandler(webhook.SourceRadarr, webhook.EventDownload)
+	if handler == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "no handler found for Radarr webhook"})
+		return
+	}
+
+	payload, err := handler.Parse(c.Request.Context(), body)
+	if err != nil {
+		helper.Errorf("failed to parse Radarr webhook payload: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse webhook payload"})
+		return
+	}
+
+	result, err := handler.Process(c.Request.Context(), payload)
+	if err != nil {
+		helper.Errorf("failed to process Radarr webhook: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to process webhook"})
+		return
+	}
+
+	if result.Accepted && len(result.Files) > 0 {
+		w.processWebhookFiles(result.Files)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"accepted":    result.Accepted,
+		"files":       result.Files,
+		"skip_reason": result.SkipReason,
+		"message":     "webhook processed",
+	})
+}
+
+func (w *WebServer) handleSonarrWebhook(c *gin.Context) {
+	if !w.webhookConfig.Enabled {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "webhooks not enabled"})
+		return
+	}
+
+	apiKey := c.GetHeader("X-Api-Key")
+	if apiKey == "" {
+		apiKey = c.Query("apikey")
+	}
+
+	sonarrProvider := w.webhookConfig.GetProvider("sonarr")
+	if sonarrProvider == nil || !sonarrProvider.ValidateAPIKey(apiKey) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or missing API key"})
+		return
+	}
+
+	body, err := c.GetRawData()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read request body"})
+		return
+	}
+
+	handler := w.webhookRegistry.GetHandler(webhook.SourceSonarr, webhook.EventDownload)
+	if handler == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "no handler found for Sonarr webhook"})
+		return
+	}
+
+	payload, err := handler.Parse(c.Request.Context(), body)
+	if err != nil {
+		helper.Errorf("failed to parse Sonarr webhook payload: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse webhook payload"})
+		return
+	}
+
+	result, err := handler.Process(c.Request.Context(), payload)
+	if err != nil {
+		helper.Errorf("failed to process Sonarr webhook: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to process webhook"})
+		return
+	}
+
+	if result.Accepted && len(result.Files) > 0 {
+		w.processWebhookFiles(result.Files)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"accepted":    result.Accepted,
+		"files":       result.Files,
+		"skip_reason": result.SkipReason,
+		"message":     "webhook processed",
+	})
+}
+
+func (w *WebServer) handleTestWebhook(c *gin.Context) {
+	body, err := c.GetRawData()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read request body"})
+		return
+	}
+
+	handler := w.webhookRegistry.GetHandler(webhook.SourceRadarr, webhook.EventTest)
+	if handler == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "no test handler found"})
+		return
+	}
+
+	payload, err := handler.Parse(c.Request.Context(), body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to parse test webhook payload"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"accepted":    true,
+		"source_type": payload.SourceType,
+		"event_type":  payload.EventType,
+		"message":     "test webhook received successfully",
+	})
+}
+
+func (w *WebServer) processWebhookFiles(files []webhook.File) {
+	for _, file := range files {
+		if file.Path == "" {
+			continue
+		}
+
+		jobRequest := &model.JobRequest{
+			SourcePath:      file.Path,
+			DestinationPath: "",
+			Priority:        0,
+		}
+
+		_, err := w.scheduler.ScheduleJobRequest(w.ctx, jobRequest)
+		if err != nil {
+			if errors.Is(err, model.ErrJobExists) {
+				helper.Debugf("job already exists for file: %s", file.Path)
+				continue
+			}
+			helper.Errorf("failed to schedule job from webhook for file %s: %v", file.Path, err)
+			continue
+		}
+
+		helper.Infof("queued job from webhook for file: %s", file.Path)
+	}
+}
+
+func (w *WebServer) updateJobPriority(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		webError(c, fmt.Errorf("job ID parameter not found"), http.StatusBadRequest)
+		return
+	}
+
+	var request struct {
+		Priority int `json:"priority" binding:"required,min=0,max=3"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		webError(c, err, http.StatusBadRequest)
+		return
+	}
+
+	err := w.scheduler.UpdateJobPriority(w.ctx, id, request.Priority)
+	if err != nil {
+		webError(c, err, http.StatusInternalServerError)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":       id,
+		"priority": request.Priority,
+		"message":  "job priority updated successfully",
+	})
 }

@@ -34,6 +34,7 @@ type CmdLineOpts struct {
 	Watcher   watcher.Config             `mapstructure:"watcher"`
 	Scanner   model.ScannerConfig        `mapstructure:"scanner"`
 	Priority  model.PriorityConfig       `mapstructure:"priority"`
+	Webhook   model.WebhookConfig        `mapstructure:"webhook"`
 }
 
 var (
@@ -48,6 +49,7 @@ func init() {
 	cmd.WatcherFlags()
 	cmd.ScannerFlags()
 	cmd.PriorityFlags()
+	cmd.WebhookFlags()
 
 	pflag.Usage = usage
 
@@ -95,6 +97,10 @@ func init() {
 
 	opts.Watcher.DownloadPath = opts.Scheduler.DownloadPath
 	opts.Watcher.MinFileSize = opts.Scheduler.MinFileSize
+
+	if opts.Webhook.Enabled {
+		helper.Info("webhook integration enabled")
+	}
 }
 
 func usage() {
@@ -152,7 +158,7 @@ func main() {
 	}
 
 	var webServer *web.WebServer
-	webServer = web.NewWebServer(opts.Web, scheduler, watcherSvc, libScanner)
+	webServer = web.NewWebServer(opts.Web, scheduler, watcherSvc, libScanner, opts.Webhook)
 	webServer.Run(wg, ctx)
 	wg.Wait()
 }
