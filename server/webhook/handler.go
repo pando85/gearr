@@ -191,6 +191,9 @@ func (h *HTTPHandler) logWebhookEvent(ctx context.Context, source Source, eventT
 			event.Status = model.WebhookEventStatusSkipped
 			event.Message = result.SkipReason
 		}
+	} else {
+		event.Status = model.WebhookEventStatusFailed
+		event.ErrorDetails = "webhook processing returned no result"
 	}
 
 	if rawPayload != nil {
