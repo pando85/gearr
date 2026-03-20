@@ -318,7 +318,7 @@ func (S *SQLRepository) GetTimeoutJobs(ctx context.Context, timeout time.Duratio
 
 func (S *SQLRepository) getJob(ctx context.Context, tx Transaction, uuid string) (*model.Job, error) {
 	query := `
-		SELECT j.id, j.source_path, j.destination_path, 
+		SELECT j.id, j.source_path, j.destination_path, j.priority,
 			   COALESCE(js.event_time, NULL), COALESCE(js.status, ''), 
 			   COALESCE(js.notification_type, ''), COALESCE(js.message, '')
 		FROM jobs j
@@ -336,7 +336,7 @@ func (S *SQLRepository) getJob(ctx context.Context, tx Transaction, uuid string)
 	if rows.Next() {
 		var lastUpdate sql.NullTime
 		var status, statusPhase, statusMessage string
-		if err := rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath,
+		if err := rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath, &job.Priority,
 			&lastUpdate, &status, &statusPhase, &statusMessage); err != nil {
 			return nil, err
 		}
@@ -372,7 +372,7 @@ func (S *SQLRepository) deleteJob(tx Transaction, uuid string) error {
 
 func (S *SQLRepository) getJobs(ctx context.Context, tx Transaction) (*[]model.Job, error) {
 	query := fmt.Sprintf(`
-    SELECT v.id, v.source_path, v.destination_path, vs.event_time, vs.status, vs.notification_type, vs.message
+    SELECT v.id, v.source_path, v.destination_path, v.priority, vs.event_time, vs.status, vs.notification_type, vs.message
     FROM jobs v
     INNER JOIN job_status vs ON v.id = vs.job_id
 `)
@@ -385,7 +385,7 @@ func (S *SQLRepository) getJobs(ctx context.Context, tx Transaction) (*[]model.J
 	jobs := []model.Job{}
 	for rows.Next() {
 		job := model.Job{}
-		if err := rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath, &job.LastUpdate, &job.Status, &job.StatusPhase, &job.StatusMessage); err != nil {
+		if err := rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath, &job.Priority, &job.LastUpdate, &job.Status, &job.StatusPhase, &job.StatusMessage); err != nil {
 			return nil, err
 		}
 		jobs = append(jobs, job)
@@ -435,7 +435,7 @@ func (S *SQLRepository) getJobStatus(ctx context.Context, tx Transaction, uuid s
 
 func (S *SQLRepository) getJobByPath(ctx context.Context, tx Transaction, path string) (*model.Job, error) {
 	query := `
-		SELECT j.id, j.source_path, j.destination_path,
+		SELECT j.id, j.source_path, j.destination_path, j.priority,
 			   COALESCE(js.event_time, NULL), COALESCE(js.status, ''),
 			   COALESCE(js.notification_type, ''), COALESCE(js.message, '')
 		FROM jobs j
@@ -453,7 +453,7 @@ func (S *SQLRepository) getJobByPath(ctx context.Context, tx Transaction, path s
 	if rows.Next() {
 		var lastUpdate sql.NullTime
 		var status, statusPhase, statusMessage string
-		if err := rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath,
+		if err := rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath, &job.Priority,
 			&lastUpdate, &status, &statusPhase, &statusMessage); err != nil {
 			return nil, err
 		}
@@ -538,8 +538,8 @@ func (S *SQLRepository) AddJob(ctx context.Context, job *model.Job) error {
 }
 
 func (S *SQLRepository) addJob(ctx context.Context, tx Transaction, job *model.Job) error {
-	_, err := tx.ExecContext(ctx, "INSERT INTO jobs (id, source_path,destination_path)"+
-		" VALUES ($1,$2,$3)", job.Id.String(), job.SourcePath, job.DestinationPath)
+	_, err := tx.ExecContext(ctx, "INSERT INTO jobs (id, source_path, destination_path, priority)"+
+		" VALUES ($1,$2,$3,$4)", job.Id.String(), job.SourcePath, job.DestinationPath, job.Priority)
 	return err
 }
 
