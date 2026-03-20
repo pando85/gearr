@@ -22,6 +22,76 @@ function createScannerStore() {
   let reconnectAttempts = 0;
   const maxReconnectAttempts = 5;
 
+  const handleNotification = (notification: ScannerNotification) => {
+    update(s => {
+      const isScanning = notification.status === 'running';
+      return { 
+        ...s, 
+        isScanning,
+        status: s.status ? {
+          ...s.status,
+          is_scanning: isScanning,
+          last_scan: notification.status === 'completed' ? {
+            id: notification.scan_id,
+            started_at: new Date().toISOString(),
+            status: 'completed',
+            files_found: notification.files_found,
+            files_queued: notification.files_queued,
+            files_skipped_size: 0,
+            files_skipped_codec: 0,
+            files_skipped_exists: notification.files_skipped
+          } : s.status.last_scan
+        } : null
+      };
+    });
+  };
+
+  const connectWebSocket = (token: string) => {
+    if (ws) {
+      ws.close();
+    }
+    
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/scanner?token=${token}`;
+    
+    ws = new WebSocket(wsUrl);
+    
+    ws.onopen = () => {
+      reconnectAttempts = 0;
+      console.log('Scanner WebSocket connected');
+    };
+    
+    ws.onmessage = (event) => {
+      try {
+        const notification: ScannerNotification = JSON.parse(event.data);
+        handleNotification(notification);
+      } catch (e) {
+        console.error('Failed to parse scanner notification:', e);
+      }
+    };
+    
+    ws.onerror = (error) => {
+      console.error('Scanner WebSocket error:', error);
+    };
+    
+    ws.onclose = () => {
+      console.log('Scanner WebSocket closed');
+      if (reconnectAttempts < maxReconnectAttempts) {
+        reconnectAttempts++;
+        setTimeout(() => {
+          connectWebSocket(token);
+        }, 1000 * reconnectAttempts);
+      }
+    };
+  };
+
+  const disconnectWebSocket = () => {
+    if (ws) {
+      ws.close();
+      ws = null;
+    }
+  };
+
   return {
     subscribe,
     
@@ -38,75 +108,9 @@ function createScannerStore() {
     
     setHistory: (history: LibraryScan[]) => update(s => ({ ...s, history })),
     
-    handleNotification: (notification: ScannerNotification) => {
-      update(s => {
-        const isScanning = notification.status === 'running';
-        return { 
-          ...s, 
-          isScanning,
-          status: s.status ? {
-            ...s.status,
-            is_scanning: isScanning,
-            last_scan: notification.status === 'completed' ? {
-              id: notification.scan_id,
-              started_at: new Date().toISOString(),
-              status: 'completed',
-              files_found: notification.files_found,
-              files_queued: notification.files_queued,
-              files_skipped_size: 0,
-              files_skipped_codec: 0,
-              files_skipped_exists: notification.files_skipped
-            } : s.status.last_scan
-          } : null
-        };
-      });
-    },
-    
-    connectWebSocket: (token: string) => {
-      if (ws) {
-        ws.close();
-      }
-      
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws/scanner?token=${token}`;
-      
-      ws = new WebSocket(wsUrl);
-      
-      ws.onopen = () => {
-        reconnectAttempts = 0;
-        console.log('Scanner WebSocket connected');
-      };
-      
-      ws.onmessage = (event) => {
-        try {
-          const notification: ScannerNotification = JSON.parse(event.data);
-          get(scannerStore).handleNotification(notification);
-        } catch (e) {
-          console.error('Failed to parse scanner notification:', e);
-        }
-      };
-      
-      ws.onerror = (error) => {
-        console.error('Scanner WebSocket error:', error);
-      };
-      
-      ws.onclose = () => {
-        console.log('Scanner WebSocket closed');
-        if (reconnectAttempts < maxReconnectAttempts) {
-          reconnectAttempts++;
-          setTimeout(() => {
-            get(scannerStore).connectWebSocket(token);
-          }, 1000 * reconnectAttempts);
-        }
-      };
-    },
-    
-    disconnectWebSocket: () => {
-      if (ws) {
-        ws.close();
-        ws = null;
-      }
-    }
+    handleNotification,
+    connectWebSocket,
+    disconnectWebSocket
   };
 }
 

@@ -6,6 +6,7 @@ export interface Job {
   status_phase: string;
   status_message: string;
   last_update: Date;
+  priority: number;
 }
 
 export function createJob(responseData: Partial<Job>): Job {
@@ -17,6 +18,7 @@ export function createJob(responseData: Partial<Job>): Job {
     status_phase: responseData.status_phase || '',
     status_message: responseData.status_message || '',
     last_update: new Date(responseData.last_update || Date.now()),
+    priority: responseData.priority ?? 1,
   };
 }
 
