@@ -1,6 +1,7 @@
 package config
 
 import (
+	"gearr/model"
 	"testing"
 )
 
@@ -8,15 +9,6 @@ type QueueConfig struct {
 	QueueType       string `mapstructure:"queueType"`
 	PostgresConnStr string `mapstructure:"postgresConnStr"`
 }
-
-type PriorityLevel string
-
-const (
-	PriorityLow    PriorityLevel = "low"
-	PriorityNormal PriorityLevel = "normal"
-	PriorityHigh   PriorityLevel = "high"
-	PriorityUrgent PriorityLevel = "urgent"
-)
 
 func ValidateConfig(config QueueConfig) error {
 	if config.QueueType == "postgres" && config.PostgresConnStr == "" {
@@ -37,9 +29,9 @@ func (e *ValidationError) Error() string {
 	return e.Message
 }
 
-func ValidatePriorityLevel(level PriorityLevel) error {
+func ValidatePriorityLevel(level model.PriorityLevel) error {
 	switch level {
-	case PriorityLow, PriorityNormal, PriorityHigh, PriorityUrgent:
+	case model.PriorityLow, model.PriorityNormal, model.PriorityHigh, model.PriorityUrgent:
 		return nil
 	default:
 		return &ValidationError{
@@ -93,27 +85,27 @@ func TestValidateConfig(t *testing.T) {
 func TestValidatePriorityLevel(t *testing.T) {
 	tests := []struct {
 		name    string
-		level   PriorityLevel
+		level   model.PriorityLevel
 		wantErr bool
 	}{
 		{
 			name:    "valid low priority",
-			level:   PriorityLow,
+			level:   model.PriorityLow,
 			wantErr: false,
 		},
 		{
 			name:    "valid normal priority",
-			level:   PriorityNormal,
+			level:   model.PriorityNormal,
 			wantErr: false,
 		},
 		{
 			name:    "valid high priority",
-			level:   PriorityHigh,
+			level:   model.PriorityHigh,
 			wantErr: false,
 		},
 		{
 			name:    "valid urgent priority",
-			level:   PriorityUrgent,
+			level:   model.PriorityUrgent,
 			wantErr: false,
 		},
 		{
