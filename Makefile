@@ -52,28 +52,19 @@ push-images:		## build and push container images
 CACHE_TYPE ?= registry
 CACHE_MODE ?= max
 
+IMAGE_CACHE_BUILD := $(IMAGE_NAME):cache-build
+IMAGE_CACHE_BASE := $(IMAGE_NAME):cache-base
+
 ifeq ($(CACHE_TYPE),gha)
-CACHE_FROM_BUILD := --cache-from type=gha --cache-from type=registry,ref=$(IMAGE_NAME):latest-build
-CACHE_FROM_BASE := --cache-from type=gha --cache-from type=registry,ref=$(IMAGE_NAME):latest-base
-CACHE_FROM_SERVER := --cache-from type=gha --cache-from type=registry,ref=$(IMAGE_NAME):latest-server
-CACHE_FROM_WORKER := --cache-from type=gha --cache-from type=registry,ref=$(IMAGE_NAME):latest-worker
-CACHE_TO_BUILD := --cache-to type=gha,mode=$(CACHE_MODE)
-CACHE_TO_BASE := --cache-to type=gha,mode=$(CACHE_MODE)
-CACHE_TO_SERVER := --cache-to type=gha,mode=$(CACHE_MODE)
-CACHE_TO_WORKER := --cache-to type=gha,mode=$(CACHE_MODE)
+CACHE_FROM_BUILD := --cache-from type=gha,scope=build
+CACHE_FROM_BASE := --cache-from type=gha,scope=base
+CACHE_TO_BUILD := --cache-to type=gha,scope=build,mode=$(CACHE_MODE)
+CACHE_TO_BASE := --cache-to type=gha,scope=base,mode=$(CACHE_MODE)
 else
-CACHE_FROM_BUILD := --cache-from type=registry,ref=$(IMAGE_NAME):latest-build
-CACHE_FROM_BASE := --cache-from type=registry,ref=$(IMAGE_NAME):latest-base
-CACHE_FROM_SERVER := --cache-from type=registry,ref=$(IMAGE_NAME):latest-server
-CACHE_FROM_WORKER := --cache-from type=registry,ref=$(IMAGE_NAME):latest-worker
-CACHE_TO_BUILD := 
-CACHE_TO_BASE := 
-CACHE_TO_SERVER := 
-CACHE_TO_WORKER := 
-CACHE_TO_PUSH_BUILD := --cache-to type=registry,ref=$(IMAGE_NAME):latest-build,mode=$(CACHE_MODE)
-CACHE_TO_PUSH_BASE := --cache-to type=registry,ref=$(IMAGE_NAME):latest-base,mode=$(CACHE_MODE)
-CACHE_TO_PUSH_SERVER := --cache-to type=registry,ref=$(IMAGE_NAME):latest-server,mode=$(CACHE_MODE)
-CACHE_TO_PUSH_WORKER := --cache-to type=registry,ref=$(IMAGE_NAME):latest-worker,mode=$(CACHE_MODE)
+CACHE_FROM_BUILD := --cache-from type=registry,ref=$(IMAGE_CACHE_BUILD)
+CACHE_FROM_BASE := --cache-from type=registry,ref=$(IMAGE_CACHE_BASE)
+CACHE_TO_BUILD := --cache-to type=registry,ref=$(IMAGE_CACHE_BUILD),mode=$(CACHE_MODE)
+CACHE_TO_BASE := --cache-to type=registry,ref=$(IMAGE_CACHE_BASE),mode=$(CACHE_MODE)
 endif
 
 .PHONY: image-%
@@ -81,62 +72,56 @@ endif
 image-% push-image-%: build-%
 	@IS_PUSH="$(findstring push,$@)"; \
 	if [ -n "$${IS_PUSH}" ]; then PUSH_OR_LOAD="--push"; else PUSH_OR_LOAD="--load"; fi; \
-	if [ "$(CACHE_TYPE)" = "gha" ]; then \
-		CACHE_TO_BUILD_VAL="$(CACHE_TO_BUILD)"; \
-		CACHE_TO_BASE_VAL="$(CACHE_TO_BASE)"; \
-		CACHE_TO_SERVER_VAL="$(CACHE_TO_SERVER)"; \
-		CACHE_TO_WORKER_VAL="$(CACHE_TO_WORKER)"; \
-	else \
-		CACHE_TO_BUILD_VAL="$${IS_PUSH:+$(CACHE_TO_PUSH_BUILD)}"; \
-		CACHE_TO_BASE_VAL="$${IS_PUSH:+$(CACHE_TO_PUSH_BASE)}"; \
-		CACHE_TO_SERVER_VAL="$${IS_PUSH:+$(CACHE_TO_PUSH_SERVER)}"; \
-		CACHE_TO_WORKER_VAL="$${IS_PUSH:+$(CACHE_TO_PUSH_WORKER)}"; \
-	fi; \
 	if [ "$*" = "server" ]; then \
-		echo "Building build stage with cache..."; \
+		echo "Building ffmpeg-builder stage with cache..."; \
 		docker buildx build \
-		$(CACHE_FROM_BUILD) $${CACHE_TO_BUILD_VAL} \
+		$(CACHE_FROM_BUILD) $(CACHE_TO_BUILD) \
 		$${PUSH_OR_LOAD} \
-		-t $(IMAGE_NAME):$(IMAGE_VERSION)-build \
-		--target build \
+		-t $(IMAGE_NAME):$(IMAGE_VERSION)-ffmpeg-builder \
+		--target ffmpeg-builder \
 		-f Dockerfile \
 		. ; \
 		echo "Building base stage with cache..."; \
 		docker buildx build \
-		$(CACHE_FROM_BUILD) $(CACHE_FROM_BASE) $${CACHE_TO_BASE_VAL} \
+		$(CACHE_FROM_BUILD) $(CACHE_FROM_BASE) $(CACHE_TO_BASE) \
 		$${PUSH_OR_LOAD} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-base \
 		--target base \
 		-f Dockerfile \
 		. ; \
-		echo "Building server stage with cache..."; \
+		echo "Building server stage..."; \
 		docker buildx build \
-		$(CACHE_FROM_BUILD) $(CACHE_FROM_BASE) $(CACHE_FROM_SERVER) $${CACHE_TO_SERVER_VAL} \
 		$${PUSH_OR_LOAD} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
 		-f Dockerfile \
 		--target $* \
 		. ; \
 	else \
-		echo "Building build stage with cache..."; \
+		echo "Building ffmpeg-builder stage with cache..."; \
 		docker buildx build \
-		$(CACHE_FROM_BUILD) $${CACHE_TO_BUILD_VAL} \
+		$(CACHE_FROM_BUILD) $(CACHE_TO_BUILD) \
 		$${PUSH_OR_LOAD} \
-		-t $(IMAGE_NAME):$(IMAGE_VERSION)-build \
-		--target build \
+		-t $(IMAGE_NAME):$(IMAGE_VERSION)-ffmpeg-builder \
+		--target ffmpeg-builder \
 		-f Dockerfile \
 		. ; \
-		echo "Building worker-pgs stage with cache..."; \
+		echo "Building base stage with cache..."; \
 		docker buildx build \
-		$(CACHE_FROM_BUILD) $(CACHE_FROM_BASE) \
+		$(CACHE_FROM_BUILD) $(CACHE_FROM_BASE) $(CACHE_TO_BASE) \
+		$${PUSH_OR_LOAD} \
+		-t $(IMAGE_NAME):$(IMAGE_VERSION)-base \
+		--target base \
+		-f Dockerfile \
+		. ; \
+		echo "Building worker-pgs stage..."; \
+		docker buildx build \
 		$${PUSH_OR_LOAD} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-worker-pgs \
 		--target worker-pgs \
 		-f Dockerfile \
 		. ; \
-		echo "Building worker stage with cache..."; \
+		echo "Building worker stage..."; \
 		docker buildx build \
-		$(CACHE_FROM_BUILD) $(CACHE_FROM_BASE) $(CACHE_FROM_WORKER) $${CACHE_TO_WORKER_VAL} \
 		$${PUSH_OR_LOAD} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
 		-f Dockerfile \
@@ -146,10 +131,8 @@ image-% push-image-%: build-%
 
 .PHONY: pull-cache
 pull-cache:		## pull cache images from registry
-	@docker pull $(IMAGE_NAME):latest-build 2>/dev/null || true
-	@docker pull $(IMAGE_NAME):latest-base 2>/dev/null || true
-	@docker pull $(IMAGE_NAME):latest-server 2>/dev/null || true
-	@docker pull $(IMAGE_NAME):latest-worker 2>/dev/null || true
+	@docker pull $(IMAGE_CACHE_BUILD) 2>/dev/null || true
+	@docker pull $(IMAGE_CACHE_BASE) 2>/dev/null || true
 
 .PHONY: run-all
 run-all: pull-cache images

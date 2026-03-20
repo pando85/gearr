@@ -1,8 +1,15 @@
-# target build source: https://github.com/markus-perl/ffmpeg-build-script/blob/v1.48/Dockerfile
+# This Dockerfile uses BuildKit cache mounts for efficient ffmpeg builds.
+# The ffmpeg compilation is cached between builds unless:
+# 1. FFMPEG_BUILD_SCRIPT_VERSION changes
+# 2. Build dependencies in apt-get change
+# 3. Cache is explicitly invalidated
+
 ARG BASE_IMAGE=ubuntu:24.04
-FROM ${BASE_IMAGE} AS build
+
+FROM ${BASE_IMAGE} AS ffmpeg-builder
 
 ARG FFMPEG_BUILD_SCRIPT_VERSION=1.58.1
+ARG FFMPEG_BUILD_OPTIONS=--enable-gpl-and-non-free
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -24,18 +31,21 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/* \
     && update-ca-certificates
 
-WORKDIR /app
+WORKDIR /build
 
-# ADD doesn't cache when used from URL
-RUN curl -sLO \
+RUN --mount=type=cache,target=/build/packages,sharing=locked \
+    --mount=type=cache,target=/build/workspace,sharing=locked \
+    --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    echo "ffmpeg-build-script:${FFMPEG_BUILD_SCRIPT_VERSION}" > /build/.ffmpeg-version && \
+    curl -sLO \
     https://raw.githubusercontent.com/markus-perl/ffmpeg-build-script/v${FFMPEG_BUILD_SCRIPT_VERSION}/build-ffmpeg && \
     chmod 755 ./build-ffmpeg && \
     SKIPINSTALL=yes ./build-ffmpeg \
         --build \
-        --enable-gpl-and-non-free && \
-    rm -rf packages && \
-    find workspace -mindepth 1 -maxdepth 1 -type d ! -name 'bin' -exec rm -rf {} \; && \
-    find workspace/bin -mindepth 1 -maxdepth 1 -type f ! -name 'ff*' -exec rm -f {} \;
+        ${FFMPEG_BUILD_OPTIONS} && \
+    mkdir -p /output && \
+    cp -a workspace/bin/. /output/
 
 FROM ${BASE_IMAGE} AS base
 
@@ -48,9 +58,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         libva-drm2 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=build /app/workspace/bin/ff* /usr/bin/
+COPY --from=ffmpeg-builder /output/ff* /usr/bin/
 
-# Check shared library
 RUN ldd /usr/bin/ffmpeg && \
     ldd /usr/bin/ffprobe
 
