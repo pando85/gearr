@@ -547,7 +547,7 @@ func (S *SQLRepository) getTimeoutJobs(ctx context.Context, tx Transaction, time
 	timeoutDate := time.Now().Add(-timeout)
 
 	query := `
-		SELECT je.job_id, j.source_path, j.destination_path, je.status
+		SELECT je.job_id, j.source_path, j.destination_path, je.status, j.priority
 		FROM job_events je
 		INNER JOIN jobs j ON je.job_id = j.id
 		INNER JOIN (
@@ -567,7 +567,7 @@ func (S *SQLRepository) getTimeoutJobs(ctx context.Context, tx Transaction, time
 	var timeoutJobs []*model.TimeoutJob
 	for rows.Next() {
 		job := &model.TimeoutJob{}
-		if err := rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath, &job.Status); err != nil {
+		if err := rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath, &job.Status, &job.Priority); err != nil {
 			return nil, err
 		}
 		timeoutJobs = append(timeoutJobs, job)
