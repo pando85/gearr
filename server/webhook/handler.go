@@ -4,11 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"gearr/helper"
+	"gearr/model"
 
 	"github.com/gin-gonic/gin"
 )
+
+type EventLogger interface {
+	CreateWebhookEvent(ctx context.Context, event *model.WebhookEvent) error
+}
 
 type Handler interface {
 	CanHandle(source Source, eventType EventType) bool
@@ -77,12 +83,20 @@ func (r *HandlerRegistry) Handlers() []Handler {
 }
 
 type HTTPHandler struct {
-	registry *HandlerRegistry
+	registry    *HandlerRegistry
+	eventLogger EventLogger
 }
 
 func NewHTTPHandler(registry *HandlerRegistry) *HTTPHandler {
 	return &HTTPHandler{
 		registry: registry,
+	}
+}
+
+func NewHTTPHandlerWithLogger(registry *HandlerRegistry, logger EventLogger) *HTTPHandler {
+	return &HTTPHandler{
+		registry:    registry,
+		eventLogger: logger,
 	}
 }
 
@@ -129,9 +143,12 @@ func (h *HTTPHandler) HandleWebhook(c *gin.Context) {
 	result, err := handler.Process(c.Request.Context(), payload)
 	if err != nil {
 		helper.Errorf("failed to process webhook: %v", err)
+		h.logWebhookEvent(c.Request.Context(), source, eventType, result, nil, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to process webhook"})
 		return
 	}
+
+	h.logWebhookEvent(c.Request.Context(), source, eventType, result, body, nil)
 
 	if !result.Accepted {
 		c.JSON(http.StatusOK, gin.H{
@@ -147,6 +164,42 @@ func (h *HTTPHandler) HandleWebhook(c *gin.Context) {
 		"files":    result.Files,
 		"message":  "webhook processed successfully",
 	})
+}
+
+func (h *HTTPHandler) logWebhookEvent(ctx context.Context, source Source, eventType EventType, result *WebhookResult, rawPayload []byte, processErr error) {
+	if h.eventLogger == nil {
+		return
+	}
+
+	event := &model.WebhookEvent{
+		Source:    model.WebhookProvider(source),
+		EventType: string(eventType),
+		CreatedAt: time.Now(),
+	}
+
+	if processErr != nil {
+		event.Status = model.WebhookEventStatusFailed
+		event.ErrorDetails = processErr.Error()
+	} else if result != nil {
+		if result.Accepted {
+			event.Status = model.WebhookEventStatusSuccess
+			if len(result.Files) > 0 {
+				event.FilePath = result.Files[0].Path
+			}
+			event.Message = result.MediaInfo.Title
+		} else {
+			event.Status = model.WebhookEventStatusSkipped
+			event.Message = result.SkipReason
+		}
+	}
+
+	if rawPayload != nil {
+		event.Payload = string(rawPayload)
+	}
+
+	if err := h.eventLogger.CreateWebhookEvent(ctx, event); err != nil {
+		helper.Errorf("failed to log webhook event: %v", err)
+	}
 }
 
 func (h *HTTPHandler) HandleTest(c *gin.Context) {

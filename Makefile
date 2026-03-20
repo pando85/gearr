@@ -120,8 +120,8 @@ image-worker: build-worker image-shared-stages
 		$(BUILDX_FFMPEG_ARGS) \
 		--load \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-worker-pgs \
-		--target worker-pgs \
 		-f $(DOCKERFILE_PATH) \
+		--target worker-pgs \
 		.
 	@echo "Building worker stage..."
 	@docker buildx build \
