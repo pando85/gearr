@@ -37,12 +37,13 @@ type Scheduler interface {
 }
 
 type SchedulerConfig struct {
-	ScheduleTime time.Duration `mapstructure:"scheduleTime"`
-	JobTimeout   time.Duration `mapstructure:"jobTimeout"`
-	DownloadPath string        `mapstructure:"downloadPath"`
-	UploadPath   string        `mapstructure:"uploadPath"`
-	Domain       *url.URL
-	MinFileSize  int64 `mapstructure:"minFileSize"`
+	ScheduleTime    time.Duration `mapstructure:"scheduleTime"`
+	JobTimeout      time.Duration `mapstructure:"jobTimeout"`
+	DownloadPath    string        `mapstructure:"downloadPath"`
+	UploadPath      string        `mapstructure:"uploadPath"`
+	Domain          *url.URL
+	MinFileSize     int64             `mapstructure:"minFileSize"`
+	DefaultPriority model.JobPriority `mapstructure:"defaultPriority"`
 }
 
 type RuntimeScheduler struct {
@@ -226,11 +227,18 @@ func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *m
 			return fmt.Errorf("%w", model.ErrJobExists)
 		}
 		newUUID, _ := uuid.NewUUID()
+		priority := jobRequest.Priority
+		if priority == 0 {
+			priority = R.config.DefaultPriority
+			if priority == 0 {
+				priority = model.PriorityNormal
+			}
+		}
 		job = &model.Job{
 			SourcePath:      jobRequest.SourcePath,
 			DestinationPath: jobRequest.DestinationPath,
 			Id:              newUUID,
-			Priority:        jobRequest.Priority,
+			Priority:        priority,
 		}
 		err = tx.AddJob(ctx, job)
 		if err != nil {

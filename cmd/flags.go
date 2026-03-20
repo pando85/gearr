@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"gearr/model"
 	"time"
 
 	"github.com/spf13/pflag"
@@ -27,6 +28,7 @@ func SchedulerFlags() {
 	pflag.String("scheduler.downloadPath", "/data/current", "Download path")
 	pflag.String("scheduler.uploadPath", "/data/processed", "Upload path")
 	pflag.Int64("scheduler.minFileSize", 1e+8, "Min File Size")
+	pflag.Int("scheduler.defaultPriority", int(model.PriorityNormal), "Default job priority (0=Low, 1=Normal, 2=High, 3=Urgent)")
 }
 
 func WebFlags() {
