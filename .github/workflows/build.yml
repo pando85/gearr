@@ -73,53 +73,32 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set Image Version
+        run: |
+          VERSION=latest
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+            [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+            [ "$VERSION" == "master" ] && VERSION=latest
+          fi
+          echo "IMAGE_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "PROJECT_VERSION=$VERSION" >> $GITHUB_ENV
+
       - name: Run E2E Tests
         run: make test-e2e
         env:
           DOCKER_BUILDKIT: 1
           CACHE_MODE: max
 
-  push-images:
-    runs-on: ubuntu-latest
-    needs: e2e-tests
-    if: github.event_name == 'push'
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v6
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Set up node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: 1.26
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and Push Docker Image
-        run: |
-          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
-          [ "$VERSION" == "master" ] && VERSION=latest
-          echo "PROJECT_VERSION=$VERSION" >> $GITHUB_ENV
-          IMAGE_VERSION=$VERSION make push-images
+      - name: Push Docker Images
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        run: make push-local-images
         env:
           DOCKER_BUILDKIT: 1
           CACHE_MODE: max
 
       - name: Get Changelog Entry
-        if: startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         id: changelog_reader
         uses: mindsers/changelog-reader-action@v2
         with:
@@ -128,7 +107,7 @@ jobs:
 
       - name: Publish
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         with:
           body: ${{ steps.changelog_reader.outputs.changes }}
           prerelease: ${{ steps.changelog_reader.outputs.status == 'prereleased' }}
