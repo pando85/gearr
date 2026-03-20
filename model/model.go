@@ -506,3 +506,24 @@ type AgeThresholds struct {
 	OldFileLevel    PriorityLevel `mapstructure:"oldFileLevel" json:"old_file_level"`
 	RecentFileLevel PriorityLevel `mapstructure:"recentFileLevel" json:"recent_file_level"`
 }
+
+type WebhookEventStatus string
+
+const (
+	WebhookEventStatusSuccess WebhookEventStatus = "success"
+	WebhookEventStatusFailed  WebhookEventStatus = "failed"
+	WebhookEventStatusSkipped WebhookEventStatus = "skipped"
+)
+
+type WebhookEvent struct {
+	Id           int64              `json:"id"`
+	Source       WebhookProvider    `json:"source"`
+	EventType    string             `json:"event_type"`
+	FilePath     string             `json:"file_path,omitempty"`
+	Status       WebhookEventStatus `json:"status"`
+	Message      string             `json:"message,omitempty"`
+	Payload      string             `json:"payload,omitempty"`
+	JobId        *uuid.UUID         `json:"job_id,omitempty"`
+	CreatedAt    time.Time          `json:"created_at"`
+	ErrorDetails string             `json:"error_details,omitempty"`
+}

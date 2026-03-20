@@ -155,7 +155,7 @@ func main() {
 
 	var webServer *web.WebServer
 	opts.Web.WebhookConfig = &opts.Webhook
-	webServer = web.NewWebServer(opts.Web, scheduler, watcherSvc, libScanner)
+	webServer = web.NewWebServer(opts.Web, scheduler, watcherSvc, libScanner, repo)
 	webServer.Run(wg, ctx)
 	wg.Wait()
 }
