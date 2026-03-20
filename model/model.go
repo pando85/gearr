@@ -71,6 +71,7 @@ type Job struct {
 	StatusPhase     NotificationType `json:"status_phase,omitempty"`
 	StatusMessage   string           `json:"status_message,omitempty"`
 	LastUpdate      *time.Time       `json:"last_update,omitempty"`
+	Priority        int              `json:"priority,omitempty"`
 }
 
 type JobEventQueue struct {
@@ -257,6 +258,7 @@ func (t *TaskEvents) GetStatus() NotificationStatus {
 type JobRequest struct {
 	SourcePath      string `json:"source_path"`
 	DestinationPath string `json:"destination_path"`
+	Priority        int    `json:"priority,omitempty"`
 }
 
 type TimeoutJob struct {
