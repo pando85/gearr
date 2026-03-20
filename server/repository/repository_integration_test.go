@@ -586,6 +586,146 @@ func TestDequeueEncodeJobPriorityThenFIFO(t *testing.T) {
 	}
 }
 
+func TestGetJobsWithOptions_SortByPriorityDesc(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	ctx := context.Background()
+	repo, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	jobID1 := uuid.New()
+	jobID2 := uuid.New()
+	jobID3 := uuid.New()
+
+	db := repo.GetDB()
+	db.ExecContext(ctx, "INSERT INTO jobs (id, source_path, destination_path, priority) VALUES ($1, '/test/1.mp4', '/test/1-out.mp4', 5)", jobID1.String())
+	db.ExecContext(ctx, "INSERT INTO jobs (id, source_path, destination_path, priority) VALUES ($1, '/test/2.mp4', '/test/2-out.mp4', 10)", jobID2.String())
+	db.ExecContext(ctx, "INSERT INTO jobs (id, source_path, destination_path, priority) VALUES ($1, '/test/3.mp4', '/test/3-out.mp4', 1)", jobID3.String())
+	db.ExecContext(ctx, "INSERT INTO job_status (job_id, status, notification_type, message) VALUES ($1, 'queued', 'job', '')", jobID1.String())
+	db.ExecContext(ctx, "INSERT INTO job_status (job_id, status, notification_type, message) VALUES ($1, 'queued', 'job', '')", jobID2.String())
+	db.ExecContext(ctx, "INSERT INTO job_status (job_id, status, notification_type, message) VALUES ($1, 'queued', 'job', '')", jobID3.String())
+
+	jobs, err := repo.GetJobsWithOptions(ctx, "priority_desc", nil)
+	if err != nil {
+		t.Fatalf("GetJobsWithOptions failed: %v", err)
+	}
+
+	if len(*jobs) != 3 {
+		t.Fatalf("Expected 3 jobs, got %d", len(*jobs))
+	}
+
+	if (*jobs)[0].Priority != 10 {
+		t.Errorf("Expected first job priority 10, got %d", (*jobs)[0].Priority)
+	}
+	if (*jobs)[1].Priority != 5 {
+		t.Errorf("Expected second job priority 5, got %d", (*jobs)[1].Priority)
+	}
+	if (*jobs)[2].Priority != 1 {
+		t.Errorf("Expected third job priority 1, got %d", (*jobs)[2].Priority)
+	}
+}
+
+func TestGetJobsWithOptions_SortByPriorityAsc(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	ctx := context.Background()
+	repo, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	jobID1 := uuid.New()
+	jobID2 := uuid.New()
+	jobID3 := uuid.New()
+
+	db := repo.GetDB()
+	db.ExecContext(ctx, "INSERT INTO jobs (id, source_path, destination_path, priority) VALUES ($1, '/test/1.mp4', '/test/1-out.mp4', 5)", jobID1.String())
+	db.ExecContext(ctx, "INSERT INTO jobs (id, source_path, destination_path, priority) VALUES ($1, '/test/2.mp4', '/test/2-out.mp4', 10)", jobID2.String())
+	db.ExecContext(ctx, "INSERT INTO jobs (id, source_path, destination_path, priority) VALUES ($1, '/test/3.mp4', '/test/3-out.mp4', 1)", jobID3.String())
+	db.ExecContext(ctx, "INSERT INTO job_status (job_id, status, notification_type, message) VALUES ($1, 'queued', 'job', '')", jobID1.String())
+	db.ExecContext(ctx, "INSERT INTO job_status (job_id, status, notification_type, message) VALUES ($1, 'queued', 'job', '')", jobID2.String())
+	db.ExecContext(ctx, "INSERT INTO job_status (job_id, status, notification_type, message) VALUES ($1, 'queued', 'job', '')", jobID3.String())
+
+	jobs, err := repo.GetJobsWithOptions(ctx, "priority_asc", nil)
+	if err != nil {
+		t.Fatalf("GetJobsWithOptions failed: %v", err)
+	}
+
+	if len(*jobs) != 3 {
+		t.Fatalf("Expected 3 jobs, got %d", len(*jobs))
+	}
+
+	if (*jobs)[0].Priority != 1 {
+		t.Errorf("Expected first job priority 1, got %d", (*jobs)[0].Priority)
+	}
+	if (*jobs)[1].Priority != 5 {
+		t.Errorf("Expected second job priority 5, got %d", (*jobs)[1].Priority)
+	}
+	if (*jobs)[2].Priority != 10 {
+		t.Errorf("Expected third job priority 10, got %d", (*jobs)[2].Priority)
+	}
+}
+
+func TestGetJobsWithOptions_PriorityFilter(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	ctx := context.Background()
+	repo, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	jobID1 := uuid.New()
+	jobID2 := uuid.New()
+	jobID3 := uuid.New()
+
+	db := repo.GetDB()
+	db.ExecContext(ctx, "INSERT INTO jobs (id, source_path, destination_path, priority) VALUES ($1, '/test/1.mp4', '/test/1-out.mp4', 5)", jobID1.String())
+	db.ExecContext(ctx, "INSERT INTO jobs (id, source_path, destination_path, priority) VALUES ($1, '/test/2.mp4', '/test/2-out.mp4', 10)", jobID2.String())
+	db.ExecContext(ctx, "INSERT INTO jobs (id, source_path, destination_path, priority) VALUES ($1, '/test/3.mp4', '/test/3-out.mp4', 5)", jobID3.String())
+	db.ExecContext(ctx, "INSERT INTO job_status (job_id, status, notification_type, message) VALUES ($1, 'queued', 'job', '')", jobID1.String())
+	db.ExecContext(ctx, "INSERT INTO job_status (job_id, status, notification_type, message) VALUES ($1, 'queued', 'job', '')", jobID2.String())
+	db.ExecContext(ctx, "INSERT INTO job_status (job_id, status, notification_type, message) VALUES ($1, 'queued', 'job', '')", jobID3.String())
+
+	priority := 5
+	jobs, err := repo.GetJobsWithOptions(ctx, "", &priority)
+	if err != nil {
+		t.Fatalf("GetJobsWithOptions failed: %v", err)
+	}
+
+	if len(*jobs) != 2 {
+		t.Fatalf("Expected 2 jobs with priority 5, got %d", len(*jobs))
+	}
+
+	for _, job := range *jobs {
+		if job.Priority != 5 {
+			t.Errorf("Expected priority 5, got %d", job.Priority)
+		}
+	}
+}
+
+func TestGetJobsWithOptions_EmptyResult(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	ctx := context.Background()
+	repo, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	priority := 999
+	jobs, err := repo.GetJobsWithOptions(ctx, "", &priority)
+	if err != nil {
+		t.Fatalf("GetJobsWithOptions failed: %v", err)
+	}
+
+	if len(*jobs) != 0 {
+		t.Errorf("Expected 0 jobs, got %d", len(*jobs))
+	}
+}
+
 func setupTestDB(t *testing.T) (*SQLRepository, func()) {
 	config := SQLServerConfig{
 		Host:     getEnvOrDefault("TEST_DB_HOST", "localhost"),

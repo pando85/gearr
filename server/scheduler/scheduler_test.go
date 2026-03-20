@@ -310,3 +310,52 @@ func TestSendUpdateJobsNotification_ChannelBufferFull(t *testing.T) {
 
 	rs.CloseUpdateJobsChan(id)
 }
+
+func TestWithSortByPriority_Desc(t *testing.T) {
+	opts := &jobListOptions{}
+	WithSortByPriority(true)(opts)
+
+	if opts.sortBy != "priority_desc" {
+		t.Errorf("Expected sortBy 'priority_desc', got '%s'", opts.sortBy)
+	}
+}
+
+func TestWithSortByPriority_Asc(t *testing.T) {
+	opts := &jobListOptions{}
+	WithSortByPriority(false)(opts)
+
+	if opts.sortBy != "priority_asc" {
+		t.Errorf("Expected sortBy 'priority_asc', got '%s'", opts.sortBy)
+	}
+}
+
+func TestWithPriorityFilter(t *testing.T) {
+	opts := &jobListOptions{}
+	WithPriorityFilter(10)(opts)
+
+	if opts.priority == nil {
+		t.Fatal("Expected priority to be set, got nil")
+	}
+
+	if *opts.priority != 10 {
+		t.Errorf("Expected priority 10, got %d", *opts.priority)
+	}
+}
+
+func TestJobListOptions_Combined(t *testing.T) {
+	opts := &jobListOptions{}
+	WithSortByPriority(true)(opts)
+	WithPriorityFilter(5)(opts)
+
+	if opts.sortBy != "priority_desc" {
+		t.Errorf("Expected sortBy 'priority_desc', got '%s'", opts.sortBy)
+	}
+
+	if opts.priority == nil {
+		t.Fatal("Expected priority to be set, got nil")
+	}
+
+	if *opts.priority != 5 {
+		t.Errorf("Expected priority 5, got %d", *opts.priority)
+	}
+}
