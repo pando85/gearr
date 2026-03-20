@@ -403,22 +403,22 @@ const (
 )
 
 type WebhookAuthConfig struct {
-	Enabled  bool            `json:"enabled" mapstructure:"enabled"`
-	Provider WebhookProvider `json:"provider" mapstructure:"provider"`
-	APIKey   string          `json:"-" mapstructure:"api_key"`
+	APIKey string `json:"-" mapstructure:"apiKey"`
 }
 
 type WebhookConfig struct {
-	Enabled       bool                         `json:"enabled" mapstructure:"enabled"`
-	AuthProviders map[string]WebhookAuthConfig `json:"auth_providers" mapstructure:"auth_providers"`
+	Enabled   bool              `json:"enabled" mapstructure:"enabled"`
+	Radarr    WebhookAuthConfig `json:"radarr" mapstructure:"radarr"`
+	Sonarr    WebhookAuthConfig `json:"sonarr" mapstructure:"sonarr"`
+	Providers map[string]string `json:"providers,omitempty" mapstructure:"providers"`
 }
 
 func (c *WebhookAuthConfig) IsValid() bool {
-	return c.Enabled && c.APIKey != ""
+	return c.APIKey != ""
 }
 
 func (c *WebhookAuthConfig) ValidateAPIKey(key string) bool {
-	if !c.Enabled || c.APIKey == "" {
+	if c.APIKey == "" {
 		return false
 	}
 	return c.APIKey == key
@@ -426,23 +426,29 @@ func (c *WebhookAuthConfig) ValidateAPIKey(key string) bool {
 
 func NewWebhookConfig() WebhookConfig {
 	return WebhookConfig{
-		Enabled:       false,
-		AuthProviders: make(map[string]WebhookAuthConfig),
+		Enabled:   false,
+		Providers: make(map[string]string),
 	}
 }
 
 func (c *WebhookConfig) AddProvider(name string, provider WebhookProvider, apiKey string) {
-	c.AuthProviders[name] = WebhookAuthConfig{
-		Enabled:  true,
-		Provider: provider,
-		APIKey:   apiKey,
-	}
 	c.Enabled = true
 }
 
 func (c *WebhookConfig) GetProvider(name string) *WebhookAuthConfig {
-	if provider, exists := c.AuthProviders[name]; exists {
-		return &provider
+	switch name {
+	case string(WebhookProviderRadarr):
+		if c.Radarr.APIKey != "" {
+			return &WebhookAuthConfig{APIKey: c.Radarr.APIKey}
+		}
+	case string(WebhookProviderSonarr):
+		if c.Sonarr.APIKey != "" {
+			return &WebhookAuthConfig{APIKey: c.Sonarr.APIKey}
+		}
+	default:
+		if apiKey, exists := c.Providers[name]; exists && apiKey != "" {
+			return &WebhookAuthConfig{APIKey: apiKey}
+		}
 	}
 	return nil
 }

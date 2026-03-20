@@ -12,6 +12,7 @@ import (
 	"gearr/server/scheduler"
 	"gearr/server/watcher"
 	"gearr/server/web/ui"
+	"gearr/server/webhook"
 	"io"
 	"net/http"
 	"net/url"
@@ -31,6 +32,8 @@ type WebServer struct {
 	ctx            context.Context
 	upgrader       websocket.Upgrader
 	watcherHandler *watcher.Handler
+	webhookHandler *webhook.HTTPHandler
+	webhookConfig  *model.WebhookConfig
 }
 
 func (w *WebServer) addJob(c *gin.Context) {
@@ -93,6 +96,35 @@ func (w *WebServer) deleteJob(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+func (w *WebServer) updateJobPriority(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		webError(c, fmt.Errorf("job ID parameter not found"), 404)
+		return
+	}
+
+	var req struct {
+		Priority int `json:"priority"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	if req.Priority < 0 || req.Priority > 3 {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "priority must be between 0 and 3"})
+		return
+	}
+
+	err := w.scheduler.UpdateJobPriority(w.ctx, id, req.Priority)
+	if err != nil {
+		webError(c, err, http.StatusInternalServerError)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"id": id, "priority": req.Priority})
 }
 
 func (w *WebServer) getJobsUpdates(c *gin.Context) {
@@ -246,8 +278,9 @@ func (w *WebServer) checksum(c *gin.Context) {
 }
 
 type WebServerConfig struct {
-	Port  int    `mapstructure:"port"`
-	Token string `mapstructure:"token"`
+	Port          int                  `mapstructure:"port"`
+	Token         string               `mapstructure:"token"`
+	WebhookConfig *model.WebhookConfig `mapstructure:"webhook"`
 }
 
 func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watcher.Watcher, scanner *scanner.Scanner) *WebServer {
@@ -259,10 +292,16 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watc
 		scheduler:       scheduler,
 		scanner:         scanner,
 		router:          r,
+		webhookConfig:   config.WebhookConfig,
 	}
 
 	if w != nil {
 		webServer.watcherHandler = watcher.NewHandler(w)
+	}
+
+	if config.WebhookConfig != nil && config.WebhookConfig.Enabled {
+		registry := webhook.NewDefaultHandlerRegistry()
+		webServer.webhookHandler = webhook.NewHTTPHandler(registry)
 	}
 
 	r.GET("/-/healthy", func(c *gin.Context) {
@@ -277,6 +316,7 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watc
 	api.POST("/job/", webServer.AuthHeaderFunc(webServer.addJob))
 	api.GET("/job/:id", webServer.AuthHeaderFunc(webServer.getJobByID))
 	api.DELETE("/job/:id", webServer.AuthHeaderFunc(webServer.deleteJob))
+	api.PATCH("/job/:id/priority", webServer.AuthHeaderFunc(webServer.updateJobPriority))
 	api.GET("/job/:id/download", webServer.download)
 	api.GET("/job/:id/checksum", webServer.checksum)
 	api.POST("/job/:id/upload", webServer.upload)
@@ -288,6 +328,11 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watc
 	api.POST("/watcher/paths", webServer.AuthHeaderFunc(webServer.addWatcherPath))
 	api.DELETE("/watcher/paths", webServer.AuthHeaderFunc(webServer.removeWatcherPath))
 	api.GET("/watcher/enabled", webServer.AuthHeaderFunc(webServer.getWatcherEnabled))
+
+	webhook := r.Group("/api/v1/webhook")
+	webhook.POST("/radarr", webServer.webhookAuthMiddleware(string(model.WebhookProviderRadarr)), webServer.handleWebhook)
+	webhook.POST("/sonarr", webServer.webhookAuthMiddleware(string(model.WebhookProviderSonarr)), webServer.handleWebhook)
+	webhook.POST("/test", webServer.handleWebhookTest)
 
 	r.GET("/ws/job", webServer.AuthParamFunc(webServer.getJobsUpdates))
 
@@ -481,5 +526,47 @@ func (w *WebServer) getScannerUpdates(c *gin.Context) {
 			helper.Debugf("sending scanner update: %+v", notification)
 			conn.WriteMessage(websocket.TextMessage, jsonBytes)
 		}
+	}
+}
+
+func (w *WebServer) handleWebhook(c *gin.Context) {
+	if w.webhookHandler == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "webhooks not configured"})
+		return
+	}
+	w.webhookHandler.HandleWebhook(c)
+}
+
+func (w *WebServer) handleWebhookTest(c *gin.Context) {
+	if w.webhookHandler == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "webhooks not configured"})
+		return
+	}
+	w.webhookHandler.HandleTest(c)
+}
+
+func (w *WebServer) webhookAuthMiddleware(providerName string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if w.webhookConfig == nil || !w.webhookConfig.Enabled {
+			c.Next()
+			return
+		}
+
+		apiKey := c.GetHeader("X-Api-Key")
+		if apiKey == "" {
+			apiKey = c.Query("apikey")
+		}
+
+		if apiKey == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing API key"})
+			return
+		}
+
+		if !w.webhookConfig.ValidateAuth(providerName, apiKey) {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid API key"})
+			return
+		}
+
+		c.Next()
 	}
 }
