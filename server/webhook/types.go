@@ -1,7 +1,6 @@
 package webhook
 
 import (
-	"gearr/model"
 	"time"
 )
 
@@ -50,8 +49,4 @@ type WebhookResult struct {
 	MediaInfo  MediaInfo `json:"media_info,omitempty"`
 	SkipReason string    `json:"skip_reason,omitempty"`
 	Error      string    `json:"error,omitempty"`
-}
-
-type WebhookEventLogger interface {
-	CreateWebhookEvent(ctx interface{}, event *model.WebhookEvent) error
 }
