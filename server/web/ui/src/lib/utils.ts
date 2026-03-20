@@ -2,6 +2,13 @@ import type { Job } from './model';
 
 export const STATUS_FILTER_OPTIONS = ['progressing', 'queued', 'completed', 'failed'];
 
+export const PRIORITY_FILTER_OPTIONS = [
+  { value: '0', label: 'Low' },
+  { value: '1', label: 'Normal' },
+  { value: '2', label: 'High' },
+  { value: '3', label: 'Urgent' },
+];
+
 export const DATE_FILTER_OPTIONS = [
   'Last update',
   'Last 30 minutes',
