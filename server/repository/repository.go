@@ -624,9 +624,10 @@ func (S *SQLRepository) DequeueEncodeJob(ctx context.Context, workerName string)
 		UPDATE encode_queue 
 		SET status = 'processing', locked_at = NOW(), locked_by = $1
 		WHERE id = (
-			SELECT id FROM encode_queue 
-			WHERE status = 'pending'
-			ORDER BY created_at ASC
+			SELECT eq.id FROM encode_queue eq
+			JOIN jobs j ON eq.job_id = j.id
+			WHERE eq.status = 'pending'
+			ORDER BY j.priority DESC, eq.created_at ASC
 			LIMIT 1
 			FOR UPDATE SKIP LOCKED
 		)
@@ -645,6 +646,27 @@ func (S *SQLRepository) DequeueEncodeJob(ctx context.Context, workerName string)
 		return nil, err
 	}
 	return &task, nil
+}
+
+func (S *SQLRepository) UpdateJobPriority(ctx context.Context, jobID string, priority int) error {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return err
+	}
+	result, err := conn.ExecContext(ctx,
+		"UPDATE jobs SET priority = $1 WHERE id = $2",
+		priority, jobID)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("%w: job %s", ErrElementNotFound, jobID)
+	}
+	return nil
 }
 
 func (S *SQLRepository) EnqueuePGSJob(ctx context.Context, pgs *model.TaskPGS) error {
