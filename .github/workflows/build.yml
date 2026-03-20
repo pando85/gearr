@@ -1,4 +1,4 @@
-name: Test and push docker images
+name: Build, test, and publish Docker images
 
 on:
   push:
@@ -47,6 +47,7 @@ jobs:
           TEST_DB_NAME: gearr_test
 
   e2e-tests:
+    name: Build and test Docker images
     runs-on: ubuntu-latest
     needs: unit-tests
     steps:
