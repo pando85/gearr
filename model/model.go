@@ -19,6 +19,13 @@ type NotificationType string
 type NotificationStatus string
 type JobAction string
 type TaskEvents []*TaskEvent
+type JobPriority int
+
+const (
+	PriorityLow    JobPriority = 1
+	PriorityNormal JobPriority = 5
+	PriorityHigh   JobPriority = 10
+)
 
 type CustomError struct {
 	Message string
@@ -66,6 +73,7 @@ type Job struct {
 	SourcePath      string           `json:"source_path,omitempty"`
 	DestinationPath string           `json:"destination_path,omitempty"`
 	Id              uuid.UUID        `json:"id"`
+	Priority        JobPriority      `json:"priority"`
 	Events          TaskEvents       `json:"events,omitempty"`
 	Status          string           `json:"status,omitempty"`
 	StatusPhase     NotificationType `json:"status_phase,omitempty"`

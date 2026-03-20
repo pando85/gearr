@@ -13,6 +13,8 @@ type JobRepository interface {
 	GetJobs(ctx context.Context) (*[]model.Job, error)
 	GetJobByPath(ctx context.Context, path string) (*model.Job, error)
 	AddJob(ctx context.Context, job *model.Job) error
+	GetJobsByPriority(ctx context.Context, limit int) (*[]model.Job, error)
+	UpdateJobPriority(ctx context.Context, uuid string, priority model.JobPriority) error
 }
 
 type WorkerRepository interface {

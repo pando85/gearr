@@ -318,7 +318,7 @@ func (S *SQLRepository) GetTimeoutJobs(ctx context.Context, timeout time.Duratio
 
 func (S *SQLRepository) getJob(ctx context.Context, tx Transaction, uuid string) (*model.Job, error) {
 	query := `
-		SELECT j.id, j.source_path, j.destination_path, 
+		SELECT j.id, j.source_path, j.destination_path, j.priority,
 			   COALESCE(js.event_time, NULL), COALESCE(js.status, ''), 
 			   COALESCE(js.notification_type, ''), COALESCE(js.message, '')
 		FROM jobs j
@@ -336,10 +336,12 @@ func (S *SQLRepository) getJob(ctx context.Context, tx Transaction, uuid string)
 	if rows.Next() {
 		var lastUpdate sql.NullTime
 		var status, statusPhase, statusMessage string
-		if err := rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath,
+		var priority int
+		if err := rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath, &priority,
 			&lastUpdate, &status, &statusPhase, &statusMessage); err != nil {
 			return nil, err
 		}
+		job.Priority = model.JobPriority(priority)
 		if lastUpdate.Valid {
 			job.LastUpdate = &lastUpdate.Time
 		}
@@ -371,11 +373,9 @@ func (S *SQLRepository) deleteJob(tx Transaction, uuid string) error {
 }
 
 func (S *SQLRepository) getJobs(ctx context.Context, tx Transaction) (*[]model.Job, error) {
-	query := fmt.Sprintf(`
-    SELECT v.id, v.source_path, v.destination_path, vs.event_time, vs.status, vs.notification_type, vs.message
+	query := `SELECT v.id, v.source_path, v.destination_path, v.priority, vs.event_time, vs.status, vs.notification_type, vs.message
     FROM jobs v
-    INNER JOIN job_status vs ON v.id = vs.job_id
-`)
+    INNER JOIN job_status vs ON v.id = vs.job_id`
 	rows, err := tx.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
@@ -385,9 +385,11 @@ func (S *SQLRepository) getJobs(ctx context.Context, tx Transaction) (*[]model.J
 	jobs := []model.Job{}
 	for rows.Next() {
 		job := model.Job{}
-		if err := rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath, &job.LastUpdate, &job.Status, &job.StatusPhase, &job.StatusMessage); err != nil {
+		var priority int
+		if err := rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath, &priority, &job.LastUpdate, &job.Status, &job.StatusPhase, &job.StatusMessage); err != nil {
 			return nil, err
 		}
+		job.Priority = model.JobPriority(priority)
 		jobs = append(jobs, job)
 	}
 
@@ -435,7 +437,7 @@ func (S *SQLRepository) getJobStatus(ctx context.Context, tx Transaction, uuid s
 
 func (S *SQLRepository) getJobByPath(ctx context.Context, tx Transaction, path string) (*model.Job, error) {
 	query := `
-		SELECT j.id, j.source_path, j.destination_path,
+		SELECT j.id, j.source_path, j.destination_path, j.priority,
 			   COALESCE(js.event_time, NULL), COALESCE(js.status, ''),
 			   COALESCE(js.notification_type, ''), COALESCE(js.message, '')
 		FROM jobs j
@@ -453,10 +455,12 @@ func (S *SQLRepository) getJobByPath(ctx context.Context, tx Transaction, path s
 	if rows.Next() {
 		var lastUpdate sql.NullTime
 		var status, statusPhase, statusMessage string
-		if err := rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath,
+		var priority int
+		if err := rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath, &priority,
 			&lastUpdate, &status, &statusPhase, &statusMessage); err != nil {
 			return nil, err
 		}
+		job.Priority = model.JobPriority(priority)
 		if lastUpdate.Valid {
 			job.LastUpdate = &lastUpdate.Time
 		}
@@ -538,8 +542,8 @@ func (S *SQLRepository) AddJob(ctx context.Context, job *model.Job) error {
 }
 
 func (S *SQLRepository) addJob(ctx context.Context, tx Transaction, job *model.Job) error {
-	_, err := tx.ExecContext(ctx, "INSERT INTO jobs (id, source_path,destination_path)"+
-		" VALUES ($1,$2,$3)", job.Id.String(), job.SourcePath, job.DestinationPath)
+	_, err := tx.ExecContext(ctx, "INSERT INTO jobs (id, source_path, destination_path, priority)"+
+		" VALUES ($1,$2,$3,$4)", job.Id.String(), job.SourcePath, job.DestinationPath, job.Priority)
 	return err
 }
 
@@ -1112,4 +1116,72 @@ func (S *SQLRepository) GetScannedFilesByScan(ctx context.Context, scanID string
 		files = append(files, file)
 	}
 	return files, nil
+}
+
+func (S *SQLRepository) GetJobsByPriority(ctx context.Context, limit int) (*[]model.Job, error) {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	query := `
+		SELECT j.id, j.source_path, j.destination_path, j.priority,
+			   COALESCE(js.event_time, NULL), COALESCE(js.status, ''),
+			   COALESCE(js.notification_type, ''), COALESCE(js.message, '')
+		FROM jobs j
+		LEFT JOIN job_status js ON j.id = js.job_id
+		ORDER BY j.priority DESC, j.id ASC
+		LIMIT $1
+	`
+	rows, err := conn.QueryContext(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	jobs := []model.Job{}
+	for rows.Next() {
+		job := model.Job{}
+		var lastUpdate sql.NullTime
+		var status, statusPhase, statusMessage string
+		var priority int
+		if err := rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath, &priority,
+			&lastUpdate, &status, &statusPhase, &statusMessage); err != nil {
+			return nil, err
+		}
+		job.Priority = model.JobPriority(priority)
+		if lastUpdate.Valid {
+			job.LastUpdate = &lastUpdate.Time
+		}
+		job.Status = status
+		job.StatusPhase = model.NotificationType(statusPhase)
+		job.StatusMessage = statusMessage
+		jobs = append(jobs, job)
+	}
+
+	return &jobs, nil
+}
+
+func (S *SQLRepository) UpdateJobPriority(ctx context.Context, uuid string, priority model.JobPriority) error {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return err
+	}
+
+	result, err := conn.ExecContext(ctx,
+		"UPDATE jobs SET priority = $1 WHERE id = $2",
+		priority, uuid)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("%w: job %s", ErrElementNotFound, uuid)
+	}
+
+	return nil
 }
