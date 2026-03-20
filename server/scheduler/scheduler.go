@@ -35,6 +35,8 @@ type Scheduler interface {
 	GetUpdateJobsChan(ctx context.Context) (uuid.UUID, chan *model.JobUpdateNotification)
 	CloseUpdateJobsChan(id uuid.UUID)
 	UpdateJobPriority(ctx context.Context, uuid string, priority int) error
+	GetWebhookEvents(ctx context.Context, limit int, source, eventType, status string) ([]*model.WebhookEvent, error)
+	GetWebhookEvent(ctx context.Context, id int64) (*model.WebhookEvent, error)
 }
 
 type SchedulerConfig struct {
@@ -434,6 +436,14 @@ func (R *RuntimeScheduler) GetWorkers(ctx context.Context) (*[]model.Worker, err
 
 func (R *RuntimeScheduler) UpdateJobPriority(ctx context.Context, uuid string, priority int) error {
 	return R.repo.UpdateJobPriority(ctx, uuid, priority)
+}
+
+func (R *RuntimeScheduler) GetWebhookEvents(ctx context.Context, limit int, source, eventType, status string) ([]*model.WebhookEvent, error) {
+	return R.repo.GetWebhookEvents(ctx, limit, source, eventType, status)
+}
+
+func (R *RuntimeScheduler) GetWebhookEvent(ctx context.Context, id int64) (*model.WebhookEvent, error) {
+	return R.repo.GetWebhookEvent(ctx, id)
 }
 
 func (S *RuntimeScheduler) stop() {

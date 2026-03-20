@@ -8,6 +8,7 @@ import (
 	"gearr/helper"
 	"gearr/internal/constants"
 	"gearr/model"
+	"gearr/server/repository"
 	"gearr/server/scanner"
 	"gearr/server/scheduler"
 	"gearr/server/watcher"
@@ -34,6 +35,7 @@ type WebServer struct {
 	watcherHandler *watcher.Handler
 	webhookHandler *webhook.HTTPHandler
 	webhookConfig  *model.WebhookConfig
+	repo           repository.Repository
 }
 
 func (w *WebServer) addJob(c *gin.Context) {
@@ -283,7 +285,7 @@ type WebServerConfig struct {
 	WebhookConfig *model.WebhookConfig `mapstructure:"webhook"`
 }
 
-func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watcher.Watcher, scanner *scanner.Scanner) *WebServer {
+func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watcher.Watcher, scanner *scanner.Scanner, repo repository.Repository) *WebServer {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
@@ -293,6 +295,7 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watc
 		scanner:         scanner,
 		router:          r,
 		webhookConfig:   config.WebhookConfig,
+		repo:            repo,
 	}
 
 	if w != nil {
@@ -301,7 +304,11 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watc
 
 	if config.WebhookConfig != nil && config.WebhookConfig.Enabled {
 		registry := webhook.NewDefaultHandlerRegistry()
-		webServer.webhookHandler = webhook.NewHTTPHandler(registry)
+		if repo != nil {
+			webServer.webhookHandler = webhook.NewHTTPHandlerWithLogger(registry, repo)
+		} else {
+			webServer.webhookHandler = webhook.NewHTTPHandler(registry)
+		}
 	}
 
 	r.GET("/-/healthy", func(c *gin.Context) {
@@ -333,6 +340,8 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watc
 	webhook.POST("/radarr", webServer.webhookAuthMiddleware(string(model.WebhookProviderRadarr)), webServer.handleWebhook)
 	webhook.POST("/sonarr", webServer.webhookAuthMiddleware(string(model.WebhookProviderSonarr)), webServer.handleWebhook)
 	webhook.POST("/test", webServer.handleWebhookTest)
+	webhook.GET("/events", webServer.AuthHeaderFunc(webServer.getWebhookEvents))
+	webhook.GET("/events/:id", webServer.AuthHeaderFunc(webServer.getWebhookEventByID))
 
 	r.GET("/ws/job", webServer.AuthParamFunc(webServer.getJobsUpdates))
 
@@ -569,4 +578,47 @@ func (w *WebServer) webhookAuthMiddleware(providerName string) gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+func (w *WebServer) getWebhookEvents(c *gin.Context) {
+	limit := 50
+	if limitStr := c.Query("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+			limit = l
+		}
+	}
+
+	source := c.Query("source")
+	eventType := c.Query("event_type")
+	status := c.Query("status")
+
+	events, err := w.scheduler.GetWebhookEvents(c.Request.Context(), limit, source, eventType, status)
+	if err != nil {
+		webError(c, err, http.StatusInternalServerError)
+		return
+	}
+
+	c.JSON(http.StatusOK, events)
+}
+
+func (w *WebServer) getWebhookEventByID(c *gin.Context) {
+	idStr := c.Param("id")
+	if idStr == "" {
+		webError(c, fmt.Errorf("event ID parameter not found"), http.StatusBadRequest)
+		return
+	}
+
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		webError(c, fmt.Errorf("invalid event ID"), http.StatusBadRequest)
+		return
+	}
+
+	event, err := w.scheduler.GetWebhookEvent(c.Request.Context(), id)
+	if err != nil {
+		webError(c, err, http.StatusNotFound)
+		return
+	}
+
+	c.JSON(http.StatusOK, event)
 }

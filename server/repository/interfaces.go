@@ -55,6 +55,12 @@ type ScanRepository interface {
 	GetScannedFilesByScan(ctx context.Context, scanID string) ([]*model.ScannedFile, error)
 }
 
+type WebhookEventRepository interface {
+	CreateWebhookEvent(ctx context.Context, event *model.WebhookEvent) error
+	GetWebhookEvent(ctx context.Context, id int64) (*model.WebhookEvent, error)
+	GetWebhookEvents(ctx context.Context, limit int, source, eventType, status string) ([]*model.WebhookEvent, error)
+}
+
 type BaseRepository interface {
 	Initialize(ctx context.Context) error
 	WithTransaction(ctx context.Context, transactionFunc func(ctx context.Context, tx Repository) error) error
@@ -68,5 +74,6 @@ type Repository interface {
 	QueueRepository
 	EventRepository
 	ScanRepository
+	WebhookEventRepository
 	getConnection(ctx context.Context) (Transaction, error)
 }

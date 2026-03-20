@@ -1135,3 +1135,107 @@ func (S *SQLRepository) GetScannedFilesByScan(ctx context.Context, scanID string
 	}
 	return files, nil
 }
+
+func (S *SQLRepository) CreateWebhookEvent(ctx context.Context, event *model.WebhookEvent) error {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return err
+	}
+
+	var jobID interface{}
+	if event.JobId != nil {
+		jobID = event.JobId.String()
+	}
+
+	_, err = conn.ExecContext(ctx, `
+		INSERT INTO webhook_events (source, event_type, file_path, status, message, payload, job_id, error_details, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	`, event.Source, event.EventType, event.FilePath, event.Status, event.Message, event.Payload, jobID, event.ErrorDetails, event.CreatedAt)
+	return err
+}
+
+func (S *SQLRepository) GetWebhookEvent(ctx context.Context, id int64) (*model.WebhookEvent, error) {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var event model.WebhookEvent
+	var jobID sql.NullString
+
+	err = conn.QueryRowContext(ctx, `
+		SELECT id, source, event_type, file_path, status, message, payload, job_id, error_details, created_at
+		FROM webhook_events WHERE id = $1
+	`, id).Scan(&event.Id, &event.Source, &event.EventType, &event.FilePath, &event.Status, &event.Message, &event.Payload, &jobID, &event.ErrorDetails, &event.CreatedAt)
+
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("%w: webhook event %d", ErrElementNotFound, id)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if jobID.Valid {
+		id, err := uuid.Parse(jobID.String)
+		if err == nil {
+			event.JobId = &id
+		}
+	}
+
+	return &event, nil
+}
+
+func (S *SQLRepository) GetWebhookEvents(ctx context.Context, limit int, source, eventType, status string) ([]*model.WebhookEvent, error) {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	query := `SELECT id, source, event_type, file_path, status, message, payload, job_id, error_details, created_at
+		FROM webhook_events WHERE 1=1`
+	var args []interface{}
+	argNum := 1
+
+	if source != "" {
+		query += fmt.Sprintf(" AND source = $%d", argNum)
+		args = append(args, source)
+		argNum++
+	}
+	if eventType != "" {
+		query += fmt.Sprintf(" AND event_type = $%d", argNum)
+		args = append(args, eventType)
+		argNum++
+	}
+	if status != "" {
+		query += fmt.Sprintf(" AND status = $%d", argNum)
+		args = append(args, status)
+		argNum++
+	}
+
+	query += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d", argNum)
+	args = append(args, limit)
+
+	rows, err := conn.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []*model.WebhookEvent
+	for rows.Next() {
+		var event model.WebhookEvent
+		var jobID sql.NullString
+		if err := rows.Scan(&event.Id, &event.Source, &event.EventType, &event.FilePath, &event.Status, &event.Message, &event.Payload, &jobID, &event.ErrorDetails, &event.CreatedAt); err != nil {
+			return nil, err
+		}
+		if jobID.Valid {
+			id, err := uuid.Parse(jobID.String)
+			if err == nil {
+				event.JobId = &id
+			}
+		}
+		events = append(events, &event)
+	}
+
+	return events, nil
+}

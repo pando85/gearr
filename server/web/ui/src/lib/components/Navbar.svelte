@@ -10,6 +10,7 @@
   import IconPeople from '$lib/components/icons/IconPeople.svelte';
   import IconSettings from '$lib/components/icons/IconSettings.svelte';
   import IconGitHub from '$lib/components/icons/IconGitHub.svelte';
+  import IconDns from '$lib/components/icons/IconDns.svelte';
 
   let mobileMenuOpen = $state(false);
 
@@ -49,6 +50,12 @@
       <a href="/workers" class="navbar-link" class:active={isActive('/workers')}>
         <IconPeople class="navbar-link-icon" />
         <span>Workers</span>
+      </a>
+    </li>
+    <li>
+      <a href="/webhooks" class="navbar-link" class:active={isActive('/webhooks')}>
+        <IconDns class="navbar-link-icon" />
+        <span>Webhooks</span>
       </a>
     </li>
     <li>
@@ -121,6 +128,17 @@
       >
         <IconPeople class="w-5 h-5" />
         <span>Workers</span>
+      </a>
+    </li>
+    <li>
+      <a
+        href="/webhooks"
+        class="navbar-mobile-link"
+        class:active={isActive('/webhooks')}
+        onclick={closeMobileMenu}
+      >
+        <IconDns class="w-5 h-5" />
+        <span>Webhooks</span>
       </a>
     </li>
     <li>
