@@ -7,6 +7,8 @@ GOARCH ?= $(shell $(GO) env GOHOSTARCH)
 
 IMAGE_NAME ?= ghcr.io/pando85/gearr
 IMAGE_VERSION ?= latest
+FFMPEG_BUILD_SCRIPT_VERSION ?= 1.58.1
+FFMPEG_BUILD_OPTIONS ?= --enable-gpl-and-non-free
 
 PROJECT_VERSION := 0.1.11
 
@@ -49,22 +51,32 @@ images:		## build container images
 push-images: push-image-server push-image-worker
 push-images:		## build and push container images
 
-CACHE_TYPE ?= registry
 CACHE_MODE ?= max
+USE_REGISTRY_CACHE ?= 1
 
-IMAGE_CACHE_BUILD := $(IMAGE_NAME):cache-build
-IMAGE_CACHE_BASE := $(IMAGE_NAME):cache-base
-
-ifeq ($(CACHE_TYPE),gha)
-CACHE_FROM_BUILD := --cache-from type=gha,scope=build
-CACHE_FROM_BASE := --cache-from type=gha,scope=base
-CACHE_TO_BUILD := --cache-to type=gha,scope=build,mode=$(CACHE_MODE)
-CACHE_TO_BASE := --cache-to type=gha,scope=base,mode=$(CACHE_MODE)
+ifneq ($(GITHUB_ACTIONS),)
+USE_GHA_CACHE ?= 1
 else
-CACHE_FROM_BUILD := --cache-from type=registry,ref=$(IMAGE_CACHE_BUILD)
-CACHE_FROM_BASE := --cache-from type=registry,ref=$(IMAGE_CACHE_BASE)
-CACHE_TO_BUILD := --cache-to type=registry,ref=$(IMAGE_CACHE_BUILD),mode=$(CACHE_MODE)
-CACHE_TO_BASE := --cache-to type=registry,ref=$(IMAGE_CACHE_BASE),mode=$(CACHE_MODE)
+USE_GHA_CACHE ?= 0
+endif
+
+IMAGE_CACHE_BUILD := $(IMAGE_NAME):cache-ffmpeg-$(FFMPEG_BUILD_SCRIPT_VERSION)
+IMAGE_CACHE_BASE := $(IMAGE_NAME):cache-base
+DOCKERFILE_PATH ?= Dockerfile
+BUILDX_FFMPEG_ARGS := --build-arg FFMPEG_BUILD_SCRIPT_VERSION=$(FFMPEG_BUILD_SCRIPT_VERSION) --build-arg FFMPEG_BUILD_OPTIONS=$(FFMPEG_BUILD_OPTIONS)
+
+ifeq ($(USE_GHA_CACHE),1)
+CACHE_FROM_BUILD += --cache-from type=gha,scope=ffmpeg-$(FFMPEG_BUILD_SCRIPT_VERSION)
+CACHE_FROM_BASE += --cache-from type=gha,scope=base
+CACHE_TO_BUILD += --cache-to type=gha,scope=ffmpeg-$(FFMPEG_BUILD_SCRIPT_VERSION),mode=$(CACHE_MODE)
+CACHE_TO_BASE += --cache-to type=gha,scope=base,mode=$(CACHE_MODE)
+endif
+
+ifeq ($(USE_REGISTRY_CACHE),1)
+CACHE_FROM_BUILD += --cache-from type=registry,ref=$(IMAGE_CACHE_BUILD)
+CACHE_FROM_BASE += --cache-from type=registry,ref=$(IMAGE_CACHE_BASE)
+CACHE_TO_BUILD += --cache-to type=registry,ref=$(IMAGE_CACHE_BUILD),mode=$(CACHE_MODE)
+CACHE_TO_BASE += --cache-to type=registry,ref=$(IMAGE_CACHE_BASE),mode=$(CACHE_MODE)
 endif
 
 .PHONY: image-%
@@ -76,55 +88,62 @@ image-% push-image-%: build-%
 		echo "Building ffmpeg-builder stage with cache..."; \
 		docker buildx build \
 		$(CACHE_FROM_BUILD) $(CACHE_TO_BUILD) \
+		$(BUILDX_FFMPEG_ARGS) \
 		$${PUSH_OR_LOAD} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-ffmpeg-builder \
 		--target ffmpeg-builder \
-		-f Dockerfile \
+		-f $(DOCKERFILE_PATH) \
 		. ; \
 		echo "Building base stage with cache..."; \
 		docker buildx build \
 		$(CACHE_FROM_BUILD) $(CACHE_FROM_BASE) $(CACHE_TO_BASE) \
+		$(BUILDX_FFMPEG_ARGS) \
 		$${PUSH_OR_LOAD} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-base \
 		--target base \
-		-f Dockerfile \
+		-f $(DOCKERFILE_PATH) \
 		. ; \
 		echo "Building server stage..."; \
 		docker buildx build \
+		$(BUILDX_FFMPEG_ARGS) \
 		$${PUSH_OR_LOAD} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
-		-f Dockerfile \
+		-f $(DOCKERFILE_PATH) \
 		--target $* \
 		. ; \
 	else \
 		echo "Building ffmpeg-builder stage with cache..."; \
 		docker buildx build \
 		$(CACHE_FROM_BUILD) $(CACHE_TO_BUILD) \
+		$(BUILDX_FFMPEG_ARGS) \
 		$${PUSH_OR_LOAD} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-ffmpeg-builder \
 		--target ffmpeg-builder \
-		-f Dockerfile \
+		-f $(DOCKERFILE_PATH) \
 		. ; \
 		echo "Building base stage with cache..."; \
 		docker buildx build \
 		$(CACHE_FROM_BUILD) $(CACHE_FROM_BASE) $(CACHE_TO_BASE) \
+		$(BUILDX_FFMPEG_ARGS) \
 		$${PUSH_OR_LOAD} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-base \
 		--target base \
-		-f Dockerfile \
+		-f $(DOCKERFILE_PATH) \
 		. ; \
 		echo "Building worker-pgs stage..."; \
 		docker buildx build \
+		$(BUILDX_FFMPEG_ARGS) \
 		$${PUSH_OR_LOAD} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-worker-pgs \
 		--target worker-pgs \
-		-f Dockerfile \
+		-f $(DOCKERFILE_PATH) \
 		. ; \
 		echo "Building worker stage..."; \
 		docker buildx build \
+		$(BUILDX_FFMPEG_ARGS) \
 		$${PUSH_OR_LOAD} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
-		-f Dockerfile \
+		-f $(DOCKERFILE_PATH) \
 		--target $* \
 		. ; \
 	fi;
