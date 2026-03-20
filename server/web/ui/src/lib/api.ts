@@ -3,6 +3,7 @@ import { jobStore } from './stores';
 import { scannerStore } from './stores/scanner';
 import { createJob, type Job, type Worker } from './model';
 import type { ScannerStatus, LibraryScan } from './stores/scanner-model';
+import { createWebhookEvent, type WebhookEvent } from './webhook-model';
 
 export type { Worker };
 
@@ -116,6 +117,47 @@ export async function fetchScanHistory(token: string): Promise<LibraryScan[]> {
     return response.data;
   } catch (error) {
     console.error('Error fetching scan history:', error);
+    throw error;
+  }
+}
+
+export async function fetchWebhookEvents(
+  token: string,
+  source?: string,
+  eventType?: string,
+  status?: string
+): Promise<WebhookEvent[]> {
+  try {
+    const params = new URLSearchParams();
+    if (source) params.append('source', source);
+    if (eventType) params.append('event_type', eventType);
+    if (status) params.append('status', status);
+
+    const queryString = params.toString();
+    const url = `/api/v1/webhook/events${queryString ? `?${queryString}` : ''}`;
+
+    const response = await axios.get(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data.map((event: Partial<WebhookEvent>) => createWebhookEvent(event));
+  } catch (error) {
+    console.error('Error fetching webhook events:', error);
+    throw error;
+  }
+}
+
+export async function fetchWebhookEvent(token: string, id: number): Promise<WebhookEvent> {
+  try {
+    const response = await axios.get(`/api/v1/webhook/events/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return createWebhookEvent(response.data);
+  } catch (error) {
+    console.error(`Error fetching webhook event ${id}:`, error);
     throw error;
   }
 }
