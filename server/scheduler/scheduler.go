@@ -27,13 +27,14 @@ type Scheduler interface {
 	ScheduleJobRequest(ctx context.Context, jobRequest *model.JobRequest) (*model.Job, error)
 	GetJob(ctx context.Context, uuid string) (*model.Job, error)
 	DeleteJob(ctx context.Context, uuid string) error
-	GetJobs(ctx context.Context) (*[]model.Job, error)
+	GetJobs(ctx context.Context, opts ...JobListOption) (*[]model.Job, error)
 	GetUploadJobWriter(ctx context.Context, uuid string) (*UploadJobStream, error)
 	GetDownloadJobWriter(ctx context.Context, uuid string) (*DownloadJobStream, error)
 	GetChecksum(ctx context.Context, uuid string) (string, error)
 	GetWorkers(ctx context.Context) (*[]model.Worker, error)
 	GetUpdateJobsChan(ctx context.Context) (uuid.UUID, chan *model.JobUpdateNotification)
 	CloseUpdateJobsChan(id uuid.UUID)
+	UpdateJobPriority(ctx context.Context, uuid string, priority int) error
 }
 
 type SchedulerConfig struct {
@@ -229,6 +230,7 @@ func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *m
 			SourcePath:      jobRequest.SourcePath,
 			DestinationPath: jobRequest.DestinationPath,
 			Id:              newUUID,
+			Priority:        jobRequest.Priority,
 		}
 		err = tx.AddJob(ctx, job)
 		if err != nil {
@@ -301,6 +303,7 @@ func (R *RuntimeScheduler) ScheduleJobRequest(ctx context.Context, jobRequest *m
 	filteredJobRequest := &model.JobRequest{
 		SourcePath:      relativePathSource,
 		DestinationPath: relativePathTarget,
+		Priority:        jobRequest.Priority,
 	}
 
 	job, err := R.scheduleJobRequest(ctx, filteredJobRequest)
@@ -329,8 +332,39 @@ func (R *RuntimeScheduler) DeleteJob(ctx context.Context, uuid string) error {
 	return R.repo.DeleteJob(ctx, uuid)
 }
 
-func (R *RuntimeScheduler) GetJobs(ctx context.Context) (*[]model.Job, error) {
-	return R.repo.GetJobs(ctx)
+type JobListOption func(*jobListOptions)
+
+type jobListOptions struct {
+	sortBy   string
+	priority *int
+}
+
+func WithSortByPriority(desc bool) JobListOption {
+	return func(o *jobListOptions) {
+		if desc {
+			o.sortBy = "priority_desc"
+		} else {
+			o.sortBy = "priority_asc"
+		}
+	}
+}
+
+func WithPriorityFilter(priority int) JobListOption {
+	return func(o *jobListOptions) {
+		o.priority = &priority
+	}
+}
+
+func (R *RuntimeScheduler) GetJobs(ctx context.Context, opts ...JobListOption) (*[]model.Job, error) {
+	options := &jobListOptions{}
+	for _, opt := range opts {
+		opt(options)
+	}
+	return R.repo.GetJobsWithOptions(ctx, options.sortBy, options.priority)
+}
+
+func (R *RuntimeScheduler) UpdateJobPriority(ctx context.Context, uuid string, priority int) error {
+	return R.repo.UpdateJobPriority(ctx, uuid, priority)
 }
 
 func (R *RuntimeScheduler) isValidStremeableJob(ctx context.Context, uuid string) (*model.Job, error) {

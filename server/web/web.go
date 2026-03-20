@@ -8,6 +8,7 @@ import (
 	"gearr/helper"
 	"gearr/internal/constants"
 	"gearr/model"
+	"gearr/server/repository"
 	"gearr/server/scanner"
 	"gearr/server/scheduler"
 	"gearr/server/watcher"
@@ -33,6 +34,10 @@ type WebServer struct {
 	watcherHandler *watcher.Handler
 }
 
+type PriorityRequest struct {
+	Priority int `json:"priority"`
+}
+
 func (w *WebServer) addJob(c *gin.Context) {
 	var jobRequest model.JobRequest
 	if err := c.ShouldBindJSON(&jobRequest); err != nil {
@@ -54,7 +59,26 @@ func (w *WebServer) addJob(c *gin.Context) {
 }
 
 func (w *WebServer) getJobs(c *gin.Context) {
-	jobs, err := w.scheduler.GetJobs(w.ctx)
+	var opts []scheduler.JobListOption
+
+	sort := c.Query("sort")
+	if sort == "priority" {
+		opts = append(opts, scheduler.WithSortByPriority(true))
+	} else if sort == "priority_asc" {
+		opts = append(opts, scheduler.WithSortByPriority(false))
+	}
+
+	priorityStr := c.Query("priority")
+	if priorityStr != "" {
+		priority, err := strconv.Atoi(priorityStr)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid priority value"})
+			return
+		}
+		opts = append(opts, scheduler.WithPriorityFilter(priority))
+	}
+
+	jobs, err := w.scheduler.GetJobs(w.ctx, opts...)
 	if err != nil {
 		webError(c, err, http.StatusInternalServerError)
 		return
@@ -88,6 +112,32 @@ func (w *WebServer) deleteJob(c *gin.Context) {
 
 	err := w.scheduler.DeleteJob(w.ctx, id)
 	if err != nil {
+		webError(c, err, http.StatusInternalServerError)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+func (w *WebServer) updateJobPriority(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		webError(c, fmt.Errorf("job ID parameter not found"), 404)
+		return
+	}
+
+	var req PriorityRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	err := w.scheduler.UpdateJobPriority(w.ctx, id, req.Priority)
+	if err != nil {
+		if errors.Is(err, repository.ErrElementNotFound) {
+			webError(c, err, http.StatusNotFound)
+			return
+		}
 		webError(c, err, http.StatusInternalServerError)
 		return
 	}
@@ -277,6 +327,7 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watc
 	api.POST("/job/", webServer.AuthHeaderFunc(webServer.addJob))
 	api.GET("/job/:id", webServer.AuthHeaderFunc(webServer.getJobByID))
 	api.DELETE("/job/:id", webServer.AuthHeaderFunc(webServer.deleteJob))
+	api.PATCH("/job/:id/priority", webServer.AuthHeaderFunc(webServer.updateJobPriority))
 	api.GET("/job/:id/download", webServer.download)
 	api.GET("/job/:id/checksum", webServer.checksum)
 	api.POST("/job/:id/upload", webServer.upload)

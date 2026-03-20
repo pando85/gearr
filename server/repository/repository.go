@@ -308,6 +308,14 @@ func (S *SQLRepository) GetJobs(ctx context.Context) (jobs *[]model.Job, returnE
 	return jobs, err
 }
 
+func (S *SQLRepository) GetJobsWithOptions(ctx context.Context, sortBy string, priority *int) (*[]model.Job, error) {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return S.getJobsWithOptions(ctx, conn, sortBy, priority)
+}
+
 func (S *SQLRepository) GetTimeoutJobs(ctx context.Context, timeout time.Duration) ([]*model.TimeoutJob, error) {
 	conn, err := S.getConnection(ctx)
 	if err != nil {
@@ -377,6 +385,48 @@ func (S *SQLRepository) getJobs(ctx context.Context, tx Transaction) (*[]model.J
     INNER JOIN job_status vs ON v.id = vs.job_id
 `)
 	rows, err := tx.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	jobs := []model.Job{}
+	for rows.Next() {
+		job := model.Job{}
+		if err := rows.Scan(&job.Id, &job.SourcePath, &job.DestinationPath, &job.Priority, &job.LastUpdate, &job.Status, &job.StatusPhase, &job.StatusMessage); err != nil {
+			return nil, err
+		}
+		jobs = append(jobs, job)
+	}
+
+	return &jobs, nil
+}
+
+func (S *SQLRepository) getJobsWithOptions(ctx context.Context, tx Transaction, sortBy string, priority *int) (*[]model.Job, error) {
+	query := `
+    SELECT v.id, v.source_path, v.destination_path, v.priority, vs.event_time, vs.status, vs.notification_type, vs.message
+    FROM jobs v
+    INNER JOIN job_status vs ON v.id = vs.job_id
+	`
+	var args []interface{}
+	argPos := 1
+
+	if priority != nil {
+		query += fmt.Sprintf(" WHERE v.priority = $%d", argPos)
+		args = append(args, *priority)
+		argPos++
+	}
+
+	switch sortBy {
+	case "priority_desc":
+		query += " ORDER BY v.priority DESC"
+	case "priority_asc":
+		query += " ORDER BY v.priority ASC"
+	default:
+		query += " ORDER BY vs.event_time DESC"
+	}
+
+	rows, err := tx.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
