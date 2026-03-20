@@ -424,6 +424,168 @@ func TestEncodeJobFIFO(t *testing.T) {
 	}
 }
 
+func TestUpdateJobPriority(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	ctx := context.Background()
+	repo, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	jobID := uuid.New()
+	job := &model.Job{
+		Id:              jobID,
+		SourcePath:      "/test/source.mp4",
+		DestinationPath: "/test/dest.mp4",
+		Priority:        0,
+	}
+
+	err := repo.AddJob(ctx, job)
+	if err != nil {
+		t.Fatalf("AddJob failed: %v", err)
+	}
+
+	err = repo.UpdateJobPriority(ctx, jobID.String(), 10)
+	if err != nil {
+		t.Fatalf("UpdateJobPriority failed: %v", err)
+	}
+
+	updatedJob, err := repo.GetJob(ctx, jobID.String())
+	if err != nil {
+		t.Fatalf("GetJob failed: %v", err)
+	}
+
+	if updatedJob.Priority != 10 {
+		t.Errorf("Priority mismatch: got %v, want 10", updatedJob.Priority)
+	}
+}
+
+func TestUpdateJobPriorityNotFound(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	ctx := context.Background()
+	repo, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	nonExistentID := uuid.New()
+	err := repo.UpdateJobPriority(ctx, nonExistentID.String(), 10)
+	if err == nil {
+		t.Error("Expected error for non-existent job, got nil")
+	}
+}
+
+func TestDequeueEncodeJobWithPriority(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	ctx := context.Background()
+	repo, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	jobIDLow := uuid.New()
+	jobIDHigh := uuid.New()
+	jobIDMedium := uuid.New()
+
+	db := repo.GetDB()
+	db.ExecContext(ctx, "INSERT INTO jobs (id, source_path, destination_path, priority) VALUES ($1, '/test/low.mp4', '/test/low-out.mp4', 1)", jobIDLow.String())
+	db.ExecContext(ctx, "INSERT INTO jobs (id, source_path, destination_path, priority) VALUES ($1, '/test/high.mp4', '/test/high-out.mp4', 10)", jobIDHigh.String())
+	db.ExecContext(ctx, "INSERT INTO jobs (id, source_path, destination_path, priority) VALUES ($1, '/test/medium.mp4', '/test/medium-out.mp4', 5)", jobIDMedium.String())
+
+	taskLow := &model.TaskEncode{
+		Id:          jobIDLow,
+		DownloadURL: "http://example.com/low.mp4",
+		UploadURL:   "http://example.com/upload",
+		ChecksumURL: "http://example.com/checksum",
+		EventID:     1,
+	}
+	taskHigh := &model.TaskEncode{
+		Id:          jobIDHigh,
+		DownloadURL: "http://example.com/high.mp4",
+		UploadURL:   "http://example.com/upload",
+		ChecksumURL: "http://example.com/checksum",
+		EventID:     2,
+	}
+	taskMedium := &model.TaskEncode{
+		Id:          jobIDMedium,
+		DownloadURL: "http://example.com/medium.mp4",
+		UploadURL:   "http://example.com/upload",
+		ChecksumURL: "http://example.com/checksum",
+		EventID:     3,
+	}
+
+	repo.EnqueueEncodeJob(ctx, taskLow)
+	time.Sleep(10 * time.Millisecond)
+	repo.EnqueueEncodeJob(ctx, taskMedium)
+	time.Sleep(10 * time.Millisecond)
+	repo.EnqueueEncodeJob(ctx, taskHigh)
+
+	dequeued, err := repo.DequeueEncodeJob(ctx, "test-worker")
+	if err != nil {
+		t.Fatalf("DequeueEncodeJob failed: %v", err)
+	}
+
+	if dequeued == nil {
+		t.Fatal("Expected to dequeue a job, got nil")
+	}
+
+	if dequeued.Id != jobIDHigh {
+		t.Errorf("Expected high priority job %v, got %v", jobIDHigh, dequeued.Id)
+	}
+}
+
+func TestDequeueEncodeJobPriorityThenFIFO(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	ctx := context.Background()
+	repo, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	jobID1 := uuid.New()
+	jobID2 := uuid.New()
+
+	db := repo.GetDB()
+	db.ExecContext(ctx, "INSERT INTO jobs (id, source_path, destination_path, priority) VALUES ($1, '/test/1.mp4', '/test/1-out.mp4', 5)", jobID1.String())
+	db.ExecContext(ctx, "INSERT INTO jobs (id, source_path, destination_path, priority) VALUES ($1, '/test/2.mp4', '/test/2-out.mp4', 5)", jobID2.String())
+
+	task1 := &model.TaskEncode{
+		Id:          jobID1,
+		DownloadURL: "http://example.com/1.mp4",
+		UploadURL:   "http://example.com/upload",
+		ChecksumURL: "http://example.com/checksum",
+		EventID:     1,
+	}
+	task2 := &model.TaskEncode{
+		Id:          jobID2,
+		DownloadURL: "http://example.com/2.mp4",
+		UploadURL:   "http://example.com/upload",
+		ChecksumURL: "http://example.com/checksum",
+		EventID:     2,
+	}
+
+	repo.EnqueueEncodeJob(ctx, task1)
+	time.Sleep(10 * time.Millisecond)
+	repo.EnqueueEncodeJob(ctx, task2)
+
+	dequeued, err := repo.DequeueEncodeJob(ctx, "test-worker")
+	if err != nil {
+		t.Fatalf("DequeueEncodeJob failed: %v", err)
+	}
+
+	if dequeued == nil {
+		t.Fatal("Expected to dequeue a job, got nil")
+	}
+
+	if dequeued.Id != jobID1 {
+		t.Errorf("Expected first job %v (same priority, FIFO), got %v", jobID1, dequeued.Id)
+	}
+}
+
 func setupTestDB(t *testing.T) (*SQLRepository, func()) {
 	config := SQLServerConfig{
 		Host:     getEnvOrDefault("TEST_DB_HOST", "localhost"),
