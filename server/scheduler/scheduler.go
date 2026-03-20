@@ -34,15 +34,18 @@ type Scheduler interface {
 	GetWorkers(ctx context.Context) (*[]model.Worker, error)
 	GetUpdateJobsChan(ctx context.Context) (uuid.UUID, chan *model.JobUpdateNotification)
 	CloseUpdateJobsChan(id uuid.UUID)
+	UpdateJobPriority(ctx context.Context, uuid string, priority int) error
 }
 
 type SchedulerConfig struct {
-	ScheduleTime time.Duration `mapstructure:"scheduleTime"`
-	JobTimeout   time.Duration `mapstructure:"jobTimeout"`
-	DownloadPath string        `mapstructure:"downloadPath"`
-	UploadPath   string        `mapstructure:"uploadPath"`
-	Domain       *url.URL
-	MinFileSize  int64 `mapstructure:"minFileSize"`
+	ScheduleTime    time.Duration `mapstructure:"scheduleTime"`
+	JobTimeout      time.Duration `mapstructure:"jobTimeout"`
+	DownloadPath    string        `mapstructure:"downloadPath"`
+	UploadPath      string        `mapstructure:"uploadPath"`
+	Domain          *url.URL
+	MinFileSize     int64 `mapstructure:"minFileSize"`
+	DefaultPriority int   `mapstructure:"defaultPriority"`
+	PriorityConfig  *model.PriorityConfig
 }
 
 type RuntimeScheduler struct {
@@ -225,10 +228,15 @@ func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *m
 			return fmt.Errorf("%w", model.ErrJobExists)
 		}
 		newUUID, _ := uuid.NewUUID()
+		priority := jobRequest.Priority
+		if priority == 0 && R.config.DefaultPriority > 0 {
+			priority = R.config.DefaultPriority
+		}
 		job = &model.Job{
 			SourcePath:      jobRequest.SourcePath,
 			DestinationPath: jobRequest.DestinationPath,
 			Id:              newUUID,
+			Priority:        priority,
 		}
 		err = tx.AddJob(ctx, job)
 		if err != nil {
@@ -301,6 +309,7 @@ func (R *RuntimeScheduler) ScheduleJobRequest(ctx context.Context, jobRequest *m
 	filteredJobRequest := &model.JobRequest{
 		SourcePath:      relativePathSource,
 		DestinationPath: relativePathTarget,
+		Priority:        jobRequest.Priority,
 	}
 
 	job, err := R.scheduleJobRequest(ctx, filteredJobRequest)
@@ -421,6 +430,10 @@ func (R *RuntimeScheduler) GetChecksum(ctx context.Context, uuid string) (string
 
 func (R *RuntimeScheduler) GetWorkers(ctx context.Context) (*[]model.Worker, error) {
 	return R.repo.GetWorkers(ctx)
+}
+
+func (R *RuntimeScheduler) UpdateJobPriority(ctx context.Context, uuid string, priority int) error {
+	return R.repo.UpdateJobPriority(ctx, uuid, priority)
 }
 
 func (S *RuntimeScheduler) stop() {

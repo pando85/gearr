@@ -86,6 +86,13 @@ func NewHTTPHandler(registry *HandlerRegistry) *HTTPHandler {
 	}
 }
 
+func NewDefaultHandlerRegistry() *HandlerRegistry {
+	registry := NewHandlerRegistry()
+	registry.Register(NewRadarrHandler())
+	registry.Register(NewSonarrHandler())
+	return registry
+}
+
 func (h *HTTPHandler) HandleWebhook(c *gin.Context) {
 	sourceStr := c.Query("source")
 	if sourceStr == "" {
