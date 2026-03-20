@@ -203,6 +203,7 @@ func (R *RuntimeScheduler) schedule(ctx context.Context) {
 					jobRequest := &model.JobRequest{
 						SourcePath:      timeoutJob.SourcePath,
 						DestinationPath: timeoutJob.DestinationPath,
+						Priority:        timeoutJob.Priority,
 					}
 					_, err = R.scheduleJobRequest(ctx, jobRequest)
 					if err != nil {
@@ -229,6 +230,7 @@ func (R *RuntimeScheduler) scheduleJobRequest(ctx context.Context, jobRequest *m
 			SourcePath:      jobRequest.SourcePath,
 			DestinationPath: jobRequest.DestinationPath,
 			Id:              newUUID,
+			Priority:        jobRequest.Priority,
 		}
 		err = tx.AddJob(ctx, job)
 		if err != nil {
