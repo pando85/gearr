@@ -8,6 +8,7 @@
   import IconClose from '$lib/components/icons/IconClose.svelte';
   import IconWork from '$lib/components/icons/IconWork.svelte';
   import IconPeople from '$lib/components/icons/IconPeople.svelte';
+  import IconSettings from '$lib/components/icons/IconSettings.svelte';
   import IconGitHub from '$lib/components/icons/IconGitHub.svelte';
 
   let mobileMenuOpen = $state(false);
@@ -48,6 +49,12 @@
       <a href="/workers" class="navbar-link" class:active={isActive('/workers')}>
         <IconPeople class="navbar-link-icon" />
         <span>Workers</span>
+      </a>
+    </li>
+    <li>
+      <a href="/settings" class="navbar-link" class:active={isActive('/settings')}>
+        <IconSettings class="navbar-link-icon" />
+        <span>Settings</span>
       </a>
     </li>
     <li>
@@ -114,6 +121,17 @@
       >
         <IconPeople class="w-5 h-5" />
         <span>Workers</span>
+      </a>
+    </li>
+    <li>
+      <a
+        href="/settings"
+        class="navbar-mobile-link"
+        class:active={isActive('/settings')}
+        onclick={closeMobileMenu}
+      >
+        <IconSettings class="w-5 h-5" />
+        <span>Settings</span>
       </a>
     </li>
     <li>

@@ -47,9 +47,9 @@ build-%:
 images: image-server image-worker
 images:		## build container images
 
-.PHONY: push-images
-push-images: push-local-images
-push-images:		## push already-built container images
+.PHONY: images
+push-images: push-image-server push-image-worker
+push-images:		## build and push container images
 
 CACHE_MODE ?= max
 USE_REGISTRY_CACHE ?= 1
@@ -79,68 +79,74 @@ CACHE_TO_BUILD += --cache-to type=registry,ref=$(IMAGE_CACHE_BUILD),mode=$(CACHE
 CACHE_TO_BASE += --cache-to type=registry,ref=$(IMAGE_CACHE_BASE),mode=$(CACHE_MODE)
 endif
 
-.PHONY: image-shared-stages
-image-shared-stages:
-	@echo "Building ffmpeg-builder stage with cache..."
-	@docker buildx build \
+.PHONY: image-%
+.PHONY: push-image-%
+image-% push-image-%: build-%
+	@IS_PUSH="$(findstring push,$@)"; \
+	if [ -n "$${IS_PUSH}" ]; then PUSH_OR_LOAD="--push"; else PUSH_OR_LOAD="--load"; fi; \
+	if [ "$*" = "server" ]; then \
+		echo "Building ffmpeg-builder stage with cache..."; \
+		docker buildx build \
 		$(CACHE_FROM_BUILD) $(CACHE_TO_BUILD) \
 		$(BUILDX_FFMPEG_ARGS) \
-		--load \
+		$${PUSH_OR_LOAD} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-ffmpeg-builder \
 		--target ffmpeg-builder \
 		-f $(DOCKERFILE_PATH) \
-		.
-	@echo "Building base stage with cache..."
-	@docker buildx build \
+		. ; \
+		echo "Building base stage with cache..."; \
+		docker buildx build \
 		$(CACHE_FROM_BUILD) $(CACHE_FROM_BASE) $(CACHE_TO_BASE) \
 		$(BUILDX_FFMPEG_ARGS) \
-		--load \
+		$${PUSH_OR_LOAD} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-base \
 		--target base \
 		-f $(DOCKERFILE_PATH) \
-		.
-
-.PHONY: image-server
-image-server: build-server image-shared-stages
-	@echo "Building server stage..."
-	@docker buildx build \
-		$(CACHE_FROM_BUILD) $(CACHE_FROM_BASE) \
+		. ; \
+		echo "Building server stage..."; \
+		docker buildx build \
 		$(BUILDX_FFMPEG_ARGS) \
-		--load \
-		-t $(IMAGE_NAME):$(IMAGE_VERSION)-server \
+		$${PUSH_OR_LOAD} \
+		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
 		-f $(DOCKERFILE_PATH) \
-		--target server \
-		.
-
-.PHONY: image-worker
-image-worker: build-worker image-shared-stages
-	@echo "Building worker-pgs stage..."
-	@docker buildx build \
-		$(CACHE_FROM_BUILD) $(CACHE_FROM_BASE) \
+		--target $* \
+		. ; \
+	else \
+		echo "Building ffmpeg-builder stage with cache..."; \
+		docker buildx build \
+		$(CACHE_FROM_BUILD) $(CACHE_TO_BUILD) \
 		$(BUILDX_FFMPEG_ARGS) \
-		--load \
+		$${PUSH_OR_LOAD} \
+		-t $(IMAGE_NAME):$(IMAGE_VERSION)-ffmpeg-builder \
+		--target ffmpeg-builder \
+		-f $(DOCKERFILE_PATH) \
+		. ; \
+		echo "Building base stage with cache..."; \
+		docker buildx build \
+		$(CACHE_FROM_BUILD) $(CACHE_FROM_BASE) $(CACHE_TO_BASE) \
+		$(BUILDX_FFMPEG_ARGS) \
+		$${PUSH_OR_LOAD} \
+		-t $(IMAGE_NAME):$(IMAGE_VERSION)-base \
+		--target base \
+		-f $(DOCKERFILE_PATH) \
+		. ; \
+		echo "Building worker-pgs stage..."; \
+		docker buildx build \
+		$(BUILDX_FFMPEG_ARGS) \
+		$${PUSH_OR_LOAD} \
 		-t $(IMAGE_NAME):$(IMAGE_VERSION)-worker-pgs \
 		--target worker-pgs \
 		-f $(DOCKERFILE_PATH) \
-		.
-	@echo "Building worker stage..."
-	@docker buildx build \
-		$(CACHE_FROM_BUILD) $(CACHE_FROM_BASE) \
+		. ; \
+		echo "Building worker stage..."; \
+		docker buildx build \
 		$(BUILDX_FFMPEG_ARGS) \
-		--load \
-		-t $(IMAGE_NAME):$(IMAGE_VERSION)-worker \
+		$${PUSH_OR_LOAD} \
+		-t $(IMAGE_NAME):$(IMAGE_VERSION)-$* \
 		-f $(DOCKERFILE_PATH) \
-		--target worker \
-		.
-
-.PHONY: push-local-images
-push-local-images:
-	@echo "Pushing server image..."
-	@docker push $(IMAGE_NAME):$(IMAGE_VERSION)-server
-	@echo "Pushing worker-pgs image..."
-	@docker push $(IMAGE_NAME):$(IMAGE_VERSION)-worker-pgs
-	@echo "Pushing worker image..."
-	@docker push $(IMAGE_NAME):$(IMAGE_VERSION)-worker
+		--target $* \
+		. ; \
+	fi;
 
 .PHONY: pull-cache
 pull-cache:		## pull cache images from registry
