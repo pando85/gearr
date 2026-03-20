@@ -48,3 +48,9 @@ func ScannerFlags() {
 	pflag.StringSlice("scanner.paths", []string{}, "Paths to scan for video files")
 	pflag.StringSlice("scanner.fileExtensions", []string{}, "File extensions to scan (default: common video extensions)")
 }
+
+func WebhookFlags() {
+	pflag.Bool("webhook.enabled", false, "Enable Radarr/Sonarr webhook endpoints")
+	pflag.String("webhook.radarrSecret", "", "Secret key for Radarr webhook authentication")
+	pflag.String("webhook.sonarrSecret", "", "Secret key for Sonarr webhook authentication")
+}
