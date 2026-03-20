@@ -119,3 +119,19 @@ export async function fetchScanHistory(token: string): Promise<LibraryScan[]> {
     throw error;
   }
 }
+
+export async function updateJobPriority(token: string, jobId: string, priority: number): Promise<void> {
+  try {
+    await axios.patch(`/api/v1/job/${jobId}/priority`, 
+      { priority },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+  } catch (error) {
+    console.error(`Error updating job priority ${jobId}:`, error);
+    throw error;
+  }
+}

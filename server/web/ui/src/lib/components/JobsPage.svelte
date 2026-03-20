@@ -2,9 +2,9 @@
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { jobStore, authStore, toastStore } from '$lib/stores';
-  import { fetchJobs, deleteJob, createJobRequest } from '$lib/api';
+  import { fetchJobs, deleteJob, createJobRequest, updateJobPriority } from '$lib/api';
   import { createJobUpdateNotification, type Job } from '$lib/model';
-  import { STATUS_FILTER_OPTIONS, DATE_FILTER_OPTIONS, formatDateShort, formatDateDetailed, getDateFromFilterOption, sortJobs } from '$lib/utils';
+  import { STATUS_FILTER_OPTIONS, DATE_FILTER_OPTIONS, PRIORITY_FILTER_OPTIONS, formatDateShort, formatDateDetailed, getDateFromFilterOption, sortJobs } from '$lib/utils';
   import IconSearch from '$lib/components/icons/IconSearch.svelte';
   import IconRefresh from '$lib/components/icons/IconRefresh.svelte';
   import IconArrowUp from '$lib/components/icons/IconArrowUp.svelte';
@@ -18,9 +18,11 @@
   let nameFilter = $state('');
   let statusFilter = $state<string[]>([]);
   let dateFilter = $state('');
+  let priorityFilter = $state('');
   let sortColumn = $state<string | null>('last_update');
   let sortDirection = $state<'asc' | 'desc'>('desc');
   let selectedJob = $state<Job | null>(null);
+  let editingPriority = $state(false);
   let ws: WebSocket | null = null;
 
   onMount(async () => {
@@ -117,6 +119,11 @@
       );
     }
 
+    if (priorityFilter) {
+      const priorityValue = parseInt(priorityFilter);
+      result = result.filter((job) => job.priority === priorityValue);
+    }
+
     return sortJobs(sortColumn, sortDirection, result);
   });
 
@@ -160,6 +167,42 @@
     }
     return fileName;
   }
+
+  function getPriorityLabel(priority: number): string {
+    const labels: Record<number, string> = {
+      0: 'Low',
+      1: 'Normal',
+      2: 'High',
+      3: 'Urgent',
+    };
+    return labels[priority] || 'Normal';
+  }
+
+  function getPriorityBadgeClass(priority: number): string {
+    const classes: Record<number, string> = {
+      0: 'priority-low',
+      1: 'priority-normal',
+      2: 'priority-high',
+      3: 'priority-urgent',
+    };
+    return classes[priority] || 'priority-normal';
+  }
+
+  async function handleUpdatePriority(jobId: string, newPriority: number) {
+    const token = authStore.getToken();
+    if (!token) return;
+    
+    try {
+      await updateJobPriority(token, jobId, newPriority);
+      jobStore.updateJobPriority(jobId, newPriority);
+      if (selectedJob && selectedJob.id === jobId) {
+        selectedJob = { ...selectedJob, priority: newPriority };
+      }
+      toastStore.success('Priority updated successfully');
+    } catch (error) {
+      toastStore.error('Failed to update priority');
+    }
+  }
 </script>
 
 <div class="jobs-page">
@@ -184,6 +227,15 @@
           <option value="">All Status</option>
           {#each STATUS_FILTER_OPTIONS as status}
             <option value={status}>{status}</option>
+          {/each}
+        </select>
+        <select
+          class="jobs-filter-select"
+          bind:value={priorityFilter}
+        >
+          <option value="">All Priority</option>
+          {#each PRIORITY_FILTER_OPTIONS as option}
+            <option value={option.value}>{option.label}</option>
           {/each}
         </select>
         <select
@@ -221,6 +273,14 @@
           <IconArrowDown class="jobs-sort-icon" />
         {/if}
       </button>
+      <button class="jobs-th jobs-th-priority sortable" onclick={() => handleSort('priority')}>
+        Priority
+        {#if sortColumn === 'priority'}
+          <IconArrowUp class="jobs-sort-icon active" />
+        {:else}
+          <IconArrowDown class="jobs-sort-icon" />
+        {/if}
+      </button>
       <button class="jobs-th jobs-th-status sortable" onclick={() => handleSort('status')}>
         Status
         {#if sortColumn === 'status'}
@@ -250,6 +310,9 @@
             </div>
             <div class="jobs-td jobs-td-destination" title={job.destination_path}>
               <span class="job-path">{truncatePath(job.destination_path)}</span>
+            </div>
+            <div class="jobs-td jobs-td-priority">
+              <span class="job-priority-badge {getPriorityBadgeClass(job.priority)}">{getPriorityLabel(job.priority)}</span>
             </div>
             <div class="jobs-td jobs-td-status">
               {#if status.type === 'progress'}
@@ -325,6 +388,39 @@
         <div class="jobs-details-row">
           <span class="jobs-details-label">Destination</span>
           <span class="jobs-details-value">{selectedJob.destination_path}</span>
+        </div>
+        <div class="jobs-details-row">
+          <span class="jobs-details-label">Priority</span>
+          <div class="jobs-details-priority">
+            {#if editingPriority}
+              <select
+                class="jobs-priority-select"
+                value={selectedJob.priority}
+                onchange={async (e) => {
+                  const newPriority = parseInt(e.currentTarget.value);
+                  if (selectedJob) {
+                    await handleUpdatePriority(selectedJob.id, newPriority);
+                  }
+                  editingPriority = false;
+                }}
+                onblur={() => editingPriority = false}
+              >
+                <option value={0}>Low</option>
+                <option value={1}>Normal</option>
+                <option value={2}>High</option>
+                <option value={3}>Urgent</option>
+              </select>
+            {:else}
+              <span class="job-priority-badge {getPriorityBadgeClass(selectedJob.priority)}">{getPriorityLabel(selectedJob.priority)}</span>
+              <button 
+                class="jobs-priority-edit-btn" 
+                onclick={() => editingPriority = true}
+                title="Edit priority"
+              >
+                ✏️
+              </button>
+            {/if}
+          </div>
         </div>
         <div class="jobs-details-row">
           <span class="jobs-details-label">Status</span>
@@ -476,6 +572,7 @@
 
   .jobs-th-source { flex: 1; min-width: 200px; }
   .jobs-th-destination { flex: 1; min-width: 200px; }
+  .jobs-th-priority { width: 90px; }
   .jobs-th-status { width: 150px; }
   .jobs-th-date { width: 120px; }
   .jobs-th-actions { width: 120px; }
@@ -518,6 +615,7 @@
 
   .jobs-td-source { flex: 1; min-width: 200px; }
   .jobs-td-destination { flex: 1; min-width: 200px; }
+  .jobs-td-priority { width: 90px; }
   .jobs-td-status { width: 150px; }
   .jobs-td-date { width: 120px; }
   .jobs-td-actions { width: 120px; }
@@ -555,6 +653,35 @@
   .job-status-badge.queued {
     background-color: var(--bg-tertiary);
     color: var(--text-secondary);
+  }
+
+  .job-priority-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    border-radius: var(--border-radius-full);
+  }
+
+  .job-priority-badge.priority-low {
+    background-color: var(--bg-tertiary);
+    color: var(--text-muted);
+  }
+
+  .job-priority-badge.priority-normal {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: var(--color-info);
+  }
+
+  .job-priority-badge.priority-high {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+  }
+
+  .job-priority-badge.priority-urgent {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--color-error);
   }
 
   .job-progress {
@@ -700,6 +827,38 @@
     font-size: var(--font-size-sm);
     color: var(--text-primary);
     word-break: break-all;
+  }
+
+  .jobs-details-priority {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .jobs-priority-select {
+    padding: 0.25rem 0.5rem;
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    background-color: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+  }
+
+  .jobs-priority-edit-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-radius: var(--border-radius-sm);
+    font-size: 0.75rem;
+  }
+
+  .jobs-priority-edit-btn:hover {
+    background-color: var(--bg-hover);
   }
 
   .jobs-details-actions {
