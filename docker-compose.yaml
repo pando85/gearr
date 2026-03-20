@@ -2,6 +2,7 @@ version: "3"
 
 services:
   server:
+    image: ${IMAGE_NAME:-ghcr.io/pando85/gearr}:${IMAGE_VERSION:-latest}-server
     build:
       context: .
       dockerfile: Dockerfile
@@ -34,6 +35,7 @@ services:
       - "5432:5432"
 
   worker:
+    image: ${IMAGE_NAME:-ghcr.io/pando85/gearr}:${IMAGE_VERSION:-latest}-worker
     build:
       context: .
       dockerfile: Dockerfile
@@ -61,6 +63,7 @@ services:
       - server
 
   worker-pgs:
+    image: ${IMAGE_NAME:-ghcr.io/pando85/gearr}:${IMAGE_VERSION:-latest}-worker-pgs
     build:
       context: .
       dockerfile: Dockerfile

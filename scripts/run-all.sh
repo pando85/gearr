@@ -16,7 +16,7 @@ while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
     ((ATTEMPT++))
 done
 
-docker compose up -d
+docker compose up -d --no-build
 
 ATTEMPT=1
 while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
