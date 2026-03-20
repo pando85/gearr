@@ -55,3 +55,16 @@ func WebhookFlags() {
 	pflag.String("webhook.sonarr.apiKey", "", "Sonarr webhook API key for authentication")
 	pflag.StringToString("webhook.providers", map[string]string{}, "Additional webhook providers in format name=api_key")
 }
+
+func PriorityFlags() {
+	pflag.Bool("priority.enabled", false, "Enable smart prioritization for job queue ordering")
+	pflag.String("priority.defaultPriority", "normal", "Default priority level for jobs (low, normal, high, urgent)")
+	pflag.Int64("priority.sizeThresholds.largeFileSizeMB", 5000, "File size threshold in MB for large files")
+	pflag.Int64("priority.sizeThresholds.smallFileSizeMB", 500, "File size threshold in MB for small files")
+	pflag.String("priority.sizeThresholds.largeFileLevel", "low", "Priority level for large files (low, normal, high, urgent)")
+	pflag.String("priority.sizeThresholds.smallFileLevel", "high", "Priority level for small files (low, normal, high, urgent)")
+	pflag.Int("priority.ageThresholds.oldFileHours", 168, "Age threshold in hours for old files (default: 7 days)")
+	pflag.Int("priority.ageThresholds.recentFileHours", 24, "Age threshold in hours for recent files (default: 1 day)")
+	pflag.String("priority.ageThresholds.oldFileLevel", "low", "Priority level for old files (low, normal, high, urgent)")
+	pflag.String("priority.ageThresholds.recentFileLevel", "high", "Priority level for recent files (low, normal, high, urgent)")
+}

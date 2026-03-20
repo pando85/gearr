@@ -454,3 +454,49 @@ func (c *WebhookConfig) ValidateAuth(providerName string, apiKey string) bool {
 	}
 	return provider.ValidateAPIKey(apiKey)
 }
+
+type PriorityLevel string
+
+const (
+	PriorityLow    PriorityLevel = "low"
+	PriorityNormal PriorityLevel = "normal"
+	PriorityHigh   PriorityLevel = "high"
+	PriorityUrgent PriorityLevel = "urgent"
+)
+
+type PriorityRuleType string
+
+const (
+	PriorityBySize        PriorityRuleType = "size"
+	PriorityByAge         PriorityRuleType = "age"
+	PriorityByPathPattern PriorityRuleType = "path_pattern"
+)
+
+type PriorityRule struct {
+	Type      PriorityRuleType `mapstructure:"type" json:"type"`
+	Threshold int64            `mapstructure:"threshold" json:"threshold,omitempty"`
+	Pattern   string           `mapstructure:"pattern" json:"pattern,omitempty"`
+	Level     PriorityLevel    `mapstructure:"level" json:"level"`
+}
+
+type PriorityConfig struct {
+	Enabled         bool           `mapstructure:"enabled" json:"enabled"`
+	DefaultPriority PriorityLevel  `mapstructure:"defaultPriority" json:"default_priority"`
+	SizeThresholds  SizeThresholds `mapstructure:"sizeThresholds" json:"size_thresholds"`
+	AgeThresholds   AgeThresholds  `mapstructure:"ageThresholds" json:"age_thresholds"`
+	CustomRules     []PriorityRule `mapstructure:"customRules" json:"custom_rules,omitempty"`
+}
+
+type SizeThresholds struct {
+	LargeFileSizeMB int64         `mapstructure:"largeFileSizeMB" json:"large_file_size_mb"`
+	SmallFileSizeMB int64         `mapstructure:"smallFileSizeMB" json:"small_file_size_mb"`
+	LargeFileLevel  PriorityLevel `mapstructure:"largeFileLevel" json:"large_file_level"`
+	SmallFileLevel  PriorityLevel `mapstructure:"smallFileLevel" json:"small_file_level"`
+}
+
+type AgeThresholds struct {
+	OldFileHours    int           `mapstructure:"oldFileHours" json:"old_file_hours"`
+	RecentFileHours int           `mapstructure:"recentFileHours" json:"recent_file_hours"`
+	OldFileLevel    PriorityLevel `mapstructure:"oldFileLevel" json:"old_file_level"`
+	RecentFileLevel PriorityLevel `mapstructure:"recentFileLevel" json:"recent_file_level"`
+}
