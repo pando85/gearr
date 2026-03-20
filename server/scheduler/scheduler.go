@@ -305,6 +305,7 @@ func (R *RuntimeScheduler) ScheduleJobRequest(ctx context.Context, jobRequest *m
 	filteredJobRequest := &model.JobRequest{
 		SourcePath:      relativePathSource,
 		DestinationPath: relativePathTarget,
+		Priority:        jobRequest.Priority,
 	}
 
 	job, err := R.scheduleJobRequest(ctx, filteredJobRequest)
