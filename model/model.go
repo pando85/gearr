@@ -62,10 +62,20 @@ const (
 type Identity interface {
 	getUUID() uuid.UUID
 }
+type JobPriority int
+
+const (
+	PriorityLow    JobPriority = 0
+	PriorityNormal JobPriority = 1
+	PriorityHigh   JobPriority = 2
+	PriorityUrgent JobPriority = 3
+)
+
 type Job struct {
 	SourcePath      string           `json:"source_path,omitempty"`
 	DestinationPath string           `json:"destination_path,omitempty"`
 	Id              uuid.UUID        `json:"id"`
+	Priority        JobPriority      `json:"priority,omitempty"`
 	Events          TaskEvents       `json:"events,omitempty"`
 	Status          string           `json:"status,omitempty"`
 	StatusPhase     NotificationType `json:"status_phase,omitempty"`
@@ -255,14 +265,16 @@ func (t *TaskEvents) GetStatus() NotificationStatus {
 }
 
 type JobRequest struct {
-	SourcePath      string `json:"source_path"`
-	DestinationPath string `json:"destination_path"`
+	SourcePath      string      `json:"source_path"`
+	DestinationPath string      `json:"destination_path"`
+	Priority        JobPriority `json:"priority,omitempty"`
 }
 
 type TimeoutJob struct {
 	Id              uuid.UUID          `json:"id"`
 	SourcePath      string             `json:"source_path"`
 	DestinationPath string             `json:"destination_path"`
+	Priority        JobPriority        `json:"priority"`
 	Status          NotificationStatus `json:"status"`
 }
 
