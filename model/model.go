@@ -391,3 +391,36 @@ type ScannerNotification struct {
 	Status       ScanStatus `json:"status"`
 	ErrorMessage string     `json:"error_message,omitempty"`
 }
+
+type WebhookConfig struct {
+	Enabled      bool   `json:"enabled"`
+	RadarrSecret string `json:"radarr_secret,omitempty"`
+	SonarrSecret string `json:"sonarr_secret,omitempty"`
+}
+
+type WebhookEventType string
+
+const (
+	WebhookEventDownload   WebhookEventType = "Download"
+	WebhookEventGrab       WebhookEventType = "Grab"
+	WebhookEventRename     WebhookEventType = "Rename"
+	WebhookEventMovieAdded WebhookEventType = "MovieAdded"
+	WebhookEventSeriesAdd  WebhookEventType = "SeriesAdd"
+	WebhookEventEpisodeAdd WebhookEventType = "EpisodeAdd"
+)
+
+type WebhookSource string
+
+const (
+	WebhookSourceRadarr WebhookSource = "radarr"
+	WebhookSourceSonarr WebhookSource = "sonarr"
+)
+
+type WebhookPayload struct {
+	EventType  WebhookEventType `json:"event_type"`
+	Source     WebhookSource    `json:"source"`
+	FilePath   string           `json:"file_path,omitempty"`
+	MoviePath  string           `json:"movie_path,omitempty"`
+	SeriesPath string           `json:"series_path,omitempty"`
+	RawBody    []byte           `json:"-"`
+}
