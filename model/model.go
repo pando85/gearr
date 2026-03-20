@@ -266,6 +266,7 @@ type TimeoutJob struct {
 	SourcePath      string             `json:"source_path"`
 	DestinationPath string             `json:"destination_path"`
 	Status          NotificationStatus `json:"status"`
+	Priority        int                `json:"priority"`
 }
 
 func (a TaskEvents) Len() int {
