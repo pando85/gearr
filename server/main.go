@@ -93,6 +93,8 @@ func init() {
 	helper.CheckPath(opts.Scheduler.DownloadPath)
 	helper.CheckPath(opts.Scheduler.UploadPath)
 
+	opts.Scheduler.Priority = opts.Priority
+
 	opts.Watcher.DownloadPath = opts.Scheduler.DownloadPath
 	opts.Watcher.MinFileSize = opts.Scheduler.MinFileSize
 }
