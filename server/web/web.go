@@ -12,6 +12,7 @@ import (
 	"gearr/server/scheduler"
 	"gearr/server/watcher"
 	"gearr/server/web/ui"
+	"gearr/server/webhook"
 	"io"
 	"net/http"
 	"net/url"
@@ -31,6 +32,8 @@ type WebServer struct {
 	ctx            context.Context
 	upgrader       websocket.Upgrader
 	watcherHandler *watcher.Handler
+	webhookHandler *webhook.HTTPHandler
+	webhookConfig  model.WebhookConfig
 }
 
 func (w *WebServer) addJob(c *gin.Context) {
@@ -246,11 +249,12 @@ func (w *WebServer) checksum(c *gin.Context) {
 }
 
 type WebServerConfig struct {
-	Port  int    `mapstructure:"port"`
-	Token string `mapstructure:"token"`
+	Port          int                 `mapstructure:"port"`
+	Token         string              `mapstructure:"token"`
+	WebhookConfig model.WebhookConfig `mapstructure:"webhook"`
 }
 
-func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watcher.Watcher, scanner *scanner.Scanner) *WebServer {
+func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watcher.Watcher, scanner *scanner.Scanner, webhookRegistry *webhook.HandlerRegistry) *WebServer {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
@@ -259,10 +263,15 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watc
 		scheduler:       scheduler,
 		scanner:         scanner,
 		router:          r,
+		webhookConfig:   config.WebhookConfig,
 	}
 
 	if w != nil {
 		webServer.watcherHandler = watcher.NewHandler(w)
+	}
+
+	if webhookRegistry != nil {
+		webServer.webhookHandler = webhook.NewHTTPHandler(webhookRegistry)
 	}
 
 	r.GET("/-/healthy", func(c *gin.Context) {
@@ -297,6 +306,11 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watc
 		api.GET("/scanner/history", webServer.AuthHeaderFunc(webServer.getScanHistory))
 		r.GET("/ws/scanner", webServer.AuthParamFunc(webServer.getScannerUpdates))
 	}
+
+	webhookGroup := api.Group("/webhook")
+	webhookGroup.POST("/radarr", webServer.webhookAuthMiddleware(webhook.SourceRadarr), webServer.handleWebhook)
+	webhookGroup.POST("/sonarr", webServer.webhookAuthMiddleware(webhook.SourceSonarr), webServer.handleWebhook)
+	webhookGroup.POST("/test", webServer.handleWebhookTest)
 
 	ui.AddRoutes(r)
 
@@ -369,6 +383,55 @@ func (w *WebServer) AuthParamFunc(handler gin.HandlerFunc) gin.HandlerFunc {
 
 		handler(c)
 	}
+}
+
+func (w *WebServer) webhookAuthMiddleware(source webhook.Source) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !w.webhookConfig.Enabled {
+			c.Next()
+			return
+		}
+
+		providerName := string(source)
+		provider := w.webhookConfig.GetProvider(providerName)
+		if provider == nil || !provider.IsValid() {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "webhook provider not configured or disabled"})
+			return
+		}
+
+		apiKey := c.GetHeader("X-Api-Key")
+		if apiKey == "" {
+			apiKey = c.Query("apikey")
+		}
+
+		if apiKey == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing API key"})
+			return
+		}
+
+		if !provider.ValidateAPIKey(apiKey) {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid API key"})
+			return
+		}
+
+		c.Next()
+	}
+}
+
+func (w *WebServer) handleWebhook(c *gin.Context) {
+	if w.webhookHandler == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "webhook handler not initialized"})
+		return
+	}
+	w.webhookHandler.HandleWebhook(c)
+}
+
+func (w *WebServer) handleWebhookTest(c *gin.Context) {
+	if w.webhookHandler == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "webhook handler not initialized"})
+		return
+	}
+	w.webhookHandler.HandleTest(c)
 }
 
 func webError(c *gin.Context, err error, code int) bool {

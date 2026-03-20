@@ -12,6 +12,7 @@ import (
 	"gearr/server/scheduler"
 	"gearr/server/watcher"
 	"gearr/server/web"
+	"gearr/server/webhook"
 	"net/url"
 	"os"
 	"os/signal"
@@ -34,6 +35,7 @@ type CmdLineOpts struct {
 	Watcher   watcher.Config             `mapstructure:"watcher"`
 	Scanner   model.ScannerConfig        `mapstructure:"scanner"`
 	Priority  model.PriorityConfig       `mapstructure:"priority"`
+	Webhook   model.WebhookConfig        `mapstructure:"webhook"`
 }
 
 var (
@@ -48,6 +50,7 @@ func init() {
 	cmd.WatcherFlags()
 	cmd.ScannerFlags()
 	cmd.PriorityFlags()
+	cmd.WebhookFlags()
 
 	pflag.Usage = usage
 
@@ -151,8 +154,16 @@ func main() {
 		helper.Info("library scanner started")
 	}
 
+	var webhookRegistry *webhook.HandlerRegistry
+	if opts.Webhook.Enabled {
+		webhookRegistry = webhook.NewHandlerRegistry()
+		helper.Info("webhook registry initialized")
+	}
+
+	opts.Web.WebhookConfig = opts.Webhook
+
 	var webServer *web.WebServer
-	webServer = web.NewWebServer(opts.Web, scheduler, watcherSvc, libScanner)
+	webServer = web.NewWebServer(opts.Web, scheduler, watcherSvc, libScanner, webhookRegistry)
 	webServer.Run(wg, ctx)
 	wg.Wait()
 }
