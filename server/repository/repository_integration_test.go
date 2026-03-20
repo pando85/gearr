@@ -446,7 +446,7 @@ func TestUpdateJobPriority(t *testing.T) {
 		t.Fatalf("AddJob failed: %v", err)
 	}
 
-	err = repo.UpdateJobPriority(ctx, jobID.String(), 3)
+	err = repo.UpdateJobPriority(ctx, jobID.String(), 10)
 	if err != nil {
 		t.Fatalf("UpdateJobPriority failed: %v", err)
 	}
@@ -456,8 +456,8 @@ func TestUpdateJobPriority(t *testing.T) {
 		t.Fatalf("GetJob failed: %v", err)
 	}
 
-	if updatedJob.Priority != 3 {
-		t.Errorf("Priority mismatch: got %v, want 3", updatedJob.Priority)
+	if updatedJob.Priority != 10 {
+		t.Errorf("Priority mismatch: got %v, want 10", updatedJob.Priority)
 	}
 }
 

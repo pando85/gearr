@@ -6,6 +6,7 @@
   import IconPeople from '$lib/components/icons/IconPeople.svelte';
   import IconDns from '$lib/components/icons/IconDns.svelte';
   import IconSchedule from '$lib/components/icons/IconSchedule.svelte';
+  import Spinner from '$lib/components/Spinner.svelte';
 
   let workers = $state<Worker[]>([]);
   let loading = $state(true);
@@ -58,7 +59,7 @@
 
   {#if loading}
     <div class="workers-loading">
-      <div class="workers-spinner"></div>
+      <Spinner size="2rem" />
     </div>
   {:else if workers.length > 0}
     <div class="workers-grid">
@@ -124,15 +125,6 @@
     align-items: center;
     justify-content: center;
     min-height: 200px;
-  }
-
-  .workers-spinner {
-    width: 2rem;
-    height: 2rem;
-    border: 2px solid var(--border-color);
-    border-top-color: var(--color-primary);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
   }
 
   .workers-grid {

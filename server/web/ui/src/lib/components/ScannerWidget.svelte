@@ -6,6 +6,7 @@
   import IconRefresh from '$lib/components/icons/IconRefresh.svelte';
   import IconCheckCircleOutline from '$lib/components/icons/IconCheckCircleOutline.svelte';
   import IconHourglass from '$lib/components/icons/IconHourglass.svelte';
+  import Spinner from '$lib/components/Spinner.svelte';
 
   let isTriggeringScan = false;
 
@@ -67,7 +68,7 @@
     <div class="scanner-content">
       {#if $scannerIsScanning}
         <div class="scanning-status">
-          <div class="scanning-spinner"></div>
+          <Spinner size="1rem" color="info" />
           <span>Scanning library...</span>
         </div>
       {:else if $lastScan}
@@ -185,19 +186,6 @@
     font-size: var(--font-size-sm);
   }
 
-  .scanning-spinner {
-    width: 1rem;
-    height: 1rem;
-    border: 2px solid var(--color-info);
-    border-top-color: transparent;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
   .scan-results {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -262,5 +250,9 @@
 
   .animate-spin {
     animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
 </style>

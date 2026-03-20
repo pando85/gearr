@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { isAxiosError } from 'axios';
 import { jobStore } from './stores';
 import { scannerStore } from './stores/scanner';
 import { createJob, type Job, type Worker } from './model';
@@ -133,5 +133,41 @@ export async function updateJobPriority(token: string, jobId: string, priority: 
   } catch (error) {
     console.error(`Error updating job priority ${jobId}:`, error);
     throw error;
+  }
+}
+
+export interface WebhookTestResult {
+  success: boolean;
+  message: string;
+  details?: {
+    source_type?: string;
+    event_type?: string;
+    accepted?: boolean;
+  };
+}
+
+export async function testWebhook(token: string, source: 'radarr' | 'sonarr'): Promise<WebhookTestResult> {
+  try {
+    const response = await axios.post(`/api/v1/webhook/test?source=${source}`, {}, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return {
+      success: true,
+      message: response.data.message || 'Webhook test successful',
+      details: response.data,
+    };
+  } catch (error: unknown) {
+    if (isAxiosError(error) && error.response?.data?.error) {
+      return {
+        success: false,
+        message: error.response.data.error,
+      };
+    }
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Webhook test failed',
+    };
   }
 }
