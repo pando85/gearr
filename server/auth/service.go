@@ -89,6 +89,10 @@ func (s *AuthService) GetStaticToken() string {
 	return s.config.Token
 }
 
+func (s *AuthService) SetStaticToken(token string) {
+	s.config.Token = token
+}
+
 func (s *AuthService) ValidateAPIToken(ctx context.Context, token string) (*repository.APIToken, error) {
 	if !s.config.APITokens.Enabled {
 		return nil, ErrAPITokensNotEnabled

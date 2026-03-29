@@ -161,6 +161,11 @@ func main() {
 		helper.Panic(err)
 	}
 
+	if opts.Auth.Token == "" && opts.Web.Token != "" {
+		opts.Auth.Token = opts.Web.Token
+		authService.SetStaticToken(opts.Web.Token)
+	}
+
 	var webServer *web.WebServer
 	opts.Web.WebhookConfig = &opts.Webhook
 	opts.Web.AuthConfig = &opts.Auth
