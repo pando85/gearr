@@ -31,7 +31,7 @@ func SchedulerFlags() {
 
 func WebFlags() {
 	pflag.Int("web.port", 8080, "WebServer Port")
-	pflag.String("web.token", "admin", "WebServer Port")
+	pflag.String("web.token", "", "WebServer static token for authentication")
 }
 
 func WatcherFlags() {
