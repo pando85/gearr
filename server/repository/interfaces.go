@@ -7,6 +7,25 @@ import (
 	"time"
 )
 
+type APIToken struct {
+	ID        string           `json:"id"`
+	Name      string           `json:"name"`
+	Token     string           `json:"-"`
+	Scope     model.TokenScope `json:"scope"`
+	CreatedAt time.Time        `json:"created_at"`
+	ExpiresAt *time.Time       `json:"expires_at,omitempty"`
+	LastUsed  *time.Time       `json:"last_used,omitempty"`
+	CreatedBy string           `json:"created_by,omitempty"`
+}
+
+type AuthRepository interface {
+	GetAPITokenByToken(ctx context.Context, token string) (*APIToken, error)
+	CreateAPIToken(ctx context.Context, apiToken *APIToken) error
+	ListAPITokens(ctx context.Context) ([]*APIToken, error)
+	DeleteAPIToken(ctx context.Context, id string) error
+	UpdateAPITokenLastUsed(ctx context.Context, id string, lastUsed time.Time) error
+}
+
 type JobRepository interface {
 	GetJob(ctx context.Context, uuid string) (*model.Job, error)
 	DeleteJob(ctx context.Context, uuid string) error
@@ -75,5 +94,6 @@ type Repository interface {
 	EventRepository
 	ScanRepository
 	WebhookEventRepository
+	AuthRepository
 	getConnection(ctx context.Context) (Transaction, error)
 }
