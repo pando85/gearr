@@ -1240,7 +1240,7 @@ func (S *SQLRepository) GetWebhookEvents(ctx context.Context, limit int, source,
 	return events, nil
 }
 
-func (S *SQLRepository) GetAPITokenByToken(ctx context.Context, token string) (*APIToken, error) {
+func (S *SQLRepository) GetAPITokenByToken(ctx context.Context, tokenHash string) (*APIToken, error) {
 	conn, err := S.getConnection(ctx)
 	if err != nil {
 		return nil, err
@@ -1253,7 +1253,7 @@ func (S *SQLRepository) GetAPITokenByToken(ctx context.Context, token string) (*
 	err = conn.QueryRowContext(ctx, `
 		SELECT id, name, scope, created_at, expires_at, last_used, created_by
 		FROM api_tokens WHERE token_hash = $1
-	`, token).Scan(&apiToken.ID, &apiToken.Name, &apiToken.Scope, &apiToken.CreatedAt, &expiresAt, &lastUsed, &apiToken.CreatedBy)
+	`, tokenHash).Scan(&apiToken.ID, &apiToken.Name, &apiToken.Scope, &apiToken.CreatedAt, &expiresAt, &lastUsed, &apiToken.CreatedBy)
 
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("%w: token", ErrElementNotFound)
@@ -1286,7 +1286,7 @@ func (S *SQLRepository) CreateAPIToken(ctx context.Context, apiToken *APIToken) 
 	_, err = conn.ExecContext(ctx, `
 		INSERT INTO api_tokens (id, name, token_hash, scope, created_at, expires_at, created_by)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
-	`, apiToken.ID, apiToken.Name, apiToken.Token, apiToken.Scope, apiToken.CreatedAt, expiresAt, apiToken.CreatedBy)
+	`, apiToken.ID, apiToken.Name, apiToken.TokenHash, apiToken.Scope, apiToken.CreatedAt, expiresAt, apiToken.CreatedBy)
 
 	return err
 }

@@ -94,7 +94,8 @@ func (s *AuthService) ValidateAPIToken(ctx context.Context, token string) (*repo
 		return nil, ErrAPITokensNotEnabled
 	}
 
-	apiToken, err := s.repo.GetAPITokenByToken(ctx, token)
+	tokenHash := HashToken(token)
+	apiToken, err := s.repo.GetAPITokenByToken(ctx, tokenHash)
 	if err != nil {
 		return nil, ErrInvalidToken
 	}
@@ -134,7 +135,7 @@ func (s *AuthService) CreateAPIToken(ctx context.Context, name string, scope mod
 	apiToken := &repository.APIToken{
 		ID:        id,
 		Name:      name,
-		Token:     token,
+		TokenHash: HashToken(token),
 		Scope:     scope,
 		CreatedAt: time.Now(),
 		ExpiresAt: expiresAt,

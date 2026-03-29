@@ -10,7 +10,7 @@ import (
 type APIToken struct {
 	ID        string           `json:"id"`
 	Name      string           `json:"name"`
-	Token     string           `json:"-"`
+	TokenHash string           `json:"-"`
 	Scope     model.TokenScope `json:"scope"`
 	CreatedAt time.Time        `json:"created_at"`
 	ExpiresAt *time.Time       `json:"expires_at,omitempty"`
@@ -19,7 +19,7 @@ type APIToken struct {
 }
 
 type AuthRepository interface {
-	GetAPITokenByToken(ctx context.Context, token string) (*APIToken, error)
+	GetAPITokenByToken(ctx context.Context, tokenHash string) (*APIToken, error)
 	CreateAPIToken(ctx context.Context, apiToken *APIToken) error
 	ListAPITokens(ctx context.Context) ([]*APIToken, error)
 	DeleteAPIToken(ctx context.Context, id string) error
