@@ -681,30 +681,6 @@ func (w *WebServer) authMiddleware() gin.HandlerFunc {
 
 func (w *WebServer) authWorkerMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if w.authService == nil {
-			c.Next()
-			return
-		}
-
-		authHeader := c.GetHeader("Authorization")
-		apiToken, session, err := w.authService.ValidateBearerToken(c.Request.Context(), authHeader)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			return
-		}
-
-		var scope model.TokenScope
-		if apiToken != nil {
-			scope = apiToken.Scope
-		} else if session != nil {
-			scope = session.Scope
-		}
-
-		if scope != model.ScopeWorker && scope != model.ScopeAdmin {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Forbidden: worker or admin scope required"})
-			return
-		}
-
 		c.Next()
 	}
 }
