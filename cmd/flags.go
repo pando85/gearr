@@ -68,3 +68,16 @@ func PriorityFlags() {
 	pflag.String("priority.ageThresholds.oldFileLevel", "low", "Priority level for old files (low, normal, high, urgent)")
 	pflag.String("priority.ageThresholds.recentFileLevel", "high", "Priority level for recent files (low, normal, high, urgent)")
 }
+
+func AuthFlags() {
+	pflag.Bool("auth.oidc.enabled", false, "Enable OIDC authentication")
+	pflag.String("auth.oidc.issuer", "", "OIDC issuer URL (e.g., https://auth.example.com)")
+	pflag.String("auth.oidc.clientId", "", "OIDC client ID")
+	pflag.String("auth.oidc.clientSecret", "", "OIDC client secret")
+	pflag.String("auth.oidc.redirectUri", "", "OIDC redirect URI (e.g., https://gearr.example.com/auth/callback)")
+	pflag.StringSlice("auth.oidc.scopes", []string{"openid", "profile", "email"}, "OIDC scopes to request")
+	pflag.Bool("auth.apiTokens.enabled", true, "Enable API token authentication")
+	pflag.String("auth.session.secret", "", "Session secret for JWT signing (auto-generated if empty)")
+	pflag.Duration("auth.session.maxAge", time.Hour*24, "Session maximum age")
+	pflag.String("auth.session.cookieName", "gearr_session", "Session cookie name")
+}

@@ -527,3 +527,34 @@ type WebhookEvent struct {
 	CreatedAt    time.Time          `json:"created_at"`
 	ErrorDetails string             `json:"error_details,omitempty"`
 }
+
+type TokenScope string
+
+const (
+	ScopeRead   TokenScope = "read"
+	ScopeWrite  TokenScope = "write"
+	ScopeAdmin  TokenScope = "admin"
+	ScopeWorker TokenScope = "worker"
+)
+
+func IsValidScope(scope TokenScope) bool {
+	switch scope {
+	case ScopeRead, ScopeWrite, ScopeAdmin, ScopeWorker:
+		return true
+	default:
+		return false
+	}
+}
+
+func HasScope(required TokenScope, actual TokenScope) bool {
+	if actual == ScopeAdmin {
+		return true
+	}
+	if required == actual {
+		return true
+	}
+	if required == ScopeRead && (actual == ScopeWrite || actual == ScopeAdmin) {
+		return true
+	}
+	return false
+}
