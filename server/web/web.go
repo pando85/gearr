@@ -332,9 +332,11 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watc
 	api.GET("/job/:id", webServer.getJobByID)
 	api.DELETE("/job/:id", webServer.deleteJob)
 	api.PATCH("/job/:id/priority", webServer.updateJobPriority)
-	api.GET("/job/:id/download", webServer.authWorkerMiddleware(), webServer.download)
-	api.GET("/job/:id/checksum", webServer.authWorkerMiddleware(), webServer.checksum)
-	api.POST("/job/:id/upload", webServer.authWorkerMiddleware(), webServer.upload)
+
+	workerAPI := r.Group("/api/v1/job")
+	workerAPI.GET("/:id/download", webServer.download)
+	workerAPI.GET("/:id/checksum", webServer.checksum)
+	workerAPI.POST("/:id/upload", webServer.upload)
 
 	api.GET("/workers/", webServer.getWorkers)
 
@@ -675,12 +677,6 @@ func (w *WebServer) authMiddleware() gin.HandlerFunc {
 			c.Set("auth_scope", session.Scope)
 		}
 
-		c.Next()
-	}
-}
-
-func (w *WebServer) authWorkerMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
 		c.Next()
 	}
 }
