@@ -6,6 +6,7 @@ import (
 	"gearr/cmd"
 	"gearr/helper"
 	"gearr/model"
+	"gearr/server/auth"
 	"gearr/server/queue"
 	"gearr/server/repository"
 	libscanner "gearr/server/scanner"
@@ -35,6 +36,7 @@ type CmdLineOpts struct {
 	Scanner   model.ScannerConfig        `mapstructure:"scanner"`
 	Priority  model.PriorityConfig       `mapstructure:"priority"`
 	Webhook   model.WebhookConfig        `mapstructure:"webhook"`
+	Auth      auth.AuthConfig            `mapstructure:"auth"`
 }
 
 var (
@@ -50,6 +52,7 @@ func init() {
 	cmd.ScannerFlags()
 	cmd.PriorityFlags()
 	cmd.WebhookFlags()
+	cmd.AuthFlags()
 
 	pflag.Usage = usage
 
@@ -153,9 +156,20 @@ func main() {
 		helper.Info("library scanner started")
 	}
 
+	authService, err := auth.NewAuthService(opts.Auth, repo)
+	if err != nil {
+		helper.Panic(err)
+	}
+
+	if opts.Auth.Token == "" && opts.Web.Token != "" {
+		opts.Auth.Token = opts.Web.Token
+		authService.SetStaticToken(opts.Web.Token)
+	}
+
 	var webServer *web.WebServer
 	opts.Web.WebhookConfig = &opts.Webhook
-	webServer = web.NewWebServer(opts.Web, scheduler, watcherSvc, libScanner, repo)
+	opts.Web.AuthConfig = &opts.Auth
+	webServer = web.NewWebServer(opts.Web, scheduler, watcherSvc, libScanner, repo, authService)
 	webServer.Run(wg, ctx)
 	wg.Wait()
 }

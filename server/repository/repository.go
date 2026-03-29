@@ -1239,3 +1239,121 @@ func (S *SQLRepository) GetWebhookEvents(ctx context.Context, limit int, source,
 
 	return events, nil
 }
+
+func (S *SQLRepository) GetAPITokenByToken(ctx context.Context, tokenHash string) (*APIToken, error) {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var apiToken APIToken
+	var expiresAt sql.NullTime
+	var lastUsed sql.NullTime
+
+	err = conn.QueryRowContext(ctx, `
+		SELECT id, name, scope, created_at, expires_at, last_used, created_by
+		FROM api_tokens WHERE token_hash = $1
+	`, tokenHash).Scan(&apiToken.ID, &apiToken.Name, &apiToken.Scope, &apiToken.CreatedAt, &expiresAt, &lastUsed, &apiToken.CreatedBy)
+
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("%w: token", ErrElementNotFound)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if expiresAt.Valid {
+		apiToken.ExpiresAt = &expiresAt.Time
+	}
+	if lastUsed.Valid {
+		apiToken.LastUsed = &lastUsed.Time
+	}
+
+	return &apiToken, nil
+}
+
+func (S *SQLRepository) CreateAPIToken(ctx context.Context, apiToken *APIToken) error {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return err
+	}
+
+	var expiresAt interface{}
+	if apiToken.ExpiresAt != nil {
+		expiresAt = *apiToken.ExpiresAt
+	}
+
+	_, err = conn.ExecContext(ctx, `
+		INSERT INTO api_tokens (id, name, token_hash, scope, created_at, expires_at, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`, apiToken.ID, apiToken.Name, apiToken.TokenHash, apiToken.Scope, apiToken.CreatedAt, expiresAt, apiToken.CreatedBy)
+
+	return err
+}
+
+func (S *SQLRepository) ListAPITokens(ctx context.Context) ([]*APIToken, error) {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := conn.QueryContext(ctx, `
+		SELECT id, name, scope, created_at, expires_at, last_used, created_by
+		FROM api_tokens ORDER BY created_at DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tokens []*APIToken
+	for rows.Next() {
+		var token APIToken
+		var expiresAt sql.NullTime
+		var lastUsed sql.NullTime
+		if err := rows.Scan(&token.ID, &token.Name, &token.Scope, &token.CreatedAt, &expiresAt, &lastUsed, &token.CreatedBy); err != nil {
+			return nil, err
+		}
+		if expiresAt.Valid {
+			token.ExpiresAt = &expiresAt.Time
+		}
+		if lastUsed.Valid {
+			token.LastUsed = &lastUsed.Time
+		}
+		tokens = append(tokens, &token)
+	}
+
+	return tokens, nil
+}
+
+func (S *SQLRepository) DeleteAPIToken(ctx context.Context, id string) error {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return err
+	}
+
+	result, err := conn.ExecContext(ctx, "DELETE FROM api_tokens WHERE id = $1", id)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("%w: token %s", ErrElementNotFound, id)
+	}
+
+	return nil
+}
+
+func (S *SQLRepository) UpdateAPITokenLastUsed(ctx context.Context, id string, lastUsed time.Time) error {
+	conn, err := S.getConnection(ctx)
+	if err != nil {
+		return err
+	}
+
+	_, err = conn.ExecContext(ctx, "UPDATE api_tokens SET last_used = $1 WHERE id = $2", lastUsed, id)
+	return err
+}

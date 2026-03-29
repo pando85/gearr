@@ -8,6 +8,7 @@ import (
 	"gearr/helper"
 	"gearr/internal/constants"
 	"gearr/model"
+	"gearr/server/auth"
 	"gearr/server/repository"
 	"gearr/server/scanner"
 	"gearr/server/scheduler"
@@ -20,9 +21,11 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"golang.org/x/oauth2"
 )
 
 type WebServer struct {
@@ -36,6 +39,7 @@ type WebServer struct {
 	webhookHandler *webhook.HTTPHandler
 	webhookConfig  *model.WebhookConfig
 	repo           repository.Repository
+	authService    *auth.AuthService
 }
 
 func (w *WebServer) addJob(c *gin.Context) {
@@ -283,9 +287,10 @@ type WebServerConfig struct {
 	Port          int                  `mapstructure:"port"`
 	Token         string               `mapstructure:"token"`
 	WebhookConfig *model.WebhookConfig `mapstructure:"webhook"`
+	AuthConfig    *auth.AuthConfig     `mapstructure:"auth"`
 }
 
-func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watcher.Watcher, scanner *scanner.Scanner, repo repository.Repository) *WebServer {
+func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watcher.Watcher, scanner *scanner.Scanner, repo repository.Repository, authService *auth.AuthService) *WebServer {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
@@ -296,6 +301,7 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watc
 		router:          r,
 		webhookConfig:   config.WebhookConfig,
 		repo:            repo,
+		authService:     authService,
 	}
 
 	if w != nil {
@@ -314,37 +320,50 @@ func NewWebServer(config WebServerConfig, scheduler scheduler.Scheduler, w *watc
 		c.Status(http.StatusOK)
 	})
 
+	authGroup := r.Group("/auth")
+	authGroup.GET("/login", webServer.authLogin)
+	authGroup.GET("/callback", webServer.authCallback)
+	authGroup.GET("/logout", webServer.authLogout)
+
 	api := r.Group("/api/v1")
-	api.GET("/job/", webServer.AuthHeaderFunc(webServer.getJobs))
-	api.POST("/job/", webServer.AuthHeaderFunc(webServer.addJob))
-	api.GET("/job/:id", webServer.AuthHeaderFunc(webServer.getJobByID))
-	api.DELETE("/job/:id", webServer.AuthHeaderFunc(webServer.deleteJob))
-	api.PATCH("/job/:id/priority", webServer.AuthHeaderFunc(webServer.updateJobPriority))
-	api.GET("/job/:id/download", webServer.download)
-	api.GET("/job/:id/checksum", webServer.checksum)
-	api.POST("/job/:id/upload", webServer.upload)
+	api.Use(webServer.authMiddleware())
+	api.GET("/job/", webServer.getJobs)
+	api.POST("/job/", webServer.addJob)
+	api.GET("/job/:id", webServer.getJobByID)
+	api.DELETE("/job/:id", webServer.deleteJob)
+	api.PATCH("/job/:id/priority", webServer.updateJobPriority)
 
-	api.GET("/workers/", webServer.AuthHeaderFunc(webServer.getWorkers))
+	workerAPI := r.Group("/api/v1/job")
+	workerAPI.GET("/:id/download", webServer.download)
+	workerAPI.GET("/:id/checksum", webServer.checksum)
+	workerAPI.POST("/:id/upload", webServer.upload)
 
-	api.GET("/watcher/status", webServer.AuthHeaderFunc(webServer.getWatcherStatus))
-	api.GET("/watcher/detections", webServer.AuthHeaderFunc(webServer.getWatcherDetections))
-	api.POST("/watcher/paths", webServer.AuthHeaderFunc(webServer.addWatcherPath))
-	api.DELETE("/watcher/paths", webServer.AuthHeaderFunc(webServer.removeWatcherPath))
-	api.GET("/watcher/enabled", webServer.AuthHeaderFunc(webServer.getWatcherEnabled))
+	api.GET("/workers/", webServer.getWorkers)
 
-	webhook := r.Group("/api/v1/webhook")
-	webhook.POST("/radarr", webServer.webhookAuthMiddleware(string(model.WebhookProviderRadarr)), webServer.handleWebhook)
-	webhook.POST("/sonarr", webServer.webhookAuthMiddleware(string(model.WebhookProviderSonarr)), webServer.handleWebhook)
-	webhook.POST("/test", webServer.handleWebhookTest)
-	webhook.GET("/events", webServer.AuthHeaderFunc(webServer.getWebhookEvents))
-	webhook.GET("/events/:id", webServer.AuthHeaderFunc(webServer.getWebhookEventByID))
+	api.GET("/watcher/status", webServer.getWatcherStatus)
+	api.GET("/watcher/detections", webServer.getWatcherDetections)
+	api.POST("/watcher/paths", webServer.addWatcherPath)
+	api.DELETE("/watcher/paths", webServer.removeWatcherPath)
+	api.GET("/watcher/enabled", webServer.getWatcherEnabled)
+
+	apiTokens := api.Group("/tokens")
+	apiTokens.GET("/", webServer.listAPITokens)
+	apiTokens.POST("/", webServer.createAPIToken)
+	apiTokens.DELETE("/:id", webServer.deleteAPIToken)
+
+	webhookGroup := r.Group("/api/v1/webhook")
+	webhookGroup.POST("/radarr", webServer.webhookAuthMiddleware(string(model.WebhookProviderRadarr)), webServer.handleWebhook)
+	webhookGroup.POST("/sonarr", webServer.webhookAuthMiddleware(string(model.WebhookProviderSonarr)), webServer.handleWebhook)
+	webhookGroup.POST("/test", webServer.handleWebhookTest)
+	webhookGroup.GET("/events", webServer.authMiddleware(), webServer.getWebhookEvents)
+	webhookGroup.GET("/events/:id", webServer.authMiddleware(), webServer.getWebhookEventByID)
 
 	r.GET("/ws/job", webServer.AuthParamFunc(webServer.getJobsUpdates))
 
 	if scanner != nil {
-		api.GET("/scanner/status", webServer.AuthHeaderFunc(webServer.getScannerStatus))
-		api.POST("/scanner/scan", webServer.AuthHeaderFunc(webServer.triggerScan))
-		api.GET("/scanner/history", webServer.AuthHeaderFunc(webServer.getScanHistory))
+		api.GET("/scanner/status", webServer.getScannerStatus)
+		api.POST("/scanner/scan", webServer.triggerScan)
+		api.GET("/scanner/history", webServer.getScanHistory)
 		r.GET("/ws/scanner", webServer.AuthParamFunc(webServer.getScannerUpdates))
 	}
 
@@ -617,4 +636,197 @@ func (w *WebServer) getWebhookEventByID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, event)
+}
+
+func (w *WebServer) authMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if w.authService == nil {
+			if w.Token != "" {
+				authHeader := c.GetHeader("Authorization")
+				const bearerPrefix = "Bearer "
+				if authHeader == "" || !strings.HasPrefix(authHeader, bearerPrefix) {
+					c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+					return
+				}
+				token := strings.TrimPrefix(authHeader, bearerPrefix)
+				if token != w.Token {
+					c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+					return
+				}
+				c.Set("auth_scope", model.ScopeAdmin)
+				c.Next()
+				return
+			}
+			c.Next()
+			return
+		}
+
+		authHeader := c.GetHeader("Authorization")
+		apiToken, session, err := w.authService.ValidateBearerToken(c.Request.Context(), authHeader)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		if apiToken != nil {
+			c.Set("auth_token_id", apiToken.ID)
+			c.Set("auth_scope", apiToken.Scope)
+		} else if session != nil {
+			c.Set("auth_user_id", session.UserID)
+			c.Set("auth_user_email", session.Email)
+			c.Set("auth_scope", session.Scope)
+		}
+
+		c.Next()
+	}
+}
+
+func (w *WebServer) authLogin(c *gin.Context) {
+	if w.authService == nil || !w.authService.IsOIDCEnabled() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "OIDC not configured"})
+		return
+	}
+
+	oauth2Config := w.authService.GetOAuth2Config()
+	state, err := auth.GenerateToken()
+	if err != nil {
+		webError(c, err, http.StatusInternalServerError)
+		return
+	}
+
+	c.SetCookie("auth_state", state, 300, "/", "", false, true)
+	url := oauth2Config.AuthCodeURL(state)
+	c.Redirect(http.StatusTemporaryRedirect, url)
+}
+
+func (w *WebServer) authCallback(c *gin.Context) {
+	if w.authService == nil || !w.authService.IsOIDCEnabled() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "OIDC not configured"})
+		return
+	}
+
+	state := c.Query("state")
+	cookieState, err := c.Cookie("auth_state")
+	if err != nil || state != cookieState {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Invalid state"})
+		return
+	}
+	c.SetCookie("auth_state", "", -1, "/", "", false, true)
+
+	code := c.Query("code")
+	token, err := w.authService.ExchangeCode(c.Request.Context(), code)
+	if err != nil {
+		webError(c, err, http.StatusInternalServerError)
+		return
+	}
+
+	userInfo, err := w.authService.GetUserInfo(c.Request.Context(), oauth2.StaticTokenSource(token))
+	if err != nil {
+		webError(c, err, http.StatusInternalServerError)
+		return
+	}
+
+	sessionToken, err := w.authService.CreateSession(userInfo.Subject, userInfo.Email, userInfo.Name)
+	if err != nil {
+		webError(c, err, http.StatusInternalServerError)
+		return
+	}
+
+	c.SetCookie("gearr_session", sessionToken, 86400, "/", "", false, true)
+	c.Redirect(http.StatusTemporaryRedirect, "/")
+}
+
+func (w *WebServer) authLogout(c *gin.Context) {
+	c.SetCookie("gearr_session", "", -1, "/", "", false, true)
+	c.Redirect(http.StatusTemporaryRedirect, "/")
+}
+
+func (w *WebServer) listAPITokens(c *gin.Context) {
+	if w.authService == nil || !w.authService.IsAPITokensEnabled() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "API tokens not configured"})
+		return
+	}
+
+	tokens, err := w.authService.ListAPITokens(c.Request.Context())
+	if err != nil {
+		webError(c, err, http.StatusInternalServerError)
+		return
+	}
+
+	c.JSON(http.StatusOK, tokens)
+}
+
+func (w *WebServer) createAPIToken(c *gin.Context) {
+	if w.authService == nil || !w.authService.IsAPITokensEnabled() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "API tokens not configured"})
+		return
+	}
+
+	var req struct {
+		Name      string           `json:"name"`
+		Scope     model.TokenScope `json:"scope"`
+		ExpiresAt *string          `json:"expires_at,omitempty"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	if !model.IsValidScope(req.Scope) {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid scope"})
+		return
+	}
+
+	var expiresAt *time.Time
+	if req.ExpiresAt != nil {
+		t, err := time.Parse(time.RFC3339, *req.ExpiresAt)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid expires_at format"})
+			return
+		}
+		expiresAt = &t
+	}
+
+	createdBy := ""
+	if userID, exists := c.Get("auth_user_id"); exists {
+		createdBy = userID.(string)
+	} else if tokenID, exists := c.Get("auth_token_id"); exists {
+		createdBy = tokenID.(string)
+	}
+
+	token, rawToken, err := w.authService.CreateAPIToken(c.Request.Context(), req.Name, req.Scope, createdBy, expiresAt)
+	if err != nil {
+		webError(c, err, http.StatusInternalServerError)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":         token.ID,
+		"name":       token.Name,
+		"scope":      token.Scope,
+		"token":      rawToken,
+		"created_at": token.CreatedAt,
+		"expires_at": token.ExpiresAt,
+	})
+}
+
+func (w *WebServer) deleteAPIToken(c *gin.Context) {
+	if w.authService == nil || !w.authService.IsAPITokensEnabled() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "API tokens not configured"})
+		return
+	}
+
+	id := c.Param("id")
+	if id == "" {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "token ID required"})
+		return
+	}
+
+	err := w.authService.DeleteAPIToken(c.Request.Context(), id)
+	if err != nil {
+		webError(c, err, http.StatusInternalServerError)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
 }
