@@ -46,6 +46,7 @@ RUN --mount=type=cache,target=/build/packages,sharing=locked \
     chmod 755 ./build-ffmpeg && \
     perl -0777 -i -pe 's/CFLAGS="-I\$WORKSPACE\/include -Wno-int-conversion"\n/CFLAGS="-I\$WORKSPACE\/include -Wno-int-conversion -std=gnu11 -D_GL_EXTERN_C=extern -D_GL_ATTRIBUTE_NOTHROW="\nexport CFLAGS\n/' build-ffmpeg && \
     perl -i -pe 's/cmake\s+((\.\.\/)+)source\s+-DCMAKE/cmake $1source -DCMAKE_CXX_STANDARD=11 -DCMAKE_CXX_STANDARD_REQUIRED=ON "-DCMAKE_CXX_FLAGS=-std=c++11" -DCMAKE/' build-ffmpeg && \
+    perl -0777 -i -pe 's/(x265-8be7dbf\.tar\.gz")\n(\n)/\1\n    sed -i '\''27a #include <cstdint>'\'' packages\/x265-8be7dbf\/source\/dynamicHDR10\/json11\/json11.cpp\n\2/' build-ffmpeg && \
     mkdir -p packages workspace/bin && \
     echo "1.4.20" > packages/m4.done && \
     ln -sf /usr/bin/m4 workspace/bin/m4 && \
