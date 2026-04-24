@@ -12,7 +12,7 @@ ARG FFMPEG_BUILD_SCRIPT_VERSION=1.59
 ARG FFMPEG_BUILD_OPTIONS=--enable-gpl-and-non-free
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV CXXFLAGS="-include cstdint"
+ENV CXXFLAGS="-std=c++11 -include cstdint"
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
