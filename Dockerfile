@@ -42,6 +42,7 @@ RUN --mount=type=cache,target=/build/packages,sharing=locked \
     curl -sLO \
     https://raw.githubusercontent.com/markus-perl/ffmpeg-build-script/v${FFMPEG_BUILD_SCRIPT_VERSION}/build-ffmpeg && \
     chmod 755 ./build-ffmpeg && \
+    sed -i 's/^CFLAGS="-I/CFLAGS="-std=gnu17 -I/' build-ffmpeg && \
     SKIPINSTALL=yes ./build-ffmpeg \
         --build \
         ${FFMPEG_BUILD_OPTIONS} && \
