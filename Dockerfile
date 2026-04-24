@@ -45,7 +45,7 @@ RUN --mount=type=cache,target=/build/packages,sharing=locked \
     https://raw.githubusercontent.com/markus-perl/ffmpeg-build-script/v${FFMPEG_BUILD_SCRIPT_VERSION}/build-ffmpeg && \
     chmod 755 ./build-ffmpeg && \
     perl -0777 -i -pe 's/CFLAGS="-I\$WORKSPACE\/include -Wno-int-conversion"\n/CFLAGS="-I\$WORKSPACE\/include -Wno-int-conversion -std=gnu11 -D_GL_EXTERN_C=extern -D_GL_ATTRIBUTE_NOTHROW="\nexport CFLAGS\n/' build-ffmpeg && \
-    perl -i -pe 's/cmake\s+((\.\.\/)+)source\s+-DCMAKE/cmake $1source -DCMAKE_CXX_FLAGS="\$\{CXXFLAGS\}" -DCMAKE/' build-ffmpeg && \
+    perl -i -pe 's/cmake\s+((\.\.\/)+)source\s+-DCMAKE/cmake $1source "-DCMAKE_CXX_FLAGS=\$\{CXXFLAGS\}" -DCMAKE/' build-ffmpeg && \
     mkdir -p packages workspace/bin && \
     echo "1.4.20" > packages/m4.done && \
     ln -sf /usr/bin/m4 workspace/bin/m4 && \
