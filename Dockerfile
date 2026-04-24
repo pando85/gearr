@@ -42,7 +42,7 @@ RUN --mount=type=cache,target=/build/packages,sharing=locked \
     curl -sLO \
     https://raw.githubusercontent.com/markus-perl/ffmpeg-build-script/v${FFMPEG_BUILD_SCRIPT_VERSION}/build-ffmpeg && \
     chmod 755 ./build-ffmpeg && \
-    perl -0777 -i -pe 's/export CFLAGS\n  fi\n  execute \/configure --silent --prefix="\$\{WORKSPACE\}" --with-pc-path="\$\{WORKSPACE\}"\/lib\/pkgconfig --with-internal-glib/export CFLAGS\n  else\n    CFLAGS+=" -std=gnu17"\n    export CFLAGS\n  fi\n  execute \/configure --silent --prefix="${WORKSPACE}" --with-pc-path="${WORKSPACE}"\/lib\/pkgconfig --with-internal-glib/' build-ffmpeg && \
+    perl -0777 -i -pe 's/\texport CFLAGS\n  fi\n  execute \.\/configure --silent --prefix="\$\{WORKSPACE\}" --with-pc-path="\$\{WORKSPACE\}"\/lib\/pkgconfig --with-internal-glib/\texport CFLAGS\n  else\n\tCFLAGS+=" -std=gnu17"\n\texport CFLAGS\n  fi\n  execute .\/configure --silent --prefix="\$\{WORKSPACE\}" --with-pc-path="\$\{WORKSPACE\}"\/lib\/pkgconfig --with-internal-glib/' build-ffmpeg && \
     SKIPINSTALL=yes ./build-ffmpeg \
         --build \
         ${FFMPEG_BUILD_OPTIONS} && \
