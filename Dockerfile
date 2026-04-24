@@ -13,6 +13,7 @@ ARG FFMPEG_BUILD_OPTIONS=--enable-gpl-and-non-free
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV CXXFLAGS="-include cstdint"
+ENV CPPFLAGS="-D_GL_EXTERN_C=extern"
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
