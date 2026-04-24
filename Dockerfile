@@ -43,7 +43,7 @@ RUN --mount=type=cache,target=/build/packages,sharing=locked \
     curl -sLO \
     https://raw.githubusercontent.com/markus-perl/ffmpeg-build-script/v${FFMPEG_BUILD_SCRIPT_VERSION}/build-ffmpeg && \
     chmod 755 ./build-ffmpeg && \
-    perl -0777 -i -pe 's/CFLAGS="-I\$WORKSPACE\/include -Wno-int-conversion"\n/CFLAGS="-I\$WORKSPACE\/include -Wno-int-conversion -std=gnu11"\nexport CFLAGS\n/' build-ffmpeg && \
+    perl -0777 -i -pe 's/CFLAGS="-I\$WORKSPACE\/include -Wno-int-conversion"\n/CFLAGS="-I\$WORKSPACE\/include -Wno-int-conversion -std=gnu11 -D_GL_EXTERN_C=extern"\nexport CFLAGS\n/' build-ffmpeg && \
     SKIPINSTALL=yes ./build-ffmpeg \
         --build \
         ${FFMPEG_BUILD_OPTIONS} && \
