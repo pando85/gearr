@@ -12,7 +12,7 @@ ARG FFMPEG_BUILD_SCRIPT_VERSION=1.59
 ARG FFMPEG_BUILD_OPTIONS=--enable-gpl-and-non-free
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV CXXFLAGS="-std=c++11 -include cstdint"
+ENV CXXFLAGS="-std=c++11"
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
@@ -45,7 +45,7 @@ RUN --mount=type=cache,target=/build/packages,sharing=locked \
     https://raw.githubusercontent.com/markus-perl/ffmpeg-build-script/v${FFMPEG_BUILD_SCRIPT_VERSION}/build-ffmpeg && \
     chmod 755 ./build-ffmpeg && \
     perl -0777 -i -pe 's/CFLAGS="-I\$WORKSPACE\/include -Wno-int-conversion"\n/CFLAGS="-I\$WORKSPACE\/include -Wno-int-conversion -std=gnu11 -D_GL_EXTERN_C=extern -D_GL_ATTRIBUTE_NOTHROW="\nexport CFLAGS\n/' build-ffmpeg && \
-    perl -i -pe 's/cmake\s+((\.\.\/)+)source\s+-DCMAKE/cmake $1source -DCMAKE_CXX_STANDARD=11 -DCMAKE_CXX_STANDARD_REQUIRED=ON "-DCMAKE_CXX_FLAGS=-std=c++11 -include cstdint" -DCMAKE/' build-ffmpeg && \
+    perl -i -pe 's/cmake\s+((\.\.\/)+)source\s+-DCMAKE/cmake $1source -DCMAKE_CXX_STANDARD=11 -DCMAKE_CXX_STANDARD_REQUIRED=ON "-DCMAKE_CXX_FLAGS=-std=c++11" -DCMAKE/' build-ffmpeg && \
     mkdir -p packages workspace/bin && \
     echo "1.4.20" > packages/m4.done && \
     ln -sf /usr/bin/m4 workspace/bin/m4 && \
