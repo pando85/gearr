@@ -42,6 +42,7 @@ RUN --mount=type=cache,target=/build/packages,sharing=locked \
     curl -sLO \
     https://raw.githubusercontent.com/markus-perl/ffmpeg-build-script/v${FFMPEG_BUILD_SCRIPT_VERSION}/build-ffmpeg && \
     chmod 755 ./build-ffmpeg && \
+    perl -i -pe 'BEGIN{undef $/;} s/if build "pkg-config" "0\.29\.2"; then\s+download[^;]+;\s+if\s+\[\[ "\$OSTYPE"[^fi]+fi\s+execute/if build "pkg-config" "0.29.2"; then\n  download "https:\/\/pkgconfig.freedesktop.org\/releases\/pkg-config-\$CURRENT_PACKAGE_VERSION.tar.gz"\n  CFLAGS+=" -std=gnu17"\n  export CFLAGS\n  execute/smg' build-ffmpeg && \
     SKIPINSTALL=yes ./build-ffmpeg \
         --build \
         ${FFMPEG_BUILD_OPTIONS} && \
