@@ -29,6 +29,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         meson \
         git \
         m4 \
+        pkg-config \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/* \
     && update-ca-certificates
@@ -48,6 +49,8 @@ RUN --mount=type=cache,target=/build/packages,sharing=locked \
     mkdir -p packages workspace/bin && \
     echo "1.4.20" > packages/m4.done && \
     ln -sf /usr/bin/m4 workspace/bin/m4 && \
+    echo "0.29.2" > packages/pkg-config.done && \
+    ln -sf /usr/bin/pkg-config workspace/bin/pkg-config && \
     SKIPINSTALL=yes ./build-ffmpeg \
         --build \
         ${FFMPEG_BUILD_OPTIONS} && \
