@@ -12,7 +12,6 @@ ARG FFMPEG_BUILD_SCRIPT_VERSION=1.59
 ARG FFMPEG_BUILD_OPTIONS=--enable-gpl-and-non-free
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV CFLAGS="-std=gnu17"
 ENV CXXFLAGS="-include cstdint"
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -43,7 +42,6 @@ RUN --mount=type=cache,target=/build/packages,sharing=locked \
     curl -sLO \
     https://raw.githubusercontent.com/markus-perl/ffmpeg-build-script/v${FFMPEG_BUILD_SCRIPT_VERSION}/build-ffmpeg && \
     chmod 755 ./build-ffmpeg && \
-    sed -i 's/^CFLAGS="-I/CFLAGS="-std=gnu17 -I/' build-ffmpeg && \
     SKIPINSTALL=yes ./build-ffmpeg \
         --build \
         ${FFMPEG_BUILD_OPTIONS} && \
