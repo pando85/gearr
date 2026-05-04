@@ -7,7 +7,7 @@ GOARCH ?= $(shell $(GO) env GOHOSTARCH)
 
 IMAGE_NAME ?= ghcr.io/pando85/gearr
 IMAGE_VERSION ?= latest
-FFMPEG_BUILD_SCRIPT_VERSION ?= 1.58.1
+FFMPEG_BUILD_SCRIPT_VERSION ?= 1.59
 FFMPEG_BUILD_OPTIONS ?= --enable-gpl-and-non-free
 
 PROJECT_VERSION := 0.1.11

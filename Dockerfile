@@ -4,11 +4,11 @@
 # 2. Build dependencies in apt-get change
 # 3. Cache is explicitly invalidated
 
-ARG BASE_IMAGE=ubuntu:24.04
+ARG BASE_IMAGE=ubuntu:26.04
 
 FROM ${BASE_IMAGE} AS ffmpeg-builder
 
-ARG FFMPEG_BUILD_SCRIPT_VERSION=1.58.1
+ARG FFMPEG_BUILD_SCRIPT_VERSION=1.59
 ARG FFMPEG_BUILD_OPTIONS=--enable-gpl-and-non-free
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -27,6 +27,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         ninja-build \
         meson \
         git \
+        m4 \
+        pkg-config \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/* \
     && update-ca-certificates
@@ -41,6 +43,15 @@ RUN --mount=type=cache,target=/build/packages,sharing=locked \
     curl -sLO \
     https://raw.githubusercontent.com/markus-perl/ffmpeg-build-script/v${FFMPEG_BUILD_SCRIPT_VERSION}/build-ffmpeg && \
     chmod 755 ./build-ffmpeg && \
+    perl -0777 -i -pe 's/CFLAGS="-I\$WORKSPACE\/include -Wno-int-conversion"\n/CFLAGS="-I\$WORKSPACE\/include -Wno-int-conversion -std=gnu11 -D_GL_EXTERN_C=extern -D_GL_ATTRIBUTE_NOTHROW="\nexport CFLAGS\n/' build-ffmpeg && \
+    perl -i -pe 's/cmake\s+((\.\.\/)+)source\s+-DCMAKE/cmake $1source -DCMAKE_CXX_STANDARD=11 -DCMAKE_CXX_STANDARD_REQUIRED=ON "-DCMAKE_CXX_FLAGS=-std=c++11" -DCMAKE/' build-ffmpeg && \
+    perl -0777 -i -pe 's/(x265-8be7dbf\.tar\.gz")\n(\n)/\1\n    sed -i '\''27a #include <cstdint>'\'' source\/dynamicHDR10\/json11\/json11.cpp\n\2/' build-ffmpeg && \
+    perl -i -pe 's/[a-z0-9-]+\.[a-z0-9-]*dl\.sourceforge\.net/downloads.sourceforge.net/g' build-ffmpeg && \
+    mkdir -p packages workspace/bin && \
+    echo "1.4.20" > packages/m4.done && \
+    ln -sf /usr/bin/m4 workspace/bin/m4 && \
+    echo "0.29.2" > packages/pkg-config.done && \
+    ln -sf /usr/bin/pkg-config workspace/bin/pkg-config && \
     SKIPINSTALL=yes ./build-ffmpeg \
         --build \
         ${FFMPEG_BUILD_OPTIONS} && \
