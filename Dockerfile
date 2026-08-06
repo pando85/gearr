@@ -28,6 +28,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         meson \
         git \
         m4 \
+        autoconf \
+        automake \
         pkg-config \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/* \
@@ -50,6 +52,10 @@ RUN --mount=type=cache,target=/build/packages,sharing=locked \
     mkdir -p packages workspace/bin && \
     echo "1.4.20" > packages/m4.done && \
     ln -sf /usr/bin/m4 workspace/bin/m4 && \
+    echo "2.72" > packages/autoconf.done && \
+    ln -sf /usr/bin/autoconf workspace/bin/autoconf && \
+    echo "1.18.1" > packages/automake.done && \
+    ln -sf /usr/bin/automake workspace/bin/automake && \
     echo "0.29.2" > packages/pkg-config.done && \
     ln -sf /usr/bin/pkg-config workspace/bin/pkg-config && \
     SKIPINSTALL=yes ./build-ffmpeg \
