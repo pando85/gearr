@@ -104,7 +104,7 @@ if [ -z "$job_id" ] || [ "$job_id" = "null" ]; then
   exit 1
 fi
 
-MAX_ATTEMPTS=50
+MAX_ATTEMPTS=180
 for attempt in $(seq 1 $MAX_ATTEMPTS); do
   echo "Attempt $attempt to get job status"
   
