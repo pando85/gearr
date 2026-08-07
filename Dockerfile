@@ -30,6 +30,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         m4 \
         autoconf \
         automake \
+        libtool \
         pkg-config \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/* \
@@ -58,6 +59,8 @@ RUN --mount=type=cache,target=/build/packages,sharing=locked \
     ln -sf /usr/bin/automake workspace/bin/automake && \
     echo "0.29.2" > packages/pkg-config.done && \
     ln -sf /usr/bin/pkg-config workspace/bin/pkg-config && \
+    echo "2.5.4" > packages/libtool.done && \
+    ln -sf /usr/bin/libtool workspace/bin/libtool && \
     SKIPINSTALL=yes ./build-ffmpeg \
         --build \
         ${FFMPEG_BUILD_OPTIONS} && \
