@@ -29,6 +29,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         git \
         m4 \
         autoconf \
+        libtool \
         pkg-config \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/* \
@@ -53,6 +54,9 @@ RUN --mount=type=cache,target=/build/packages,sharing=locked \
     ln -sf /usr/bin/m4 workspace/bin/m4 && \
     echo "$(autoconf --version | head -n1 | grep -oP '[\d.]+$')" > packages/autoconf.done && \
     ln -sf /usr/bin/autoconf workspace/bin/autoconf && \
+    echo "$(libtool --version | head -n1 | grep -oP '[\d.]+$')" > packages/libtool.done && \
+    ln -sf /usr/bin/libtool workspace/bin/libtool && \
+    ln -sf /usr/bin/libtoolize workspace/bin/libtoolize && \
     echo "0.29.2" > packages/pkg-config.done && \
     ln -sf /usr/bin/pkg-config workspace/bin/pkg-config && \
     SKIPINSTALL=yes ./build-ffmpeg \
