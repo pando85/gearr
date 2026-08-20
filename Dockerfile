@@ -47,6 +47,7 @@ RUN --mount=type=cache,target=/build/packages,sharing=locked \
     perl -i -pe 's/cmake\s+((\.\.\/)+)source\s+-DCMAKE/cmake $1source -DCMAKE_CXX_STANDARD=11 -DCMAKE_CXX_STANDARD_REQUIRED=ON "-DCMAKE_CXX_FLAGS=-std=c++11" -DCMAKE/' build-ffmpeg && \
     perl -0777 -i -pe 's/(x265-\$CURRENT_PACKAGE_VERSION\.tar\.gz")\n(\n)/\1\n    sed -i '\''27a #include <cstdint>'\'' source\/dynamicHDR10\/json11\/json11.cpp\n\2/' build-ffmpeg && \
     perl -i -pe 's/[a-z0-9-]+\.[a-z0-9-]*dl\.sourceforge\.net/downloads.sourceforge.net/g' build-ffmpeg && \
+    perl -i -pe 's|https://code\.videolan\.org/videolan/dav1d/-/archive/\$CURRENT_PACKAGE_VERSION/dav1d-\$CURRENT_PACKAGE_VERSION\.tar\.gz|https://github.com/videolan/dav1d/archive/refs/tags/\$CURRENT_PACKAGE_VERSION.tar.gz" "dav1d-\$CURRENT_PACKAGE_VERSION.tar.gz|' build-ffmpeg && \
     mkdir -p packages workspace/bin && \
     echo "1.4.20" > packages/m4.done && \
     ln -sf /usr/bin/m4 workspace/bin/m4 && \
