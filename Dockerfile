@@ -8,7 +8,7 @@ ARG BASE_IMAGE=ubuntu:26.04
 
 FROM ${BASE_IMAGE} AS ffmpeg-builder
 
-ARG FFMPEG_BUILD_SCRIPT_VERSION=1.59
+ARG FFMPEG_BUILD_SCRIPT_VERSION=1.61
 ARG FFMPEG_BUILD_OPTIONS=--enable-gpl-and-non-free
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -47,9 +47,10 @@ RUN --mount=type=cache,target=/build/packages,sharing=locked \
     chmod 755 ./build-ffmpeg && \
     perl -0777 -i -pe 's/CFLAGS="-I\$WORKSPACE\/include -Wno-int-conversion"\n/CFLAGS="-I\$WORKSPACE\/include -Wno-int-conversion -std=gnu11 -D_GL_EXTERN_C=extern -D_GL_ATTRIBUTE_NOTHROW="\nexport CFLAGS\n/' build-ffmpeg && \
     perl -i -pe 's/cmake\s+((\.\.\/)+)source\s+-DCMAKE/cmake $1source -DCMAKE_CXX_STANDARD=11 -DCMAKE_CXX_STANDARD_REQUIRED=ON "-DCMAKE_CXX_FLAGS=-std=c++11" -DCMAKE/' build-ffmpeg && \
-    perl -0777 -i -pe 's/(x265-8be7dbf\.tar\.gz")\n(\n)/\1\n    sed -i '\''27a #include <cstdint>'\'' source\/dynamicHDR10\/json11\/json11.cpp\n\2/' build-ffmpeg && \
+    perl -0777 -i -pe 's/(x265-\$CURRENT_PACKAGE_VERSION\.tar\.gz")\n(\n)/\1\n    sed -i '\''27a #include <cstdint>'\'' source\/dynamicHDR10\/json11\/json11.cpp\n\2/' build-ffmpeg && \
     perl -0777 -i -pe 's/(download "https:\/\/github\.com\/zapping-vbi\/zvbi\/archive\/refs\/tags\/v\$CURRENT_PACKAGE_VERSION\.tar\.gz" "zvbi-\$CURRENT_PACKAGE_VERSION\.tar\.gz"\n)/\1    sed -i '\''\/AM_INIT_AUTOMAKE\/a LT_INIT'\'' configure.ac\n/' build-ffmpeg && \
     perl -i -pe 's/[a-z0-9-]+\.[a-z0-9-]*dl\.sourceforge\.net/downloads.sourceforge.net/g' build-ffmpeg && \
+    perl -i -pe 's|https://code\.videolan\.org/videolan/dav1d/-/archive/\$CURRENT_PACKAGE_VERSION/dav1d-\$CURRENT_PACKAGE_VERSION\.tar\.gz|https://github.com/videolan/dav1d/archive/refs/tags/\$CURRENT_PACKAGE_VERSION.tar.gz" "dav1d-\$CURRENT_PACKAGE_VERSION.tar.gz|' build-ffmpeg && \
     mkdir -p packages workspace/bin && \
     echo "1.4.20" > packages/m4.done && \
     ln -sf /usr/bin/m4 workspace/bin/m4 && \
