@@ -28,6 +28,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         meson \
         git \
         m4 \
+        autoconf \
+        libtool \
         pkg-config \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/* \
@@ -46,11 +48,17 @@ RUN --mount=type=cache,target=/build/packages,sharing=locked \
     perl -0777 -i -pe 's/CFLAGS="-I\$WORKSPACE\/include -Wno-int-conversion"\n/CFLAGS="-I\$WORKSPACE\/include -Wno-int-conversion -std=gnu11 -D_GL_EXTERN_C=extern -D_GL_ATTRIBUTE_NOTHROW="\nexport CFLAGS\n/' build-ffmpeg && \
     perl -i -pe 's/cmake\s+((\.\.\/)+)source\s+-DCMAKE/cmake $1source -DCMAKE_CXX_STANDARD=11 -DCMAKE_CXX_STANDARD_REQUIRED=ON "-DCMAKE_CXX_FLAGS=-std=c++11" -DCMAKE/' build-ffmpeg && \
     perl -0777 -i -pe 's/(x265-\$CURRENT_PACKAGE_VERSION\.tar\.gz")\n(\n)/\1\n    sed -i '\''27a #include <cstdint>'\'' source\/dynamicHDR10\/json11\/json11.cpp\n\2/' build-ffmpeg && \
+    perl -0777 -i -pe 's/(download "https:\/\/github\.com\/zapping-vbi\/zvbi\/archive\/refs\/tags\/v\$CURRENT_PACKAGE_VERSION\.tar\.gz" "zvbi-\$CURRENT_PACKAGE_VERSION\.tar\.gz"\n)/\1    sed -i '\''\/AM_INIT_AUTOMAKE\/a LT_INIT'\'' configure.ac\n/' build-ffmpeg && \
     perl -i -pe 's/[a-z0-9-]+\.[a-z0-9-]*dl\.sourceforge\.net/downloads.sourceforge.net/g' build-ffmpeg && \
     perl -i -pe 's|https://code\.videolan\.org/videolan/dav1d/-/archive/\$CURRENT_PACKAGE_VERSION/dav1d-\$CURRENT_PACKAGE_VERSION\.tar\.gz|https://github.com/videolan/dav1d/archive/refs/tags/\$CURRENT_PACKAGE_VERSION.tar.gz" "dav1d-\$CURRENT_PACKAGE_VERSION.tar.gz|' build-ffmpeg && \
     mkdir -p packages workspace/bin && \
     echo "1.4.20" > packages/m4.done && \
     ln -sf /usr/bin/m4 workspace/bin/m4 && \
+    echo "$(autoconf --version | head -n1 | grep -oP '[\d.]+$')" > packages/autoconf.done && \
+    ln -sf /usr/bin/autoconf workspace/bin/autoconf && \
+    echo "$(libtool --version | head -n1 | grep -oP '[\d.]+$')" > packages/libtool.done && \
+    ln -sf /usr/bin/libtool workspace/bin/libtool && \
+    ln -sf /usr/bin/libtoolize workspace/bin/libtoolize && \
     echo "0.29.2" > packages/pkg-config.done && \
     ln -sf /usr/bin/pkg-config workspace/bin/pkg-config && \
     SKIPINSTALL=yes ./build-ffmpeg \
