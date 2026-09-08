@@ -1,6 +1,6 @@
 module gearr
 
-go 1.26
+go 1.26.0
 
 require (
 	github.com/avast/retry-go/v5 v5.0.0
@@ -16,7 +16,7 @@ require (
 	github.com/rakyll/statik v0.1.8
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
-	golang.org/x/oauth2 v0.36.0
+	golang.org/x/oauth2 v0.37.0
 	golift.io/starr v1.4.0
 	gopkg.in/errgo.v2 v2.1.0
 	gopkg.in/vansante/go-ffprobe.v2 v2.3.0
