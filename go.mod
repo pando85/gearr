@@ -19,7 +19,7 @@ require (
 	golang.org/x/oauth2 v0.37.0
 	golift.io/starr v1.4.0
 	gopkg.in/errgo.v2 v2.1.0
-	gopkg.in/vansante/go-ffprobe.v2 v2.3.0
+	gopkg.in/vansante/go-ffprobe.v2 v2.3.1
 )
 
 require (
