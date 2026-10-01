@@ -53,6 +53,7 @@ RUN --mount=type=cache,target=/build/packages,sharing=locked \
     ln -sf /usr/bin/m4 workspace/bin/m4 && \
     echo "0.29.2" > packages/pkg-config.done && \
     ln -sf /usr/bin/pkg-config workspace/bin/pkg-config && \
+    echo "6.1.3" > packages/giflib.done && \
     SKIPINSTALL=yes ./build-ffmpeg \
         --build \
         ${FFMPEG_BUILD_OPTIONS} && \
