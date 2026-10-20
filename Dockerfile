@@ -21,6 +21,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         curl \
         ca-certificates \
         libva-dev \
+        libgif-dev \
         zlib1g-dev \
         python3 \
         python-is-python3 \
@@ -50,6 +51,7 @@ RUN --mount=type=cache,target=/build/packages,sharing=locked \
     perl -i -pe 's|https://downloads\.sourceforge\.net/project/giflib/giflib-[\d.]+\.x/giflib-\$CURRENT_PACKAGE_VERSION\.tar\.gz|https://deb.debian.org/debian/pool/main/g/giflib/giflib_6.1.3.orig.tar.gz" "giflib-\$CURRENT_PACKAGE_VERSION.tar.gz|g' build-ffmpeg && \
     perl -i -pe 's|https://code\.videolan\.org/videolan/dav1d/-/archive/\$CURRENT_PACKAGE_VERSION/dav1d-\$CURRENT_PACKAGE_VERSION\.tar\.gz|https://github.com/videolan/dav1d/archive/refs/tags/\$CURRENT_PACKAGE_VERSION.tar.gz" "dav1d-\$CURRENT_PACKAGE_VERSION.tar.gz|' build-ffmpeg && \
     mkdir -p packages workspace/bin && \
+    echo "6.1.3" > packages/giflib.done && \
     echo "1.4.20" > packages/m4.done && \
     ln -sf /usr/bin/m4 workspace/bin/m4 && \
     echo "0.29.2" > packages/pkg-config.done && \
@@ -69,6 +71,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         ca-certificates \
         mkvtoolnix \
         libva-drm2 \
+        libgif-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=ffmpeg-builder /output/ff* /usr/bin/
