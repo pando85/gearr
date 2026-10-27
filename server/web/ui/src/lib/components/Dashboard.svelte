@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { jobStore, jobStats } from '$lib/stores';
-  import { formatDateShort } from '$lib/utils';
-  import IconAssignment from '$lib/components/icons/IconAssignment.svelte';
-  import IconHourglass from '$lib/components/icons/IconHourglass.svelte';
-  import IconCheckCircleOutline from '$lib/components/icons/IconCheckCircleOutline.svelte';
-  import IconErrorOutline from '$lib/components/icons/IconErrorOutline.svelte';
-  import IconSchedule from '$lib/components/icons/IconSchedule.svelte';
-  import IconArrowForward from '$lib/components/icons/IconArrowForward.svelte';
-  import ScannerWidget from '$lib/components/ScannerWidget.svelte';
+  import { jobStore, jobStats } from '#lib/stores';
+  import { formatDateShort } from '#lib/utils';
+  import IconAssignment from '#lib/components/icons/IconAssignment.svelte';
+  import IconHourglass from '#lib/components/icons/IconHourglass.svelte';
+  import IconCheckCircleOutline from '#lib/components/icons/IconCheckCircleOutline.svelte';
+  import IconErrorOutline from '#lib/components/icons/IconErrorOutline.svelte';
+  import IconSchedule from '#lib/components/icons/IconSchedule.svelte';
+  import IconArrowForward from '#lib/components/icons/IconArrowForward.svelte';
+  import ScannerWidget from '#lib/components/ScannerWidget.svelte';
 
   const stats = [
     { key: 'total', label: 'Total Jobs', icon: IconAssignment },

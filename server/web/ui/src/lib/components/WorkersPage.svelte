@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { authStore } from '$lib/stores';
-  import { fetchWorkers, type Worker } from '$lib/api';
-  import IconPeople from '$lib/components/icons/IconPeople.svelte';
-  import IconDns from '$lib/components/icons/IconDns.svelte';
-  import IconSchedule from '$lib/components/icons/IconSchedule.svelte';
-  import Spinner from '$lib/components/Spinner.svelte';
+  import { authStore } from '#lib/stores';
+  import { fetchWorkers, type Worker } from '#lib/api';
+  import IconPeople from '#lib/components/icons/IconPeople.svelte';
+  import IconDns from '#lib/components/icons/IconDns.svelte';
+  import IconSchedule from '#lib/components/icons/IconSchedule.svelte';
+  import Spinner from '#lib/components/Spinner.svelte';
 
   let workers = $state<Worker[]>([]);
   let loading = $state(true);

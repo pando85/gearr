@@ -1,5 +1,5 @@
 <script lang="ts">
-  import WebhookEventLog from '$lib/components/WebhookEventLog.svelte';
+  import WebhookEventLog from '#lib/components/WebhookEventLog.svelte';
 </script>
 
 <WebhookEventLog />

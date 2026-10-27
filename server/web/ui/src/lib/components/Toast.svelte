@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { toastStore } from '$lib/stores';
-  import IconCheckCircle from '$lib/components/icons/IconCheckCircle.svelte';
-  import IconError from '$lib/components/icons/IconError.svelte';
-  import IconWarning from '$lib/components/icons/IconWarning.svelte';
-  import IconInfo from '$lib/components/icons/IconInfo.svelte';
-  import IconClose from '$lib/components/icons/IconClose.svelte';
+  import { toastStore } from '#lib/stores';
+  import IconCheckCircle from '#lib/components/icons/IconCheckCircle.svelte';
+  import IconError from '#lib/components/icons/IconError.svelte';
+  import IconWarning from '#lib/components/icons/IconWarning.svelte';
+  import IconInfo from '#lib/components/icons/IconInfo.svelte';
+  import IconClose from '#lib/components/icons/IconClose.svelte';
 </script>
 
 <div class="toast-container">
