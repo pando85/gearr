@@ -1,8 +1,8 @@
 <script lang="ts">
-  import IconContentCopy from '$lib/components/icons/IconContentCopy.svelte';
-  import IconCheckCircle from '$lib/components/icons/IconCheckCircle.svelte';
-  import IconError from '$lib/components/icons/IconError.svelte';
-  import Spinner from '$lib/components/Spinner.svelte';
+  import IconContentCopy from '#lib/components/icons/IconContentCopy.svelte';
+  import IconCheckCircle from '#lib/components/icons/IconCheckCircle.svelte';
+  import IconError from '#lib/components/icons/IconError.svelte';
+  import Spinner from '#lib/components/Spinner.svelte';
 
   interface Props {
     title: string;

@@ -1,9 +1,9 @@
 <script lang="ts">
   import '../app.css';
   import { onMount } from 'svelte';
-  import { themeStore, applyTheme, authStore } from '$lib/stores';
-  import Navbar from '$lib/components/Navbar.svelte';
-  import Toast from '$lib/components/Toast.svelte';
+  import { themeStore, applyTheme, authStore } from '#lib/stores';
+  import Navbar from '#lib/components/Navbar.svelte';
+  import Toast from '#lib/components/Toast.svelte';
 
   let { children } = $props();
 
