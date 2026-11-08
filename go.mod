@@ -3,7 +3,7 @@ module gearr
 go 1.26.0
 
 require (
-	github.com/avast/retry-go/v5 v5.0.0
+	github.com/avast/retry-go/v5 v5.1.1
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/gin-gonic/contrib v0.0.0-20260101091603-d12f07a9136b
