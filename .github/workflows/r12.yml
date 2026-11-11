@@ -1,0 +1,20 @@
+name: r12
+on:
+  pull_request:
+  push:
+    branches: ['r12-h/**']
+permissions:
+  checks: write
+  contents: read
+jobs:
+  r12-a:
+    runs-on: ubuntu-latest
+    steps:
+      - run: sleep 5
+  r12-b:
+    runs-on: ubuntu-latest
+    needs: r12-a
+    steps:
+      - run: |
+          sleep 30
+          [ "${{ github.run_attempt }}" -gt 1 ]
