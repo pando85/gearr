@@ -14,7 +14,7 @@
     "format:check": "prettier --check . --ignore-pattern '*.svelte'"
   },
   "devDependencies": {
-    "@sveltejs/adapter-static": "^3.0.0",
+    "@sveltejs/adapter-static": "^4.0.0",
     "@sveltejs/kit": "^2.0.0",
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@tailwindcss/postcss": "^4.0.0",
