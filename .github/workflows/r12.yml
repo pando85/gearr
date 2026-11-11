@@ -1,0 +1,13 @@
+name: r12
+on:
+  pull_request:
+  push:
+    branches: ['r12-h/**']
+permissions:
+  checks: write
+  contents: read
+jobs:
+  r12-a:
+    runs-on: ubuntu-latest
+    steps:
+      - run: sleep 5
