@@ -1,0 +1,22 @@
+name: r12
+on:
+  pull_request:
+  push:
+    branches: ['r12-h/**']
+permissions:
+  checks: write
+  contents: read
+jobs:
+  r12-a:
+    runs-on: ubuntu-latest
+    steps:
+      - run: sleep 5
+  r12-neu-job:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          sleep 20
+          gh api repos/${{ github.repository }}/check-runs -f name=r12-neu -f head_sha=$SHA -f status=completed -f conclusion=neutral -f 'output[title]=neutral' -f 'output[summary]=r12 neutral check run'
