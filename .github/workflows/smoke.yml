@@ -1,0 +1,8 @@
+name: Smoke Gate
+on:
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - run: sleep 20 && echo smoke-ok
