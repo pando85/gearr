@@ -1,19 +1,19 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
-  import { jobStore, authStore, toastStore } from '$lib/stores';
-  import { fetchJobs, deleteJob, createJobRequest, updateJobPriority } from '$lib/api';
-  import { createJobUpdateNotification, type Job } from '$lib/model';
-  import { STATUS_FILTER_OPTIONS, DATE_FILTER_OPTIONS, PRIORITY_FILTER_OPTIONS, formatDateShort, formatDateDetailed, getDateFromFilterOption, sortJobs } from '$lib/utils';
-  import IconSearch from '$lib/components/icons/IconSearch.svelte';
-  import IconRefresh from '$lib/components/icons/IconRefresh.svelte';
-  import IconArrowUp from '$lib/components/icons/IconArrowUp.svelte';
-  import IconArrowDown from '$lib/components/icons/IconArrowDown.svelte';
-  import IconDelete from '$lib/components/icons/IconDelete.svelte';
-  import IconReplay from '$lib/components/icons/IconReplay.svelte';
-  import IconInfoOutline from '$lib/components/icons/IconInfoOutline.svelte';
-  import IconErrorOutline from '$lib/components/icons/IconErrorOutline.svelte';
-  import IconAssignment from '$lib/components/icons/IconAssignment.svelte';
+  import { jobStore, authStore, toastStore } from '#lib/stores';
+  import { fetchJobs, deleteJob, createJobRequest, updateJobPriority } from '#lib/api';
+  import { createJobUpdateNotification, type Job } from '#lib/model';
+  import { STATUS_FILTER_OPTIONS, DATE_FILTER_OPTIONS, PRIORITY_FILTER_OPTIONS, formatDateShort, formatDateDetailed, getDateFromFilterOption, sortJobs } from '#lib/utils';
+  import IconSearch from '#lib/components/icons/IconSearch.svelte';
+  import IconRefresh from '#lib/components/icons/IconRefresh.svelte';
+  import IconArrowUp from '#lib/components/icons/IconArrowUp.svelte';
+  import IconArrowDown from '#lib/components/icons/IconArrowDown.svelte';
+  import IconDelete from '#lib/components/icons/IconDelete.svelte';
+  import IconReplay from '#lib/components/icons/IconReplay.svelte';
+  import IconInfoOutline from '#lib/components/icons/IconInfoOutline.svelte';
+  import IconErrorOutline from '#lib/components/icons/IconErrorOutline.svelte';
+  import IconAssignment from '#lib/components/icons/IconAssignment.svelte';
 
   let nameFilter = $state('');
   let statusFilter = $state<string[]>([]);

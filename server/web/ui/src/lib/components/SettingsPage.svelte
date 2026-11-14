@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { authStore, toastStore } from '$lib/stores';
-  import { testWebhook } from '$lib/api';
-  import WebhookCard from '$lib/components/WebhookCard.svelte';
+  import { authStore, toastStore } from '#lib/stores';
+  import { testWebhook } from '#lib/api';
+  import WebhookCard from '#lib/components/WebhookCard.svelte';
 
   type WebhookSource = 'radarr' | 'sonarr';
 

@@ -1,16 +1,16 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { themeStore, type ThemeSetting } from '$lib/stores';
-  import IconSun from '$lib/components/icons/IconSun.svelte';
-  import IconMoon from '$lib/components/icons/IconMoon.svelte';
-  import IconBrightness from '$lib/components/icons/IconBrightness.svelte';
-  import IconMenu from '$lib/components/icons/IconMenu.svelte';
-  import IconClose from '$lib/components/icons/IconClose.svelte';
-  import IconWork from '$lib/components/icons/IconWork.svelte';
-  import IconPeople from '$lib/components/icons/IconPeople.svelte';
-  import IconSettings from '$lib/components/icons/IconSettings.svelte';
-  import IconGitHub from '$lib/components/icons/IconGitHub.svelte';
-  import IconDns from '$lib/components/icons/IconDns.svelte';
+  import { themeStore, type ThemeSetting } from '#lib/stores';
+  import IconSun from '#lib/components/icons/IconSun.svelte';
+  import IconMoon from '#lib/components/icons/IconMoon.svelte';
+  import IconBrightness from '#lib/components/icons/IconBrightness.svelte';
+  import IconMenu from '#lib/components/icons/IconMenu.svelte';
+  import IconClose from '#lib/components/icons/IconClose.svelte';
+  import IconWork from '#lib/components/icons/IconWork.svelte';
+  import IconPeople from '#lib/components/icons/IconPeople.svelte';
+  import IconSettings from '#lib/components/icons/IconSettings.svelte';
+  import IconGitHub from '#lib/components/icons/IconGitHub.svelte';
+  import IconDns from '#lib/components/icons/IconDns.svelte';
 
   let mobileMenuOpen = $state(false);
 

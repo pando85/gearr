@@ -1,18 +1,18 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { authStore, toastStore } from '$lib/stores';
-  import { fetchWebhookEvents } from '$lib/api';
-  import type { WebhookEvent } from '$lib/webhook-model';
-  import { formatDateShort, formatDateDetailed } from '$lib/utils';
-  import IconSearch from '$lib/components/icons/IconSearch.svelte';
-  import IconRefresh from '$lib/components/icons/IconRefresh.svelte';
-  import IconArrowUp from '$lib/components/icons/IconArrowUp.svelte';
-  import IconArrowDown from '$lib/components/icons/IconArrowDown.svelte';
-  import IconInfoOutline from '$lib/components/icons/IconInfoOutline.svelte';
-  import IconCheckCircle from '$lib/components/icons/IconCheckCircle.svelte';
-  import IconError from '$lib/components/icons/IconError.svelte';
-  import IconClose from '$lib/components/icons/IconClose.svelte';
+  import { authStore, toastStore } from '#lib/stores';
+  import { fetchWebhookEvents } from '#lib/api';
+  import type { WebhookEvent } from '#lib/webhook-model';
+  import { formatDateShort, formatDateDetailed } from '#lib/utils';
+  import IconSearch from '#lib/components/icons/IconSearch.svelte';
+  import IconRefresh from '#lib/components/icons/IconRefresh.svelte';
+  import IconArrowUp from '#lib/components/icons/IconArrowUp.svelte';
+  import IconArrowDown from '#lib/components/icons/IconArrowDown.svelte';
+  import IconInfoOutline from '#lib/components/icons/IconInfoOutline.svelte';
+  import IconCheckCircle from '#lib/components/icons/IconCheckCircle.svelte';
+  import IconError from '#lib/components/icons/IconError.svelte';
+  import IconClose from '#lib/components/icons/IconClose.svelte';
 
   let events = $state<WebhookEvent[]>([]);
   let loading = $state(true);

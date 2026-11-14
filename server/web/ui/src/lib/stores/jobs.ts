@@ -1,6 +1,6 @@
 import { writable, derived } from 'svelte/store';
-import type { Job, JobUpdateNotification } from '$lib/model';
-import { createJob } from '$lib/model';
+import type { Job, JobUpdateNotification } from '#lib/model';
+import { createJob } from '#lib/model';
 
 export interface JobState {
   jobs: Job[];
