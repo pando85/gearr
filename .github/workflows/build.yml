@@ -60,7 +60,7 @@ jobs:
       - name: Set up node
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version: 26
 
       - name: Set up Go
         uses: actions/setup-go@v6
