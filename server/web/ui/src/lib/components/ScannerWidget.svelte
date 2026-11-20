@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { scannerStore, scannerEnabled, scannerIsScanning, lastScan } from '$lib/stores';
-  import { triggerScan } from '$lib/api';
-  import { authStore } from '$lib/stores';
-  import IconFolderSearch from '$lib/components/icons/IconFolderSearch.svelte';
-  import IconRefresh from '$lib/components/icons/IconRefresh.svelte';
-  import IconCheckCircleOutline from '$lib/components/icons/IconCheckCircleOutline.svelte';
-  import IconHourglass from '$lib/components/icons/IconHourglass.svelte';
-  import Spinner from '$lib/components/Spinner.svelte';
+  import { scannerStore, scannerEnabled, scannerIsScanning, lastScan } from '#lib/stores';
+  import { triggerScan } from '#lib/api';
+  import { authStore } from '#lib/stores';
+  import IconFolderSearch from '#lib/components/icons/IconFolderSearch.svelte';
+  import IconRefresh from '#lib/components/icons/IconRefresh.svelte';
+  import IconCheckCircleOutline from '#lib/components/icons/IconCheckCircleOutline.svelte';
+  import IconHourglass from '#lib/components/icons/IconHourglass.svelte';
+  import Spinner from '#lib/components/Spinner.svelte';
 
   let isTriggeringScan = false;
 

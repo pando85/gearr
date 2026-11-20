@@ -1,9 +1,9 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { authStore } from '$lib/stores';
-  import IconVisibility from '$lib/components/icons/IconVisibility.svelte';
-  import IconVisibilityOff from '$lib/components/icons/IconVisibilityOff.svelte';
-  import IconErrorOutline from '$lib/components/icons/IconErrorOutline.svelte';
+  import { authStore } from '#lib/stores';
+  import IconVisibility from '#lib/components/icons/IconVisibility.svelte';
+  import IconVisibilityOff from '#lib/components/icons/IconVisibilityOff.svelte';
+  import IconErrorOutline from '#lib/components/icons/IconErrorOutline.svelte';
 
   let { errorText = '' }: { errorText?: string } = $props();
 
